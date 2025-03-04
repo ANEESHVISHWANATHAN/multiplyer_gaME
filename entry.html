@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Create a Lobby</title>
+</head>
+<body>
+    <button id="create">Create Lobby</button>
+
+    <!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Create a Lobby</title>
+</head>
+<body>
+    <button id="create">Create Lobby</button>
+
+    <script>
+        let socket = new WebSocket("ws://localhost:7000");
+
+        socket.onopen = () => console.log("WebSocket Connected!");
+        socket.onerror = (error) => console.error("WebSocket Error:", error);
+        socket.onmessage = (event) => console.log("Received:", event.data);
+
+        document.addEventListener("DOMContentLoaded", () => {
+            let createButton = document.getElementById("create");
+
+            if (!createButton) {
+                console.error("Create button not found!");
+                return;
+            }
+
+            createButton.addEventListener("click", () => {
+                let username = prompt("Enter your username:");
+                if (!username) {
+                    alert("Username is required!");
+                    return;
+                }
+
+                let message = JSON.stringify({ type: "create_room", username });
+                socket.send(message);
+            });
+        });
+    </script>
+</body>
+</html>
+</body>
+</html>

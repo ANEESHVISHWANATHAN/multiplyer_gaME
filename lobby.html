@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Bingo Lobby</title>
+    <style>
+        #players { display: flex; flex-wrap: wrap; }
+        .player-card { width: 100px; height: 100px; margin: 10px; padding: 10px; background: lightgray; text-align: center; }
+    </style>
+</head>
+<body>
+    <h1>Bingo Lobby</h1>
+    <button id="share">Share URL</button>
+    <div id="players"></div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomId = urlParams.get("room");
+        let socket = new WebSocket("ws://localhost:5000");
+
+        document.getElementById("share").addEventListener("click", () => {
+            navigator.clipboard.writeText(window.location.href);
+            alert("Lobby URL copied!");
+        });
+
+        socket.onmessage = (event) => {
+            let data = JSON.parse(event.data);
+            console.log("Received:", data);
+        };
+
+        // Simulate adding players
+        function addPlayerCard(username) {
+            let playerDiv = document.createElement("div");
+            playerDiv.classList.add("player-card");
+            playerDiv.innerText = username;
+            document.getElementById("players").appendChild(playerDiv);
+        }
+
+        addPlayerCard("Host"); // First player is always the host
+    </script>
+</body>
+</html>
