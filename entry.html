@@ -1,232 +1,189 @@
 
-      <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bingo Lobby</title>
     <style>
+        /* General Styles */
         body {
-            background-color: #121212;
-            color: #ffffff;
-            font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
             display: flex;
             flex-direction: column;
+            align-items: center;
+            justify-content: center;
             height: 100vh;
+            background: radial-gradient(circle, rgba(20,20,20,1) 30%, rgba(5,5,5,1) 90%);
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
             overflow: hidden;
-            user-select: none;
-        }
-
-        /* Heading Section */
-        .heading {
-            text-align: center;
-            padding: 20px;
-            background-color: #1a1a1a;
-            border-bottom: 3px solid #ffffff;
-            box-shadow: 0 0 12px #ffffff;
-            font-size: 1.5rem;
-            font-weight: bold;
-            letter-spacing: 1px;
-            text-shadow: 0 0 12px #ffcc00, 0 0 18px #ff6600;
-            color: #ffcc00;
-        }
-
-        /* Player Section */
-        .player-section {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-            gap: 15px;
-            padding: 20px;
-            overflow-y: auto;
-            flex-grow: 1;
-            max-height: calc(100vh - 160px);
-            border-bottom: 3px solid #ffffff;
-        }
-
-        @media (min-width: 768px) {
-            .player-section {
-                grid-template-columns: repeat(4, 1fr); /* 4x2 grid for computer */
-            }
-        }
-
-        @media (max-width: 767px) {
-            .player-section {
-                grid-template-columns: repeat(2, 1fr); /* 2x4 grid for phone */
-            }
-        }
-
-        .player-card {
-            background-color: #1a1a1a;
-            border: 2px solid transparent;
-            padding: 12px;
-            border-radius: 8px;
-            text-align: center;
-            width: 100px;
-            height: 140px;
-            box-shadow: 0 0 12px #ffffff;
-            transition: border-color 0.2s, transform 0.2s ease;
             position: relative;
         }
 
-        .player-card img {
-            width: 60px;
-            height: 60px;
+        /* Background Animation */
+        .background-effect {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            top: 0;
+            left: 0;
+            z-index: -1;
+        }
+
+        .glow {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(255,0,150,0.7), rgba(0,0,0,0));
             border-radius: 50%;
-            object-fit: cover;
-            margin-bottom: 8px;
+            opacity: 0.8;
+            animation: moveGlow 6s infinite alternate ease-in-out;
         }
 
-        .player-card p {
-            font-size: 0.9rem;
-            font-weight: bold;
-            margin: 5px 0;
+        @keyframes moveGlow {
+            0% { transform: translate(-50px, -50px); }
+            100% { transform: translate(50px, 50px); }
         }
 
-        .host-symbol {
+        /* Floating Particles */
+        .particle {
             position: absolute;
-            top: 5px;
-            right: 5px;
-            background-color: #ffcc00;
-            color: #121212;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.7rem;
-            font-weight: bold;
-            pointer-events: none;
+            width: 5px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            animation: floatParticles linear infinite;
         }
 
-        /* Options */
-        .options {
-            display: none;
+        @keyframes floatParticles {
+            0% { transform: translateY(100vh); opacity: 0; }
+            100% { transform: translateY(-10vh); opacity: 1; }
+        }
+
+        /* Header Icons */
+        .top-icons {
             position: absolute;
-            top: -30px;
-            right: -10px;
-            flex-direction: column;
-            gap: 5px;
-            z-index: 10;
-        }
-
-        .kick-btn,
-        .make-host-btn {
-            width: 24px;
-            height: 24px;
-            cursor: pointer;
-            filter: drop-shadow(0 0 6px #ffffff);
-        }
-
-        /* Highlight when held */
-        .player-card.held {
-            border-color: #ffcc00;
-            z-index: 20;
-        }
-
-        /* Bottom Section */
-        .bottom-section {
+            top: 20px;
+            width: 90%;
             display: flex;
             justify-content: space-between;
-            padding: 15px;
-            background-color: #1a1a1a;
-            border-top: 3px solid #ffffff;
-            box-shadow: 0 0 12px #ffffff;
-            z-index: 5;
         }
-
-        .delete-btn,
-        .start-btn {
-            background-color: #ff6600;
-            color: white;
-            padding: 12px 24px;
-            border: none;
-            border-radius: 4px;
+        .top-icons img {
+            width: 40px;
+            height: 40px;
             cursor: pointer;
-            font-size: 1rem;
-            transition: background-color 0.2s;
+            filter: drop-shadow(0px 0px 5px rgba(255, 255, 255, 0.8));
+            transition: transform 0.2s ease-in-out;
+        }
+        .top-icons img:hover {
+            transform: scale(1.1);
         }
 
-        .start-btn {
-            background-color: #00cc00;
-            display: none;
+        /* Bingo Lobby Title */
+        .bingo-title {
+            font-size: 50px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #ffcc00, 0 0 20px #ff6600, 0 0 30px #ff3300;
+            animation: glow 2s infinite alternate;
+            position: relative;
+            z-index: 2;
         }
+
+        @keyframes glow {
+            0% { text-shadow: 0 0 10px #ffcc00, 0 0 20px #ff6600, 0 0 30px #ff3300; }
+            100% { text-shadow: 0 0 20px #ffcc00, 0 0 30px #ff6600, 0 0 40px #ff3300; }
+        }
+
+        /* Create Button */
+        .create-btn {
+            position: absolute;
+            bottom: 50px;
+            padding: 15px 50px;
+            font-size: 22px;
+            font-weight: bold;
+            color: green;
+            background-color: black;
+            border-radius: 30px;
+            cursor: pointer;
+            text-transform: uppercase;
+            border: 4px solid transparent;
+            transition: 0.3s;
+            animation: colorChange 3s infinite alternate;
+        }
+
+        @keyframes colorChange {
+            0% { border-color: green; }
+            25% { border-color: red; }
+            50% { border-color: yellow; }
+            75% { border-color: blue; }
+            100% { border-color: green; }
+        }
+
+        .create-btn:hover {
+            transform: scale(1.1);
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 768px) {
+            .bingo-title {
+                font-size: 40px;
+            }
+            .create-btn {
+                font-size: 18px;
+                padding: 12px 40px;
+            }
+            .top-icons img {
+                width: 35px;
+                height: 35px;
+            }
+        }
+
     </style>
 </head>
 <body>
 
-<!-- Heading Section -->
-<div class="heading">BINGO LOBBY</div>
-
-<!-- Player Section -->
-<div class="player-section" id="playerSection">
-    <!-- Host Card -->
-    <div class="player-card">
-        <img src="img1.jpg" alt="Anuj (Host)" />
-        <p>Anuj (Host)</p>
-        <div class="host-symbol">H</div>
+    <!-- Background Effects -->
+    <div class="background-effect">
+        <div class="glow" style="top: 20%; left: 10%;"></div>
+        <div class="glow" style="top: 60%; left: 70%;"></div>
     </div>
-</div>
 
-<!-- Bottom Section -->
-<div class="bottom-section">
-    <button class="delete-btn">Delete</button>
-    <button class="start-btn" id="startBtn">Start</button>
-</div>
+    <!-- Floating Particles (JS Generated) -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const bgEffect = document.querySelector(".background-effect");
+            for (let i = 0; i < 30; i++) {
+                let particle = document.createElement("div");
+                particle.className = "particle";
+                particle.style.left = Math.random() * 100 + "vw";
+                particle.style.animationDuration = (3 + Math.random() * 5) + "s";
+                bgEffect.appendChild(particle);
+            }
+        });
+    </script>
 
-<script>
-    const socket = new WebSocket('ws://localhost:3000');
+    <!-- Top Icons -->
+    <div class="top-icons">
+        <img src="subscription.png" alt="Payments">
+        <img src="settings.png" alt="Settings">
+    </div>
 
-    socket.addEventListener('open', () => {
-        console.log('Connected to server');
-    });
+    <!-- Bingo Lobby Title -->
+    <h1 class="bingo-title">BINGO LOBBY</h1>
 
-    function createLobby(username, icon) {
-        socket.send(JSON.stringify({ type: 'createLobby', username, icon }));
-    }
+    <!-- Create Button -->
+    <button class="create-btn" onclick="createLobby()">CREATE</button>
 
-    function joinLobby(roomID, username, icon) {
-        socket.send(JSON.stringify({ type: 'joinLobby', roomID, username, icon }));
-    }
-
-    socket.addEventListener('message', (event) => {
-        const message = JSON.parse(event.data);
-
-        if (message.type === 'lobbyCreated') {
-            console.log(`Lobby created with ID: ${message.roomID}`);
+    <script>
+        function createLobby() {
+            alert("Creating a lobby...");
+            window.location.href = "details.html"; // Redirect after clicking
         }
-
-        if (message.type === 'updateLobby') {
-            const playerSection = document.getElementById('playerSection');
-            playerSection.innerHTML = '';
-
-            message.players.forEach(player => {
-                const card = document.createElement('div');
-                card.className = 'player-card';
-                card.innerHTML = `
-                    <img src="${player.icon}" alt="${player.username}" />
-                    <p>${player.username}</p>
-                `;
-                
-                if (!player.isHost) {
-                    card.innerHTML += `
-                        <img src="exit.png" class="kick-btn" onclick="kickPlayer('${player.username}')" />
-                        <img src="host.png" class="make-host-btn" onclick="makeHost('${player.username}')" />
-                    `;
-                } else {
-                    card.innerHTML += `<div class="host-symbol">H</div>`;
-                }
-                playerSection.appendChild(card);
-            });
-        }
-    });
-
-    function kickPlayer(username) {
-        socket.send(JSON.stringify({ type: 'kickPlayer', playerID: username }));
-    }
-
-    function makeHost(username) {
-        socket.send(JSON.stringify({ type: 'makeHost', playerID: username }));
-    }
-</script>
+    </script>
 
 </body>
 </html>
