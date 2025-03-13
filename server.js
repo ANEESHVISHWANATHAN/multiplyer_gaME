@@ -1,6 +1,7 @@
 const express = require('express');
 const http = require('http');
 const { WebSocketServer } = require('ws');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
@@ -24,7 +25,10 @@ wss.on('connection', (ws) => {
 
         if (message.type === 'createLobby') {
             const roomID = generateRoomID();
-            lobbies[roomID] = { host: ws, players: [{ id: ws, username: message.username, icon: message.icon }] };
+            lobbies[roomID] = {
+                host: ws,
+                players: [{ id: ws, username: message.username, icon: message.icon }]
+            };
             ws.send(JSON.stringify({ type: 'lobbyCreated', roomID }));
             broadcastLobbyState(roomID);
         }
@@ -42,14 +46,25 @@ wss.on('connection', (ws) => {
 
         if (message.type === 'kickPlayer') {
             const { roomID, playerID } = message;
-            lobbies[roomID].players = lobbies[roomID].players.filter(p => p.id !== playerID);
-            broadcastLobbyState(roomID);
+            if (lobbies[roomID] && lobbies[roomID].host === ws) {
+                lobbies[roomID].players = lobbies[roomID].players.filter(p => p.id !== playerID);
+                broadcastLobbyState(roomID);
+            } else {
+                ws.send(JSON.stringify({ type: 'error', message: 'You are not the host' }));
+            }
         }
 
         if (message.type === 'makeHost') {
             const { roomID, playerID } = message;
-            lobbies[roomID].host = playerID;
-            broadcastLobbyState(roomID);
+            if (lobbies[roomID] && lobbies[roomID].host === ws) {
+                const newHost = lobbies[roomID].players.find(p => p.id === playerID);
+                if (newHost) {
+                    lobbies[roomID].host = playerID;
+                    broadcastLobbyState(roomID);
+                }
+            } else {
+                ws.send(JSON.stringify({ type: 'error', message: 'You are not the host' }));
+            }
         }
     });
 
@@ -80,18 +95,19 @@ function broadcastLobbyState(roomID) {
         player.id.send(JSON.stringify(state));
     });
 }
-const path = require('path');
 
-app.use(express.static(path.join(__dirname, 'entry.html')));
+app.use(express.static(path.join(__dirname, 'public'))); // Ensure that the files are served correctly.
 
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'entry.html'));
+    res.sendFile(path.join(__dirname, 'public', 'entry.html'));
 });
+
 app.get('/details.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'details.html'));
+    res.sendFile(path.join(__dirname, 'public', 'details.html'));
 });
+
 app.get('/lobby.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'lobby.html'));
+    res.sendFile(path.join(__dirname, 'public', 'lobby.html'));
 });
 
 server.listen(3000, () => console.log('Server is running on http://localhost:3000'));
