@@ -225,6 +225,12 @@
     function makeHost(username) {
         socket.send(JSON.stringify({ type: 'makeHost', playerID: username }));
     }
+    const username = localStorage.getItem('username');
+const icon = localStorage.getItem('icon');
+
+if (username && icon) {
+    createLobby(username, icon);
+}
 </script>
 
 </body>
