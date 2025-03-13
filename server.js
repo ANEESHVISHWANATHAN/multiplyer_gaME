@@ -99,7 +99,7 @@ function broadcastLobbyState(roomID) {
 app.use(express.static(path.join(__dirname, 'public'))); // Ensure that the files are served correctly.
 
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'entry.html'));
+    res.sendFile(path.join(__dirname, 'entry.html'));
 });
 
 app.get('/details.html', (req, res) => {
