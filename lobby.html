@@ -1,169 +1,214 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bingo Lobby</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BINGO LOBBY</title>
     <style>
-        /* General Styles */
         body {
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #fff;
             margin: 0;
             padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .lobby-container {
+            width: 100%;
+            max-width: 1000px;
+            padding: 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            height: 100vh;
-            background: radial-gradient(circle, rgba(20,20,20,1) 30%, rgba(5,5,5,1) 90%);
-            color: white;
-            font-family: Arial, sans-serif;
+        }
+        h1 {
             text-align: center;
-            overflow: hidden;
-            position: relative;
+            font-size: 2.5em;
+            color: #ffcc00;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
         }
-
-        /* Header Icons */
-        .top-icons {
-            position: absolute;
-            top: 20px;
-            width: 90%;
-            display: flex;
-            justify-content: space-between;
-        }
-        .top-icons img {
-            width: 40px;
-            height: 40px;
+        .url-button {
+            padding: 10px;
+            background-color: #333;
+            color: #fff;
+            border: none;
             cursor: pointer;
-            filter: drop-shadow(0px 0px 5px rgba(255, 255, 255, 0.8));
-            transition: transform 0.2s ease-in-out;
-        }
-        .top-icons img:hover {
-            transform: scale(1.1);
-        }
-
-        /* Bingo Lobby Title */
-        .bingo-title {
-            font-size: 50px;
-            font-weight: bold;
-            text-shadow: 0 0 10px #ffcc00, 0 0 20px #ff6600, 0 0 30px #ff3300;
-            animation: glow 2s infinite alternate;
-            position: relative;
-            z-index: 2;
-        }
-
-        @keyframes glow {
-            0% { text-shadow: 0 0 10px #ffcc00, 0 0 20px #ff6600, 0 0 30px #ff3300; }
-            100% { text-shadow: 0 0 20px #ffcc00, 0 0 30px #ff6600, 0 0 40px #ff3300; }
-        }
-
-        /* Player Cards */
-        .player-cards {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            justify-content: center;
-        }
-
-        .player-card {
-            background: rgba(255, 255, 255, 0.2);
-            padding: 20px;
-            border-radius: 10px;
-            width: 150px;
-            text-align: center;
-        }
-
-        .player-card img {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-        }
-
-        .room-id {
-            font-size: 20px;
             margin-bottom: 20px;
         }
-
-        .copy-btn {
-            padding: 10px 20px;
-            font-size: 16px;
+        .player-section {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .player-card {
+            background-color: #2c2c2c;
+            padding: 15px;
+            margin: 10px;
+            border-radius: 8px;
+            text-align: center;
+            width: 150px;
+        }
+        .player-card img {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+        }
+        .player-card p {
+            margin-top: 10px;
+            font-size: 1em;
+        }
+        .buttons {
+            margin-top: 10px;
+        }
+        .buttons img {
+            width: 20px;
+            height: 20px;
             cursor: pointer;
-            background: #ff6600;
+            margin: 5px;
+        }
+        .footer {
+            margin-top: 30px;
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+        }
+        .start-btn, .delete-btn {
+            padding: 10px 20px;
+            background-color: #ffcc00;
+            color: #121212;
             border: none;
-            color: white;
-            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .start-btn:hover, .delete-btn:hover {
+            background-color: #e6b800;
+        }
+        .footer button {
+            width: 150px;
         }
 
-        .copy-btn:hover {
-            background: #ff3300;
-        }
-
-        /* Responsive Adjustments */
-        @media (max-width: 768px) {
-            .bingo-title {
-                font-size: 40px;
+        @media screen and (max-width: 768px) {
+            .player-section {
+                display: block;
+                overflow-y: scroll;
+                max-height: 300px;
             }
-            .player-cards {
+            .footer {
                 flex-direction: column;
+                align-items: center;
             }
         }
     </style>
 </head>
 <body>
 
-    <!-- Top Icons -->
-    <div class="top-icons">
-        <img src="subscription.png" alt="Payments">
-        <img src="settings.png" alt="Settings">
+<div class="lobby-container">
+    <h1>BINGO LOBBY</h1>
+    <button class="url-button" id="shareUrl">Share URL</button>
+
+    <div class="player-section" id="playerSection">
+        <!-- Player cards will be dynamically inserted here -->
     </div>
 
-    <!-- Bingo Lobby Title -->
-    <h1 class="bingo-title">BINGO LOBBY</h1>
-
-    <!-- Room ID and Copy Button -->
-    <div class="room-id">
-        <p>Room ID: <span id="room-id"></span></p>
-        <button class="copy-btn" onclick="copyRoomLink()">Copy Room Link</button>
+    <div class="footer">
+        <button class="delete-btn" id="deleteButton">Delete</button>
+        <button class="start-btn" id="startButton" style="display: none;">Start Game</button>
     </div>
+</div>
 
-    <!-- Player Cards -->
-    <div class="player-cards" id="player-cards">
-        <!-- Host Player Card will be added here -->
-    </div>
+<script>
+    const playerSection = document.getElementById('playerSection');
+    const startButton = document.getElementById('startButton');
+    const deleteButton = document.getElementById('deleteButton');
+    const shareUrlButton = document.getElementById('shareUrl');
 
-    <script>
-        // Get roomId from URL query parameter
-        const urlParams = new URLSearchParams(window.location.search);
-        const roomId = urlParams.get('roomId');
-        document.getElementById("room-id").textContent = roomId;
+    const url = window.location.href;
+    const roomID = new URL(window.location.href).pathname.split('/').pop(); // Get room ID from URL
+    const socket = new WebSocket('ws://localhost:3000'); // Connect to the WebSocket server
 
-        // Create a player card
-        function createPlayerCard(username, profileIcon) {
-            const playerCard = document.createElement("div");
-            playerCard.className = "player-card";
+    socket.onopen = () => {
+        console.log('Connected to WebSocket');
+        // Send a message to join the lobby
+        socket.send(JSON.stringify({
+            type: 'joinLobby',
+            roomID: roomID,
+            username: 'Player' + Math.floor(Math.random() * 1000),
+            icon: 'iconDataURL'
+        }));
+    };
+
+    socket.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+
+        if (message.type === 'updateLobby') {
+            updatePlayerCards(message.players);
+        }
+
+        if (message.type === 'lobbyCreated') {
+            // Lobby was created by the host, display URL
+            shareUrlButton.onclick = () => {
+                navigator.clipboard.writeText(url);
+                alert('URL copied to clipboard!');
+            };
+        }
+    };
+
+    function updatePlayerCards(players) {
+        playerSection.innerHTML = ''; // Clear existing player cards
+        players.forEach(player => {
+            const playerCard = document.createElement('div');
+            playerCard.classList.add('player-card');
             playerCard.innerHTML = `
-                <img src="${profileIcon}" alt="Profile Icon">
-                <h3>${username}</h3>
+                <img src="${player.icon}" alt="${player.username}'s Icon" />
+                <p>${player.username}</p>
+                ${player.isHost ? '<p>Host</p>' : ''}
+                <div class="buttons">
+                    ${player.isHost ? '<img src="host.png" alt="Make Host" onclick="makeHost('${player.username}')" />' : ''}
+                    <img src="exit.png" alt="Kick" onclick="kickPlayer('${player.username}')" />
+                </div>
             `;
-            document.getElementById("player-cards").appendChild(playerCard);
-        }
+            playerSection.appendChild(playerCard);
+        });
+    }
 
-        // Fetch the stored username and profile icon
-        const username = localStorage.getItem("username");
-        const profileIcon = localStorage.getItem("profileIcon");
+    function kickPlayer(username) {
+        alert(`${username} has been kicked from the game.`);
+        socket.send(JSON.stringify({
+            type: 'kickPlayer',
+            roomID: roomID,
+            playerID: username
+        }));
+    }
 
-        if (username && profileIcon) {
-            // Display host's player card
-            createPlayerCard(username, profileIcon);
-        }
+    function makeHost(username) {
+        alert(`${username} is now the host.`);
+        socket.send(JSON.stringify({
+            type: 'makeHost',
+            roomID: roomID,
+            playerID: username
+        }));
+    }
 
-        // Copy room link to clipboard
-        function copyRoomLink() {
-            const roomLink = `${window.location.protocol}//${window.location.host}/lobby.html?roomId=${roomId}`;
-            navigator.clipboard.writeText(roomLink).then(() => {
-                alert("Room link copied to clipboard!");
-            });
-        }
-    </script>
+    // Start game visibility
+    if (startButton.style.display === 'none' && playerSection.children.length >= 3) {
+        startButton.style.display = 'block';
+    }
+
+    // Delete button functionality
+    deleteButton.onclick = () => {
+        alert('Deleting the lobby...');
+        // Implement lobby deletion logic here
+    };
+
+    // Share URL functionality
+    shareUrlButton.onclick = () => {
+        navigator.clipboard.writeText(url);
+        alert('URL copied to clipboard!');
+    };
+</script>
 
 </body>
 </html>
