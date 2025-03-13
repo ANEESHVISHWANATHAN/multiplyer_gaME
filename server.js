@@ -82,10 +82,10 @@ function broadcastLobbyState(roomID) {
 }
 const path = require('path');
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'entry.html')));
 
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'entry.html'));
+    res.sendFile(path.join(__dirname, 'entry.html'));
 });
 
 server.listen(3000, () => console.log('Server is running on http://localhost:3000'));
