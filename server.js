@@ -87,5 +87,8 @@ app.use(express.static(path.join(__dirname, 'entry.html')));
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'entry.html'));
 });
+app.get('/details.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'details.html'));
+});
 
 server.listen(3000, () => console.log('Server is running on http://localhost:3000'));
