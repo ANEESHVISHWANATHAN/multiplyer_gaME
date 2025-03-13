@@ -57,22 +57,22 @@
 </div>
 
 <script>
-    function submitDetails() {
-        const username = document.getElementById('username').value;
-        const icon = document.getElementById('icon').files[0];
+    document.getElementById('detailsForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
 
-        if (username && icon) {
+        const username = document.getElementById('username').value;
+        const iconFile = document.getElementById('icon').files[0];
+
+        if (username && iconFile) {
             const reader = new FileReader();
             reader.onload = () => {
                 localStorage.setItem('username', username);
                 localStorage.setItem('icon', reader.result);
                 window.location.href = 'lobby.html';
             };
-            reader.readAsDataURL(icon);
-        } else {
-            alert('Please fill all fields');
+            reader.readAsDataURL(iconFile);
         }
-    }
+    });
 </script>
 
 </body>
