@@ -1,80 +1,110 @@
-
-<!DOCTYPE html>
+        <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Entry</title>
+    <title>Entry - Bingo Game</title>
     <style>
+        /* General Styles */
         body {
-            font-family: Arial, sans-serif;
-            background-color: #121212;
-            color: #fff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
             margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: radial-gradient(circle, rgba(20,20,20,1) 30%, rgba(5,5,5,1) 90%);
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            overflow: hidden;
         }
-        .form-container {
-            background-color: #1e1e1e;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
-            width: 100%;
-            max-width: 400px;
+
+        .entry-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
-        input, button {
-            width: 100%;
+
+        .input-field {
+            margin: 15px;
             padding: 10px;
-            margin-top: 10px;
+            font-size: 18px;
             border: none;
-            border-radius: 4px;
-            font-size: 16px;
-            outline: none;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
         }
-        input {
-            background-color: #333;
-            color: #fff;
-        }
-        button {
-            background-color: #ffcc00;
-            color: #121212;
+
+        .create-btn {
+            padding: 15px 50px;
+            font-size: 22px;
+            font-weight: bold;
+            color: green;
+            background-color: black;
+            border-radius: 30px;
             cursor: pointer;
-            transition: background 0.3s ease;
+            text-transform: uppercase;
+            border: 4px solid transparent;
+            transition: 0.3s;
+            animation: colorChange 3s infinite alternate;
         }
-        button:hover {
-            background-color: #e6b800;
+
+        @keyframes colorChange {
+            0% { border-color: green; }
+            25% { border-color: red; }
+            50% { border-color: yellow; }
+            75% { border-color: blue; }
+            100% { border-color: green; }
+        }
+
+        .create-btn:hover {
+            transform: scale(1.1);
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 768px) {
+            .create-btn {
+                font-size: 18px;
+                padding: 12px 40px;
+            }
         }
     </style>
 </head>
 <body>
 
-<div class="form-container">
-    <h2>Enter Your Details</h2>
-    <input type="text" id="username" placeholder="Enter Username" required />
-    <input type="file" id="icon" accept="image/*" required />
-    <button onclick="submitDetails()">OK</button>
-</div>
+    <div class="entry-container">
+        <h1 style="font-size: 40px;">Enter Game Details</h1>
+        
+        <input type="text" id="username" class="input-field" placeholder="Enter your username" />
+        
+        <input type="text" id="profile-icon" class="input-field" placeholder="Enter your profile icon URL" />
+        
+        <button class="create-btn" onclick="createLobby()">CREATE LOBBY</button>
+    </div>
 
-<script>
-    function submitDetails() {
-        const username = document.getElementById('username').value;
-        const iconFile = document.getElementById('icon').files[0];
+    <script>
+        function createLobby() {
+            let username = document.getElementById("username").value;
+            let profileIcon = document.getElementById("profile-icon").value;
 
-        if (username && iconFile) {
-            const reader = new FileReader();
-            reader.onload = () => {
-                localStorage.setItem('username', username);
-                localStorage.setItem('icon', reader.result);
-                window.location.href = 'lobby.html';
-            };
-            reader.readAsDataURL(iconFile);
-        } else {
-            alert('Please enter a username and select an icon!');
+            if (username && profileIcon) {
+                // Generate a unique Room ID (using timestamp for simplicity)
+                let roomId = 'room-' + new Date().getTime();
+                
+                // Store the data in localStorage
+                localStorage.setItem("username", username);
+                localStorage.setItem("profileIcon", profileIcon);
+                localStorage.setItem("roomId", roomId);  // Store the room ID
+
+                // Redirect to the lobby page with the generated room ID
+                window.location.href = `lobby.html?roomId=${roomId}`;
+            } else {
+                alert("Please fill in both username and profile icon.");
+            }
         }
-    }
-</script>
+    </script>
 
 </body>
 </html>
