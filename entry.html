@@ -1,47 +1,232 @@
-<!DOCTYPE html>
+
+      <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Create a Lobby</title>
-</head>
-<body>
-    <button id="create">Create Lobby</button>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bingo Lobby</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
 
-    <!DOCTYPE html>
-<html lang="en">
-<head>
-    <title>Create a Lobby</title>
-</head>
-<body>
-    <button id="create">Create Lobby</button>
+        /* Heading Section */
+        .heading {
+            text-align: center;
+            padding: 20px;
+            background-color: #1a1a1a;
+            border-bottom: 3px solid #ffffff;
+            box-shadow: 0 0 12px #ffffff;
+            font-size: 1.5rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-shadow: 0 0 12px #ffcc00, 0 0 18px #ff6600;
+            color: #ffcc00;
+        }
 
-    <script>
-        let socket = new WebSocket("ws://localhost:7000");
+        /* Player Section */
+        .player-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 15px;
+            padding: 20px;
+            overflow-y: auto;
+            flex-grow: 1;
+            max-height: calc(100vh - 160px);
+            border-bottom: 3px solid #ffffff;
+        }
 
-        socket.onopen = () => console.log("WebSocket Connected!");
-        socket.onerror = (error) => console.error("WebSocket Error:", error);
-        socket.onmessage = (event) => console.log("Received:", event.data);
-
-        document.addEventListener("DOMContentLoaded", () => {
-            let createButton = document.getElementById("create");
-
-            if (!createButton) {
-                console.error("Create button not found!");
-                return;
+        @media (min-width: 768px) {
+            .player-section {
+                grid-template-columns: repeat(4, 1fr); /* 4x2 grid for computer */
             }
+        }
 
-            createButton.addEventListener("click", () => {
-                let username = prompt("Enter your username:");
-                if (!username) {
-                    alert("Username is required!");
-                    return;
+        @media (max-width: 767px) {
+            .player-section {
+                grid-template-columns: repeat(2, 1fr); /* 2x4 grid for phone */
+            }
+        }
+
+        .player-card {
+            background-color: #1a1a1a;
+            border: 2px solid transparent;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            width: 100px;
+            height: 140px;
+            box-shadow: 0 0 12px #ffffff;
+            transition: border-color 0.2s, transform 0.2s ease;
+            position: relative;
+        }
+
+        .player-card img {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-bottom: 8px;
+        }
+
+        .player-card p {
+            font-size: 0.9rem;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+
+        .host-symbol {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: #ffcc00;
+            color: #121212;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            pointer-events: none;
+        }
+
+        /* Options */
+        .options {
+            display: none;
+            position: absolute;
+            top: -30px;
+            right: -10px;
+            flex-direction: column;
+            gap: 5px;
+            z-index: 10;
+        }
+
+        .kick-btn,
+        .make-host-btn {
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            filter: drop-shadow(0 0 6px #ffffff);
+        }
+
+        /* Highlight when held */
+        .player-card.held {
+            border-color: #ffcc00;
+            z-index: 20;
+        }
+
+        /* Bottom Section */
+        .bottom-section {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px;
+            background-color: #1a1a1a;
+            border-top: 3px solid #ffffff;
+            box-shadow: 0 0 12px #ffffff;
+            z-index: 5;
+        }
+
+        .delete-btn,
+        .start-btn {
+            background-color: #ff6600;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.2s;
+        }
+
+        .start-btn {
+            background-color: #00cc00;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Heading Section -->
+<div class="heading">BINGO LOBBY</div>
+
+<!-- Player Section -->
+<div class="player-section" id="playerSection">
+    <!-- Host Card -->
+    <div class="player-card">
+        <img src="img1.jpg" alt="Anuj (Host)" />
+        <p>Anuj (Host)</p>
+        <div class="host-symbol">H</div>
+    </div>
+</div>
+
+<!-- Bottom Section -->
+<div class="bottom-section">
+    <button class="delete-btn">Delete</button>
+    <button class="start-btn" id="startBtn">Start</button>
+</div>
+
+<script>
+    const socket = new WebSocket('ws://localhost:3000');
+
+    socket.addEventListener('open', () => {
+        console.log('Connected to server');
+    });
+
+    function createLobby(username, icon) {
+        socket.send(JSON.stringify({ type: 'createLobby', username, icon }));
+    }
+
+    function joinLobby(roomID, username, icon) {
+        socket.send(JSON.stringify({ type: 'joinLobby', roomID, username, icon }));
+    }
+
+    socket.addEventListener('message', (event) => {
+        const message = JSON.parse(event.data);
+
+        if (message.type === 'lobbyCreated') {
+            console.log(`Lobby created with ID: ${message.roomID}`);
+        }
+
+        if (message.type === 'updateLobby') {
+            const playerSection = document.getElementById('playerSection');
+            playerSection.innerHTML = '';
+
+            message.players.forEach(player => {
+                const card = document.createElement('div');
+                card.className = 'player-card';
+                card.innerHTML = `
+                    <img src="${player.icon}" alt="${player.username}" />
+                    <p>${player.username}</p>
+                `;
+                
+                if (!player.isHost) {
+                    card.innerHTML += `
+                        <img src="exit.png" class="kick-btn" onclick="kickPlayer('${player.username}')" />
+                        <img src="host.png" class="make-host-btn" onclick="makeHost('${player.username}')" />
+                    `;
+                } else {
+                    card.innerHTML += `<div class="host-symbol">H</div>`;
                 }
-
-                let message = JSON.stringify({ type: "create_room", username });
-                socket.send(message);
+                playerSection.appendChild(card);
             });
-        });
-    </script>
-</body>
-</html>
+        }
+    });
+
+    function kickPlayer(username) {
+        socket.send(JSON.stringify({ type: 'kickPlayer', playerID: username }));
+    }
+
+    function makeHost(username) {
+        socket.send(JSON.stringify({ type: 'makeHost', playerID: username }));
+    }
+</script>
+
 </body>
 </html>
