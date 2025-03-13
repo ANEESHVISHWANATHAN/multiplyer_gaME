@@ -51,9 +51,11 @@
 
 <div class="form-container">
     <h2>Enter Your Details</h2>
-    <input type="text" id="username" placeholder="Enter Username" required />
-    <input type="file" id="icon" accept="image/*" required />
-    <button onclick="submitDetails()">OK</button>
+    <form id="detailsForm">
+        <input type="text" id="username" placeholder="Enter Username" required />
+        <input type="file" id="icon" accept="image/*" required />
+        <button type="submit">OK</button>
+    </form>
 </div>
 
 <script>
