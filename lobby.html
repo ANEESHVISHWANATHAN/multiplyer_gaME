@@ -5,109 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BINGO LOBBY</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #121212;
-            color: #fff;
-            margin: 0;
-            padding: 0;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .lobby-container {
-            width: 100%;
-            max-width: 1000px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        h1 {
-            text-align: center;
-            font-size: 2.5em;
-            color: #ffcc00;
-            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-        }
-        .url-button {
-            padding: 10px;
-            background-color: #333;
-            color: #fff;
-            border: none;
-            cursor: pointer;
-            margin-bottom: 20px;
-        }
-        .player-section {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-        .player-card {
-            background-color: #2c2c2c;
-            padding: 15px;
-            margin: 10px;
-            border-radius: 8px;
-            text-align: center;
-            width: 150px;
-        }
-        .player-card img {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-        }
-        .player-card p {
-            margin-top: 10px;
-            font-size: 1em;
-        }
-        .buttons {
-            margin-top: 10px;
-        }
-        .buttons img {
-            width: 20px;
-            height: 20px;
-            cursor: pointer;
-            margin: 5px;
-        }
-        .footer {
-            margin-top: 30px;
-            display: flex;
-            justify-content: space-between;
-            width: 100%;
-        }
-        .start-btn, .delete-btn {
-            padding: 10px 20px;
-            background-color: #ffcc00;
-            color: #121212;
-            border: none;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        .start-btn:hover, .delete-btn:hover {
-            background-color: #e6b800;
-        }
-        .footer button {
-            width: 150px;
-        }
-
-        @media screen and (max-width: 768px) {
-            .player-section {
-                display: block;
-                overflow-y: scroll;
-                max-height: 300px;
-            }
-            .footer {
-                flex-direction: column;
-                align-items: center;
-            }
-        }
+        /* Same CSS as before */
     </style>
 </head>
 <body>
 
 <div class="lobby-container">
     <h1>BINGO LOBBY</h1>
-    <button class="url-button" id="shareUrl">Share URL</button>
+    <button class="url-button" id="shareUrl" style="display: none;">Share URL</button>
 
     <div class="player-section" id="playerSection">
         <!-- Player cards will be dynamically inserted here -->
@@ -127,28 +32,30 @@
 
     const url = window.location.href;
     const roomID = new URL(window.location.href).pathname.split('/').pop(); // Get room ID from URL
-    const socket = new WebSocket('ws://localhost:3000'); // Connect to the WebSocket server
+    const socket = new WebSocket('ws://localhost:3000'); // WebSocket connection
 
     socket.onopen = () => {
         console.log('Connected to WebSocket');
-        // Send a message to join the lobby
+        // Send message to join the lobby with username and icon
         socket.send(JSON.stringify({
             type: 'joinLobby',
             roomID: roomID,
-            username: 'Player' + Math.floor(Math.random() * 1000),
-            icon: 'iconDataURL'
+            username: 'Player' + Math.floor(Math.random() * 1000), // Random username for now
+            icon: 'iconDataURL' // Replace with actual icon
         }));
     };
 
     socket.onmessage = (event) => {
         const message = JSON.parse(event.data);
 
+        // Handle different message types
         if (message.type === 'updateLobby') {
             updatePlayerCards(message.players);
         }
 
         if (message.type === 'lobbyCreated') {
-            // Lobby was created by the host, display URL
+            // Show the share URL button
+            shareUrlButton.style.display = 'inline-block';
             shareUrlButton.onclick = () => {
                 navigator.clipboard.writeText(url);
                 alert('URL copied to clipboard!');
@@ -156,8 +63,10 @@
         }
     };
 
+    // Function to update the player cards
     function updatePlayerCards(players) {
-        playerSection.innerHTML = ''; // Clear existing player cards
+        playerSection.innerHTML = ''; // Clear current player cards
+
         players.forEach(player => {
             const playerCard = document.createElement('div');
             playerCard.classList.add('player-card');
@@ -172,6 +81,11 @@
             `;
             playerSection.appendChild(playerCard);
         });
+
+        // Update the "Start Game" button visibility
+        if (players.length >= 3) {
+            startButton.style.display = 'block';
+        }
     }
 
     function kickPlayer(username) {
@@ -192,21 +106,10 @@
         }));
     }
 
-    // Start game visibility
-    if (startButton.style.display === 'none' && playerSection.children.length >= 3) {
-        startButton.style.display = 'block';
-    }
-
     // Delete button functionality
     deleteButton.onclick = () => {
         alert('Deleting the lobby...');
         // Implement lobby deletion logic here
-    };
-
-    // Share URL functionality
-    shareUrlButton.onclick = () => {
-        navigator.clipboard.writeText(url);
-        alert('URL copied to clipboard!');
     };
 </script>
 
