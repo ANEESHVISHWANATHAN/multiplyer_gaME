@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Entry - Bingo Game</title>
+    <title>Bingo Lobby</title>
     <style>
         /* General Styles */
         body {
@@ -19,25 +19,88 @@
             font-family: Arial, sans-serif;
             text-align: center;
             overflow: hidden;
+            position: relative;
         }
 
-        .entry-container {
+        /* Background Animation */
+        .background-effect {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            top: 0;
+            left: 0;
+            z-index: -1;
+        }
+
+        .glow {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(255,0,150,0.7), rgba(0,0,0,0));
+            border-radius: 50%;
+            opacity: 0.8;
+            animation: moveGlow 6s infinite alternate ease-in-out;
+        }
+
+        @keyframes moveGlow {
+            0% { transform: translate(-50px, -50px); }
+            100% { transform: translate(50px, 50px); }
+        }
+
+        /* Floating Particles */
+        .particle {
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            animation: floatParticles linear infinite;
+        }
+
+        @keyframes floatParticles {
+            0% { transform: translateY(100vh); opacity: 0; }
+            100% { transform: translateY(-10vh); opacity: 1; }
+        }
+
+        /* Header Icons */
+        .top-icons {
+            position: absolute;
+            top: 20px;
+            width: 90%;
             display: flex;
-            flex-direction: column;
-            align-items: center;
+            justify-content: space-between;
+        }
+        .top-icons img {
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            filter: drop-shadow(0px 0px 5px rgba(255, 255, 255, 0.8));
+            transition: transform 0.2s ease-in-out;
+        }
+        .top-icons img:hover {
+            transform: scale(1.1);
         }
 
-        .input-field {
-            margin: 15px;
-            padding: 10px;
-            font-size: 18px;
-            border: none;
-            border-radius: 5px;
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
+        /* Bingo Lobby Title */
+        .bingo-title {
+            font-size: 50px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #ffcc00, 0 0 20px #ff6600, 0 0 30px #ff3300;
+            animation: glow 2s infinite alternate;
+            position: relative;
+            z-index: 2;
         }
 
+        @keyframes glow {
+            0% { text-shadow: 0 0 10px #ffcc00, 0 0 20px #ff6600, 0 0 30px #ff3300; }
+            100% { text-shadow: 0 0 20px #ffcc00, 0 0 30px #ff6600, 0 0 40px #ff3300; }
+        }
+
+        /* Create Button */
         .create-btn {
+            position: absolute;
+            bottom: 50px;
             padding: 15px 50px;
             font-size: 22px;
             font-weight: bold;
@@ -65,44 +128,59 @@
 
         /* Responsive Adjustments */
         @media (max-width: 768px) {
+            .bingo-title {
+                font-size: 40px;
+            }
             .create-btn {
                 font-size: 18px;
                 padding: 12px 40px;
             }
+            .top-icons img {
+                width: 35px;
+                height: 35px;
+            }
         }
+
     </style>
 </head>
 <body>
 
-    <div class="entry-container">
-        <h1 style="font-size: 40px;">Enter Game Details</h1>
-        
-        <input type="text" id="username" class="input-field" placeholder="Enter your username" />
-        
-        <input type="text" id="profile-icon" class="input-field" placeholder="Enter your profile icon URL" />
-        
-        <button class="create-btn" onclick="createLobby()">CREATE LOBBY</button>
+    <!-- Background Effects -->
+    <div class="background-effect">
+        <div class="glow" style="top: 20%; left: 10%;"></div>
+        <div class="glow" style="top: 60%; left: 70%;"></div>
     </div>
+
+    <!-- Floating Particles (JS Generated) -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const bgEffect = document.querySelector(".background-effect");
+            for (let i = 0; i < 30; i++) {
+                let particle = document.createElement("div");
+                particle.className = "particle";
+                particle.style.left = Math.random() * 100 + "vw";
+                particle.style.animationDuration = (3 + Math.random() * 5) + "s";
+                bgEffect.appendChild(particle);
+            }
+        });
+    </script>
+
+    <!-- Top Icons -->
+    <div class="top-icons">
+        <img src="subscription.png" alt="Payments">
+        <img src="settings.png" alt="Settings">
+    </div>
+
+    <!-- Bingo Lobby Title -->
+    <h1 class="bingo-title">BINGO LOBBY</h1>
+
+    <!-- Create Button -->
+    <button class="create-btn" onclick="createLobby()">CREATE</button>
 
     <script>
         function createLobby() {
-            let username = document.getElementById("username").value;
-            let profileIcon = document.getElementById("profile-icon").value;
-
-            if (username && profileIcon) {
-                // Generate a unique Room ID (using timestamp for simplicity)
-                let roomId = 'room-' + new Date().getTime();
-                
-                // Store the data in localStorage
-                localStorage.setItem("username", username);
-                localStorage.setItem("profileIcon", profileIcon);
-                localStorage.setItem("roomId", roomId);  // Store the room ID
-
-                // Redirect to the lobby page with the generated room ID
-                window.location.href = `lobby.html?roomId=${roomId}`;
-            } else {
-                alert("Please fill in both username and profile icon.");
-            }
+            alert("Creating a lobby...");
+            window.open("details.html");
         }
     </script>
 
