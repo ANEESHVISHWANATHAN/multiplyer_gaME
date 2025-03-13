@@ -1,39 +1,91 @@
-const express = require("express");
-const http = require("http");
-const WebSocket = require("ws");
-const cors = require("cors");
+const express = require('express');
+const http = require('http');
+const { WebSocketServer } = require('ws');
 
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
+const wss = new WebSocketServer({ server });
 
-app.use(cors());
+const lobbies = {};
 
-app.get("/", (req, res) => {
-    res.send("Server is running!");
-});
+function generateRoomID() {
+    let roomID;
+    do {
+        roomID = Math.random().toString(36).substr(2, 6).toUpperCase();
+    } while (lobbies[roomID]);
+    return roomID;
+}
 
-let rooms = {}; // Store active lobbies
+wss.on('connection', (ws) => {
+    console.log('Player connected');
 
-wss.on("connection", (ws) => {
-    console.log("New WebSocket connection established");
+    ws.on('message', (data) => {
+        const message = JSON.parse(data);
 
-    ws.on("message", (data) => {
-        let msg = JSON.parse(data);
-        console.log("Received:", msg);
+        if (message.type === 'createLobby') {
+            const roomID = generateRoomID();
+            lobbies[roomID] = { host: ws, players: [{ id: ws, username: message.username, icon: message.icon }] };
+            ws.send(JSON.stringify({ type: 'lobbyCreated', roomID }));
+            broadcastLobbyState(roomID);
+        }
 
-        if (msg.type === "create_room") {
-            let roomId = Math.random().toString(36).substring(2, 8);
-            rooms[roomId] = { players: [], host: msg.username };
-            ws.send(JSON.stringify({ type: "room_created", roomId }));
-            console.log('Room Created: ${roomId} by ${msg.username}');
+        if (message.type === 'joinLobby') {
+            const { roomID, username, icon } = message;
+            if (lobbies[roomID]) {
+                lobbies[roomID].players.push({ id: ws, username, icon });
+                ws.send(JSON.stringify({ type: 'joinedLobby', roomID }));
+                broadcastLobbyState(roomID);
+            } else {
+                ws.send(JSON.stringify({ type: 'error', message: 'Lobby not found' }));
+            }
+        }
+
+        if (message.type === 'kickPlayer') {
+            const { roomID, playerID } = message;
+            lobbies[roomID].players = lobbies[roomID].players.filter(p => p.id !== playerID);
+            broadcastLobbyState(roomID);
+        }
+
+        if (message.type === 'makeHost') {
+            const { roomID, playerID } = message;
+            lobbies[roomID].host = playerID;
+            broadcastLobbyState(roomID);
         }
     });
 
-    ws.on("close", () => {
-        console.log("WebSocket connection closed");
+    ws.on('close', () => {
+        for (const roomID in lobbies) {
+            lobbies[roomID].players = lobbies[roomID].players.filter(p => p.id !== ws);
+            if (lobbies[roomID].players.length === 0) {
+                delete lobbies[roomID];
+            } else {
+                broadcastLobbyState(roomID);
+            }
+        }
     });
 });
 
-const PORT = process.env.PORT || 7000;
-server.listen(PORT, () => console.log('Server running on http://localhost:${PORT}' ));
+function broadcastLobbyState(roomID) {
+    const lobby = lobbies[roomID];
+    const state = {
+        type: 'updateLobby',
+        players: lobby.players.map(p => ({
+            username: p.username,
+            icon: p.icon,
+            isHost: lobby.host === p.id
+        }))
+    };
+
+    lobby.players.forEach(player => {
+        player.id.send(JSON.stringify(state));
+    });
+}
+const path = require('path');
+
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'entry.html'));
+});
+
+server.listen(3000, () => console.log('Server is running on http://localhost:3000'));
