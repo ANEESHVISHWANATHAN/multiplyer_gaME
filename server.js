@@ -96,7 +96,7 @@ function broadcastLobbyState(roomID) {
     });
 }
 
-app.use(express.static(path.join(__dirname, 'public'))); // Ensure that the files are served correctly.
+app.use(express.static(path.join(__dirname, 'public'))); // Serve static files
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'entry.html'));
