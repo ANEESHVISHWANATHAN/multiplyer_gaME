@@ -3,229 +3,232 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BINGO LOBBY</title>
+    <title>Bingo Lobby</title>
     <style>
+        /* Basic styling for lobby */
         body {
             font-family: Arial, sans-serif;
             background-color: #121212;
             color: #fff;
-            margin: 0;
-        }
-
-        .container {
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
-        }
-
-        .lobby-container {
-            background-color: #1e1e1e;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
-            width: 100%;
-            max-width: 800px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .heading {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .heading h2 {
             margin: 0;
         }
-
-        .heading button {
-            background-color: #ffcc00;
-            color: #121212;
-            padding: 10px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background 0.3s ease;
+        #lobbyContainer {
+            width: 100%;
+            max-width: 960px;
+            padding: 20px;
+            background-color: #1e1e1e;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+            text-align: center;
         }
-
-        .heading button:hover {
-            background-color: #e6b800;
-        }
-
-        .player-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            justify-content: center;
+        h1 {
+            font-size: 32px;
             margin-bottom: 20px;
         }
-
-        .player-card {
-            background-color: #333;
-            width: 100px;
-            height: 100px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            border-radius: 8px;
-            overflow: hidden;
-            text-align: center;
-            color: #fff;
-        }
-
-        .player-card img {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            margin-bottom: 5px;
-        }
-
-        .player-card .username {
-            font-size: 14px;
-            font-weight: bold;
-        }
-
-        .player-card .host {
-            background-color: #ffcc00;
-            padding: 5px;
-            border-radius: 4px;
-            font-size: 10px;
-            margin-top: 5px;
-        }
-
-        .buttons {
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .buttons button {
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
             background-color: #ffcc00;
             color: #121212;
-            padding: 10px;
             border: none;
             border-radius: 4px;
             cursor: pointer;
             transition: background 0.3s ease;
         }
-
-        .buttons button:hover {
+        button:hover {
             background-color: #e6b800;
         }
-
-        .buttons .delete {
-            background-color: #ff4444;
+        #copyURLBtn {
+            background-color: #4CAF50;
         }
-
-        .waiting {
-            font-size: 14px;
-            color: #aaa;
+        #copyURLBtn:hover {
+            background-color: #45a049;
+        }
+        #playerList {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .playerCard {
+            width: 120px;
+            height: 160px;
+            background-color: #333;
+            border-radius: 8px;
+            margin: 10px;
+            text-align: center;
+            padding: 10px;
+            position: relative;
+        }
+        .playerCard img {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+        }
+        .playerCard h3 {
+            font-size: 18px;
+            margin: 10px 0;
+        }
+        .playerCard .host {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            font-size: 12px;
+            background-color: #ff0000;
+            color: #fff;
+            padding: 5px;
+            border-radius: 4px;
+        }
+        .playerCard .buttons {
+            display: flex;
+            justify-content: space-between;
+            position: absolute;
+            bottom: 5px;
+            width: 100%;
+            padding: 5px;
+        }
+        .buttons img {
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+        }
+        #startGameBtn:disabled {
+            background-color: #aaa;
+            cursor: not-allowed;
+        }
+        .footerButtons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="lobby-container">
-        <div class="heading">
-            <h2>BINGO LOBBY</h2>
-            <button id="copyURL">Copy URL</button>
-        </div>
+<div id="lobbyContainer">
+    <h1>BINGO LOBBY</h1>
+    <button id="copyURLBtn">Copy URL</button>
+    <div id="playerList"></div>
 
-        <div id="playerSection" class="player-grid">
-            <!-- Player cards will be inserted here -->
-        </div>
-
-        <div class="buttons">
-            <button id="deleteLobby">Delete</button>
-            <button id="startGame" style="display: none;">Start</button>
-        </div>
+    <div class="footerButtons">
+        <button id="startGameBtn" disabled>Start Game</button>
+        <button id="deleteLobbyBtn">Delete Lobby</button>
     </div>
 </div>
 
 <script>
-    const ws = new WebSocket('ws://localhost:3000'); // Update with your server URL if needed.
-    const playerSection = document.getElementById('playerSection');
-    const copyURLButton = document.getElementById('copyURL');
-    const deleteButton = document.getElementById('deleteLobby');
-    const startButton = document.getElementById('startGame');
-    const roomID = new URLSearchParams(window.location.search).get('roomID'); // Extract room ID from the URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomID = urlParams.get('roomID');
+    const socket = new WebSocket('ws://localhost:3000');
 
-    let username = localStorage.getItem('username');
-    let icon = localStorage.getItem('icon');
+    // On WebSocket connection open
+    socket.onopen = () => {
+        socket.send(JSON.stringify({
+            type: 'joinLobby',
+            roomID: roomID,
+            username: localStorage.getItem('username'),
+            icon: localStorage.getItem('icon')
+        }));
+    };
 
-    // Create a player card from the WebSocket data
-    function createPlayerCard(player) {
-        const card = document.createElement('div');
-        card.classList.add('player-card');
-        card.innerHTML = `
-            <img src="${player.icon || 'profile.png'}" alt="Player Icon">
-            <div class="username">${player.username}</div>
-            ${player.isHost ? '<div class="host">Host</div>' : ''}
-            <div class="waiting">Waiting...</div>
-        `;
-        playerSection.appendChild(card);
-    }
-
-    // Listen to WebSocket messages from the server
-    ws.onmessage = (event) => {
+    // On WebSocket message received
+    socket.onmessage = (event) => {
         const message = JSON.parse(event.data);
 
         if (message.type === 'lobbyCreated') {
-            // Lobby created, show the URL to copy
-            copyURLButton.textContent = `URL: ${window.location.href}`;
+            localStorage.setItem('roomID', message.roomID);
         }
 
         if (message.type === 'updateLobby') {
-            // Update player cards with new data
-            playerSection.innerHTML = '';
-            message.players.forEach(player => {
-                createPlayerCard(player);
-            });
+            updateLobby(message.players);
+        }
 
-            // Show the Start button when at least 3 players have joined
-            if (message.players.length >= 3) {
-                startButton.style.display = 'inline-block';
-            }
+        if (message.type === 'error') {
+            alert(message.message);
         }
     };
 
-    // Send join lobby message
-    ws.onopen = () => {
-        ws.send(JSON.stringify({
-            type: 'joinLobby',
-            roomID: roomID,
-            username: username,
-            icon: icon
-        }));
-    };
+    // Update the lobby with player data
+    function updateLobby(players) {
+        const playerList = document.getElementById('playerList');
+        playerList.innerHTML = '';
+        players.forEach(player => {
+            const playerCard = document.createElement('div');
+            playerCard.classList.add('playerCard');
 
-    // Copy the lobby URL to the clipboard
-    copyURLButton.onclick = () => {
-        navigator.clipboard.writeText(window.location.href).then(() => {
-            alert('URL copied to clipboard!');
+            const isHost = player.isHost ? '<div class="host">Host</div>' : '';
+            const playerImg = player.icon ? `<img src="${player.icon}" alt="Profile Icon" />` : '<img src="profile.png" alt="Default Icon" />';
+            const playerName = `<h3>${player.username}</h3>`;
+
+            const kickBtn = player.isHost ? '' : `<img src="exit.png" alt="Kick" class="kickBtn" onclick="kickPlayer('${player.username}')">`;
+            const makeHostBtn = player.isHost ? '' : `<img src="host.png" alt="Make Host" class="makeHostBtn" onclick="makeHost('${player.username}')">`;
+
+            playerCard.innerHTML = `
+                ${isHost}
+                ${playerImg}
+                ${playerName}
+                <div class="buttons">
+                    ${kickBtn}
+                    ${makeHostBtn}
+                </div>
+            `;
+
+            playerList.appendChild(playerCard);
         });
-    };
 
-    // Handle the Delete button
-    deleteButton.onclick = () => {
-        ws.send(JSON.stringify({
-            type: 'deleteLobby',
-            roomID: roomID
+        // Enable start game button if 3 or more players have joined
+        if (players.length >= 3) {
+            document.getElementById('startGameBtn').disabled = false;
+        }
+    }
+
+    // Kick player function
+    function kickPlayer(username) {
+        socket.send(JSON.stringify({
+            type: 'kickPlayer',
+            roomID: roomID,
+            playerID: username
         }));
-        window.location.href = '/';
-    };
+    }
 
-    // Handle the Start button
-    startButton.onclick = () => {
-        ws.send(JSON.stringify({
+    // Make player the host
+    function makeHost(username) {
+        socket.send(JSON.stringify({
+            type: 'makeHost',
+            roomID: roomID,
+            playerID: username
+        }));
+    }
+
+    // Copy the lobby URL to clipboard
+    document.getElementById('copyURLBtn').addEventListener('click', () => {
+        const url = window.location.href;
+        navigator.clipboard.writeText(url).then(() => {
+            alert('Lobby URL copied!');
+        });
+    });
+
+    // Start the game when the button is clicked
+    document.getElementById('startGameBtn').addEventListener('click', () => {
+        socket.send(JSON.stringify({
             type: 'startGame',
             roomID: roomID
         }));
-    };
+    });
+
+    // Delete the lobby (optional functionality)
+    document.getElementById('deleteLobbyBtn').addEventListener('click', () => {
+        socket.send(JSON.stringify({
+            type: 'deleteLobby',
+            roomID: roomID
+        }));
+        alert('Lobby deleted');
+        window.location.href = '/'; // Redirect to home or entry page
+    });
 </script>
 
 </body>
