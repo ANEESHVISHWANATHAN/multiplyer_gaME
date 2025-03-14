@@ -70,7 +70,10 @@
             reader.onload = () => {
                 localStorage.setItem('username', username);
                 localStorage.setItem('icon', reader.result);
-                window.location.href = 'lobby.html';
+
+                // Create a room and pass room ID to localStorage
+                const roomID = localStorage.getItem('roomID');
+                window.location.href = `lobby.html?roomID=${roomID}`;
             };
             reader.readAsDataURL(iconFile);
         }
