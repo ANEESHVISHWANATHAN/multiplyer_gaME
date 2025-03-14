@@ -30,26 +30,19 @@
             color: #ffcc00;
             text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
         }
-        .url-button {
-            padding: 10px;
-            background-color: #333;
-            color: #fff;
-            border: none;
-            cursor: pointer;
-            margin-bottom: 20px;
-        }
         .player-section {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr); /* 4 cards per row for laptops */
+            gap: 15px;
+            margin-top: 20px;
         }
         .player-card {
             background-color: #2c2c2c;
             padding: 15px;
-            margin: 10px;
             border-radius: 8px;
             text-align: center;
             width: 150px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
         }
         .player-card img {
             width: 60px;
@@ -59,46 +52,16 @@
         .player-card p {
             margin-top: 10px;
             font-size: 1em;
-        }
-        .buttons {
-            margin-top: 10px;
-        }
-        .buttons img {
-            width: 20px;
-            height: 20px;
-            cursor: pointer;
-            margin: 5px;
-        }
-        .footer {
-            margin-top: 30px;
-            display: flex;
-            justify-content: space-between;
-            width: 100%;
-        }
-        .start-btn, .delete-btn {
-            padding: 10px 20px;
-            background-color: #ffcc00;
-            color: #121212;
-            border: none;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        .start-btn:hover, .delete-btn:hover {
-            background-color: #e6b800;
-        }
-        .footer button {
-            width: 150px;
+            color: #fff;
         }
 
+        /* Mobile View */
         @media screen and (max-width: 768px) {
             .player-section {
-                display: block;
-                overflow-y: scroll;
+                grid-template-columns: repeat(2, 1fr); /* 2 cards per row for mobile */
+                gap: 10px;
+                overflow-y: auto;
                 max-height: 300px;
-            }
-            .footer {
-                flex-direction: column;
-                align-items: center;
             }
         }
     </style>
@@ -107,106 +70,24 @@
 
 <div class="lobby-container">
     <h1>BINGO LOBBY</h1>
-    <button class="url-button" id="shareUrl" style="display: none;">Share URL</button>
 
     <div class="player-section" id="playerSection">
-        <!-- Player cards will be dynamically inserted here -->
-    </div>
+        <!-- Generating 8 player cards -->
+        <script>
+            const playerSection = document.getElementById('playerSection');
 
-    <div class="footer">
-        <button class="delete-btn" id="deleteButton">Delete</button>
-        <button class="start-btn" id="startButton" style="display: none;">Start Game</button>
+            for (let i = 1; i <= 8; i++) {
+                const playerCard = document.createElement('div');
+                playerCard.classList.add('player-card');
+                playerCard.innerHTML = `
+                    <img src="https://via.placeholder.com/60" alt="Player Icon">
+                    <p>Player ${i}</p>
+                `;
+                playerSection.appendChild(playerCard);
+            }
+        </script>
     </div>
 </div>
-
-<script>
-    const playerSection = document.getElementById('playerSection');
-    const startButton = document.getElementById('startButton');
-    const deleteButton = document.getElementById('deleteButton');
-    const shareUrlButton = document.getElementById('shareUrl');
-
-    const url = window.location.href;
-    const roomID = new URL(window.location.href).pathname.split('/').pop(); // Get room ID from URL
-    const socket = new WebSocket('ws://localhost:3000'); // WebSocket connection
-
-    socket.onopen = () => {
-        console.log('Connected to WebSocket');
-        // Send message to join the lobby with username and icon
-        socket.send(JSON.stringify({
-            type: 'joinLobby',
-            roomID: roomID,
-            username: 'Player' + Math.floor(Math.random() * 1000), // Random username for now
-            icon: 'iconDataURL' // Replace with actual icon
-        }));
-    };
-
-    socket.onmessage = (event) => {
-        const message = JSON.parse(event.data);
-
-        // Handle different message types
-        if (message.type === 'updateLobby') {
-            updatePlayerCards(message.players);
-        }
-
-        if (message.type === 'lobbyCreated') {
-            // Show the share URL button
-            shareUrlButton.style.display = 'inline-block';
-            shareUrlButton.onclick = () => {
-                navigator.clipboard.writeText(url);
-                alert('URL copied to clipboard!');
-            };
-        }
-    };
-
-    // Function to update the player cards
-    function updatePlayerCards(players) {
-        playerSection.innerHTML = ''; // Clear current player cards
-
-        players.forEach(player => {
-            const playerCard = document.createElement('div');
-            playerCard.classList.add('player-card');
-            playerCard.innerHTML = `
-                <img src="${player.icon}" alt="${player.username}'s Icon" />
-                <p>${player.username}</p>
-                ${player.isHost ? '<p>Host</p>' : ''}
-                <div class="buttons">
-                    ${player.isHost ? '<img src="host.png" alt="Make Host" onclick="makeHost('${player.username}')" />' : ''}
-                    <img src="exit.png" alt="Kick" onclick="kickPlayer('${player.username}')" />
-                </div>
-            `;
-            playerSection.appendChild(playerCard);
-        });
-
-        // Update the "Start Game" button visibility
-        if (players.length >= 3) {
-            startButton.style.display = 'block';
-        }
-    }
-
-    function kickPlayer(username) {
-        alert(`${username} has been kicked from the game.`);
-        socket.send(JSON.stringify({
-            type: 'kickPlayer',
-            roomID: roomID,
-            playerID: username
-        }));
-    }
-
-    function makeHost(username) {
-        alert(`${username} is now the host.`);
-        socket.send(JSON.stringify({
-            type: 'makeHost',
-            roomID: roomID,
-            playerID: username
-        }));
-    }
-
-    // Delete button functionality
-    deleteButton.onclick = () => {
-        alert('Deleting the lobby...');
-        // Implement lobby deletion logic here
-    };
-</script>
 
 </body>
 </html>
