@@ -123,7 +123,7 @@
 <script>
     const urlParams = new URLSearchParams(window.location.search);
     const roomID = urlParams.get('roomID');
-    const socket = new WebSocket('ws://localhost:3000');
+    const socket = new WebSocket('ws://https://multiplyer-game.onrender.com:3000');
 
     // On WebSocket connection open
     socket.onopen = () => {
