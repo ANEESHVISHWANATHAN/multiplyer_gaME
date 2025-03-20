@@ -122,7 +122,13 @@
 
 <script>
     const urlParams = new URLSearchParams(window.location.search);
-    const roomID = urlParams.get('roomID');
+const roomID = urlParams.get('roomID');
+
+if (!roomID || roomID === 'null') {
+    alert('Invalid Room ID. Redirecting to home page...');
+    window.location.href = '/'; // Redirect to the home page
+}
+
     const socket = new WebSocket('wss://multiplyer-game.onrender.com');
         
 
