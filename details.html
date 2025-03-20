@@ -71,9 +71,30 @@
                 localStorage.setItem('username', username);
                 localStorage.setItem('icon', reader.result);
 
-                // Create a room and pass room ID to localStorage
-                const roomID = localStorage.getItem('roomID');
-                window.location.href = `lobby.html?roomID=${roomID}`;
+                // Connect to WebSocket
+                const socket = new WebSocket('wss://multiplyer-game.onrender.com');
+
+                socket.onopen = () => {
+                    socket.send(JSON.stringify({
+                        type: 'createLobby',
+                        username: username,
+                        icon: reader.result
+                    }));
+                };
+
+                socket.onmessage = (event) => {
+                    const message = JSON.parse(event.data);
+
+                    if (message.type === 'lobbyCreated') {
+                        localStorage.setItem('roomID', message.roomID);
+                        window.location.href = `lobby.html?roomID=${message.roomID}`;
+                    }
+                };
+
+                socket.onerror = (error) => {
+                    console.error("WebSocket Error:", error);
+                    alert("Error connecting to the server. Please try again.");
+                };
             };
             reader.readAsDataURL(iconFile);
         }
