@@ -67,6 +67,7 @@ wss.on('connection', (ws) => {
             }
         }
     });
+    ws.on('error', (err) => console.error("WebSocket error:", err));
 
     ws.on('close', () => {
         for (const roomID in lobbies) {
