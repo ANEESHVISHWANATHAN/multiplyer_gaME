@@ -148,6 +148,11 @@ if (!roomID || roomID === 'null') {
 
         if (message.type === 'lobbyCreated') {
     window.location.href = `/lobby.html?roomID=${message.roomID}`;
+            const usernam = localStorage.getItem('username');
+            const icon = localStorage.getItem('icon');
+            console.log('LOBBY.  ' + usernam);
+            console.log('lobby  ' + icon);
+            
 }
 
 
