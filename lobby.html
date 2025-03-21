@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bingo Lobby</title>
     <style>
-        /* Basic styling for lobby */
         body {
             font-family: Arial, sans-serif;
             background-color: #121212;
@@ -42,12 +41,6 @@
         button:hover {
             background-color: #e6b800;
         }
-        #copyURLBtn {
-            background-color: #4CAF50;
-        }
-        #copyURLBtn:hover {
-            background-color: #45a049;
-        }
         #playerList {
             display: flex;
             flex-wrap: wrap;
@@ -83,28 +76,6 @@
             padding: 5px;
             border-radius: 4px;
         }
-        .playerCard .buttons {
-            display: flex;
-            justify-content: space-between;
-            position: absolute;
-            bottom: 5px;
-            width: 100%;
-            padding: 5px;
-        }
-        .buttons img {
-            width: 24px;
-            height: 24px;
-            cursor: pointer;
-        }
-        #startGameBtn:disabled {
-            background-color: #aaa;
-            cursor: not-allowed;
-        }
-        .footerButtons {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 20px;
-        }
     </style>
 </head>
 <body>
@@ -113,26 +84,19 @@
     <h1>BINGO LOBBY</h1>
     <button id="copyURLBtn">Copy URL</button>
     <div id="playerList"></div>
-
-    <div class="footerButtons">
-        <button id="startGameBtn" disabled>Start Game</button>
-        <button id="deleteLobbyBtn">Delete Lobby</button>
-    </div>
 </div>
 
 <script>
     const urlParams = new URLSearchParams(window.location.search);
-const roomID = urlParams.get('roomID');
+    const roomID = urlParams.get('roomID');
 
-if (!roomID || roomID === 'null') {
-    alert('Invalid Room ID. Redirecting to home page...');
-    window.location.href = '/'; // Redirect to the home page
-}
+    if (!roomID) {
+        alert('Invalid Room ID. Redirecting to home page...');
+        window.location.href = '/';
+    }
 
     const socket = new WebSocket('wss://multiplyer-game.onrender.com');
-        
 
-    // On WebSocket connection open
     socket.onopen = () => {
         socket.send(JSON.stringify({
             type: 'joinLobby',
@@ -142,14 +106,8 @@ if (!roomID || roomID === 'null') {
         }));
     };
 
-    // On WebSocket message received
     socket.onmessage = (event) => {
         const message = JSON.parse(event.data);
-
-        if (message.type === 'lobbyCreated') {
-    window.location.href = `/lobby.html?roomID=${message.roomID}`;
-}
-
 
         if (message.type === 'updateLobby') {
             updateLobby(message.players);
@@ -160,83 +118,20 @@ if (!roomID || roomID === 'null') {
         }
     };
 
-    // Update the lobby with player data
     function updateLobby(players) {
         const playerList = document.getElementById('playerList');
         playerList.innerHTML = '';
+
         players.forEach(player => {
             const playerCard = document.createElement('div');
             playerCard.classList.add('playerCard');
 
-            const isHost = player.isHost ? '<div class="host">Host</div>' : '';
             const playerImg = player.icon ? `<img src="${player.icon}" alt="Profile Icon" />` : '<img src="profile.png" alt="Default Icon" />';
-            const playerName = `<h3>${player.username}</h3>`;
-
-            const kickBtn = player.isHost ? '' : `<img src="exit.png" alt="Kick" class="kickBtn" onclick="kickPlayer('${player.username}')">`;
-            const makeHostBtn = player.isHost ? '' : `<img src="host.png" alt="Make Host" class="makeHostBtn" onclick="makeHost('${player.username}')">`;
-
-            playerCard.innerHTML = `
-                ${isHost}
-                ${playerImg}
-                ${playerName}
-                <div class="buttons">
-                    ${kickBtn}
-                    ${makeHostBtn}
-                </div>
-            `;
+            playerCard.innerHTML = `${playerImg}<h3>${player.username}</h3>`;
 
             playerList.appendChild(playerCard);
         });
-
-        // Enable start game button if 3 or more players have joined
-        if (players.length >= 3) {
-            document.getElementById('startGameBtn').disabled = false;
-        }
     }
-
-    // Kick player function
-    function kickPlayer(username) {
-        socket.send(JSON.stringify({
-            type: 'kickPlayer',
-            roomID: roomID,
-            playerID: username
-        }));
-    }
-
-    // Make player the host
-    function makeHost(username) {
-        socket.send(JSON.stringify({
-            type: 'makeHost',
-            roomID: roomID,
-            playerID: username
-        }));
-    }
-
-    // Copy the lobby URL to clipboard
-    document.getElementById('copyURLBtn').addEventListener('click', () => {
-        const url = window.location.href;
-        navigator.clipboard.writeText(url).then(() => {
-            alert('Lobby URL copied!');
-        });
-    });
-
-    // Start the game when the button is clicked
-    document.getElementById('startGameBtn').addEventListener('click', () => {
-        socket.send(JSON.stringify({
-            type: 'startGame',
-            roomID: roomID
-        }));
-    });
-
-    // Delete the lobby (optional functionality)
-    document.getElementById('deleteLobbyBtn').addEventListener('click', () => {
-        socket.send(JSON.stringify({
-            type: 'deleteLobby',
-            roomID: roomID
-        }));
-        alert('Lobby deleted');
-        window.location.href = '/'; // Redirect to home or entry page
-    });
 </script>
 
 </body>
