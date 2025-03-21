@@ -29,7 +29,7 @@ wss.on('connection', (ws) => {
                 host: ws,
                 players: [{ id: ws, username: message.username, icon: message.icon }]
             };
-            console.log("host is" + lobbies[roomID]["username"]);
+            console.log("host is" + lobbies[roomID]["players"]["username"]);
             ws.send(JSON.stringify({ type: 'lobbyCreated', roomID }));
             broadcastLobbyState(roomID);
         }
