@@ -18,7 +18,7 @@ function generateRoomID() {
 }
 
 wss.on('connection', (ws) => {
-    console.log('New player connected');
+    console.log('Player connected');
 
     ws.on('message', (data) => {
         const message = JSON.parse(data);
@@ -30,25 +30,48 @@ wss.on('connection', (ws) => {
                 players: [{ id: ws, username: message.username, icon: message.icon }]
             };
             ws.send(JSON.stringify({ type: 'lobbyCreated', roomID }));
+            broadcastLobbyState(roomID);
         }
 
         if (message.type === 'joinLobby') {
             const { roomID, username, icon } = message;
-            
-            if (!lobbies[roomID]) {
+            if (lobbies[roomID]) {
+                lobbies[roomID].players.push({ id: ws, username, icon });
+                ws.send(JSON.stringify({ type: 'joinedLobby', roomID }));
+                broadcastLobbyState(roomID);
+            } else {
                 ws.send(JSON.stringify({ type: 'error', message: 'Lobby not found' }));
-                return;
             }
+        }
 
-            lobbies[roomID].players.push({ id: ws, username, icon });
-            broadcastLobbyState(roomID);
+        if (message.type === 'kickPlayer') {
+            const { roomID, playerID } = message;
+            if (lobbies[roomID] && lobbies[roomID].host === ws) {
+                lobbies[roomID].players = lobbies[roomID].players.filter(p => p.id !== playerID);
+                broadcastLobbyState(roomID);
+            } else {
+                ws.send(JSON.stringify({ type: 'error', message: 'You are not the host' }));
+            }
+        }
+
+        if (message.type === 'makeHost') {
+            const { roomID, playerID } = message;
+            if (lobbies[roomID] && lobbies[roomID].host === ws) {
+                const newHost = lobbies[roomID].players.find(p => p.id === playerID);
+                if (newHost) {
+                    lobbies[roomID].host = playerID;
+                    broadcastLobbyState(roomID);
+                }
+            } else {
+                ws.send(JSON.stringify({ type: 'error', message: 'You are not the host' }));
+            }
         }
     });
+    ws.on('error', (err) => console.error("WebSocket error:", err));
 
     ws.on('close', () => {
         for (const roomID in lobbies) {
             lobbies[roomID].players = lobbies[roomID].players.filter(p => p.id !== ws);
-            
             if (lobbies[roomID].players.length === 0) {
                 delete lobbies[roomID];
             } else {
@@ -59,26 +82,33 @@ wss.on('connection', (ws) => {
 });
 
 function broadcastLobbyState(roomID) {
-    if (!lobbies[roomID]) return;
-
+    const lobby = lobbies[roomID];
     const state = {
         type: 'updateLobby',
-        players: lobbies[roomID].players.map(p => ({
+        players: lobby.players.map(p => ({
             username: p.username,
             icon: p.icon,
-            isHost: lobbies[roomID].host === p.id
+            isHost: lobby.host === p.id
         }))
     };
 
-    lobbies[roomID].players.forEach(player => {
+    lobby.players.forEach(player => {
         player.id.send(JSON.stringify(state));
     });
 }
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'))); // Serve static files
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'entry.html'));
 });
 
-server.listen(3000, () => console.log('Server running on http://localhost:3000'));
+app.get('/details.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'details.html'));
+});
+
+app.get('/lobby.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'lobby.html'));
+});
+
+server.listen(3000, () => console.log('Server is running on http://localhost:3000'));
