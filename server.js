@@ -25,6 +25,7 @@ wss.on('connection', (ws) => {
 
         if (message.type === 'createLobby') {
             const roomID = generateRoomID();
+            console.log("host is " + message.username);
             lobbies[roomID] = {
                 host: ws,
                 players: [{ id: ws, username: message.username, icon: message.icon }]
