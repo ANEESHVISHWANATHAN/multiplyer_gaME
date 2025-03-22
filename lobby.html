@@ -142,12 +142,14 @@ if (window.location.pathname === "/lobby.html" && roomID && !window.location.sea
 } 
 else if (window.location.search.includes("PLAYER")) {
     const item = localStorage.getItem('username');
-    if (item == play[host]){
+    if (item == play["host"]){
         
-    label.textContent = "HOST";}
+    label.textContent = "HOST";
+    copy();}
      else if (item != play[host]){
         
-    label.textContent = "PLAYER";}
+    label.textContent = "PLAYER";
+     copy();}
     get.appendChild(label);
     
 }
@@ -243,12 +245,12 @@ else if (window.location.search.includes("PLAYER")) {
     document.getElementById('copyURLBtn').addEventListener('click', () => {
         window.location.href = `lobby.html?roomID=${roomID}/PLAYER`;
         const url = window.location.href;
-        
-        
+         });
+        function copy(){
         navigator.clipboard.writeText(url).then(() => {
             alert('Lobby URL copied!');
         });
-    });
+        };
 
     // Start the game when the button is clicked
     document.getElementById('startGameBtn').addEventListener('click', () => {
