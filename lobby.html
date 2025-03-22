@@ -122,25 +122,25 @@
 </div>
 
 <script>
-    const urlParams = new URLSearchParams(window.location.search);
-const roomID = urlParams.get('roomID');
+  // Get URL parameters
+let urlParams = new URLSearchParams(window.location.search);
+let roomID = urlParams.get("roomID"); // Extracts room ID from URL
 
-if (!roomID || roomID === 'null') {
-    alert('Invalid Room ID. Redirecting to home page...');
-    window.location.href = '/'; // Redirect to the home page
+// Select display div
+let get = document.getElementById("display");
+let label = document.createElement("label");
+
+if (window.location.pathname === "/lobby.html" && roomID && !window.location.search.includes("PLAYER")) {
+    label.textContent = "HOST";
+    get.appendChild(label);
+
+    // Redirect the host to the player URL
+    window.location.href = `lobby.html?roomID=${roomID}/PLAYER`;
+} 
+else if (window.location.search.includes("PLAYER")) {
+    label.textContent = "PLAYER";
+    get.appendChild(label);
 }
-    if(urlParams == 'lobby.html?roomID = ${roomID}'){
-        let get = document.getElementById('display');
-        let label = document.createElement('label');
-        label.textContent = "HOST";
-        get.appendChild(label);
-        window.location.href = 'lobby.html?roomID = ${roomID}/PLAYER';}
-     else if(urlParams == 'lobby.html?roomID = ${roomID}/PLAYER')  {
-          let get = document.getElementById('display');
-        let label = document.createElement('label');
-        label.textContent = "PLAYER";
-        get.appendChild(label);}
-
     const socket = new WebSocket('wss://multiplyer-game.onrender.com');
         
 
