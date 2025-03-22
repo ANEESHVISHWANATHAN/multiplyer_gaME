@@ -113,7 +113,8 @@
     <h1>BINGO LOBBY</h1>
     <button id="copyURLBtn">Copy URL</button>
     <div id="playerList"></div>
-
+<div id = "display" style = "position:fixed;top:80px;left:190px;color:yellow">
+</div>
     <div class="footerButtons">
         <button id="startGameBtn" disabled>Start Game</button>
         <button id="deleteLobbyBtn">Delete Lobby</button>
@@ -128,6 +129,17 @@ if (!roomID || roomID === 'null') {
     alert('Invalid Room ID. Redirecting to home page...');
     window.location.href = '/'; // Redirect to the home page
 }
+    if(urlParams == 'lobby.html?roomID = ${roomID}'){
+        let get = document.getElementById('display');
+        let label = document.createElement('label');
+        label.textContent = "HOST";
+        get.appendChild(label);
+        window.location.href = 'lobby.html?roomID = ${roomID}/PLAYER';}
+     else if(urlParams == 'lobby.html?roomID = ${roomID}/PLAYER')  {
+          let get = document.getElementById('display');
+        let label = document.createElement('label');
+        label.textContent = "PLAYER";
+        get.appendChild(label);}
 
     const socket = new WebSocket('wss://multiplyer-game.onrender.com');
         
