@@ -1,11 +1,10 @@
-<!DOCTYPE html>
+                     <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bingo Lobby</title>
     <style>
-        /* Basic styling for lobby */
         body {
             font-family: Arial, sans-serif;
             background-color: #121212;
@@ -113,8 +112,6 @@
     <h1>BINGO LOBBY</h1>
     <button id="copyURLBtn">Copy URL</button>
     <div id="playerList"></div>
-<div id = "display" style = "position:fixed;top:80px;left:190px;color:yellow">
-</div>
     <div class="footerButtons">
         <button id="startGameBtn" disabled>Start Game</button>
         <button id="deleteLobbyBtn">Delete Lobby</button>
@@ -122,61 +119,68 @@
 </div>
 
 <script>
-  // Get URL parameters
-let urlParams = new URLSearchParams(window.location.search);
-let roomID = urlParams.get("roomID"); // Extracts room ID from URL
+    const socket = new WebSocket("wss://multiplyer-game.onrender.com");
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomID = urlParams.get("roomID");
+    
+    let username = localStorage.getItem("username");
+    let icon = localStorage.getItem("icon");
 
-
-    const socket = new WebSocket('wss://multiplyer-game.onrender.com');
-        
-
-    // On WebSocket connection open
     socket.onopen = () => {
-        socket.send(JSON.stringify({
-            type: 'joinLobby',
-            roomID: roomID,
-            username: localStorage.getItem('username'),
-            icon: localStorage.getItem('icon')
-        }));
+        if (!username || !icon) {
+            const enteredUsername = prompt("Enter your username:");
+            if (!enteredUsername) return; // Stop if user cancels
+
+            const fileInput = document.createElement("input");
+            fileInput.type = "file";
+            fileInput.accept = "image/*";
+            fileInput.addEventListener("change", (event) => {
+                const file = event.target.files[0];
+                const reader = new FileReader();
+                reader.onload = () => {
+                    localStorage.setItem("username", enteredUsername);
+                    localStorage.setItem("icon", reader.result);
+                    sendJoinRequest(enteredUsername, reader.result);
+                };
+                reader.readAsDataURL(file);
+            });
+            fileInput.click();
+        } else {
+            sendJoinRequest(username, icon);
+        }
     };
 
-    // On WebSocket message received
+    function sendJoinRequest(username, icon) {
+        socket.send(JSON.stringify({ type: "joinLobby", roomID, username, icon }));
+    }
+
     socket.onmessage = (event) => {
         const message = JSON.parse(event.data);
 
-        if (message.type === 'lobbyCreated') {
-    window.location.href = `/lobby.html?roomID=${message.roomID}`;
-            const usernam = localStorage.getItem('username');
-            const icon = localStorage.getItem('icon');
-            document.write('LOBBY.  ' + usernam);
-            document.write('lobby  ' + icon);
-            
-}
-
-
-        if (message.type === 'updateLobby') {
+        if (message.type === "updateLobby") {
             updateLobby(message.players);
         }
 
-        if (message.type === 'error') {
+        if (message.type === "error") {
             alert(message.message);
+            window.location.href = "/";
         }
     };
 
-    // Update the lobby with player data
     function updateLobby(players) {
-        const playerList = document.getElementById('playerList');
-        playerList.innerHTML = '';
+        const playerList = document.getElementById("playerList");
+        playerList.innerHTML = "";
+        
         players.forEach(player => {
-            const playerCard = document.createElement('div');
-            playerCard.classList.add('playerCard');
+            const playerCard = document.createElement("div");
+            playerCard.classList.add("playerCard");
 
             const isHost = player.isHost ? '<div class="host">Host</div>' : '';
             const playerImg = player.icon ? `<img src="${player.icon}" alt="Profile Icon" />` : '<img src="profile.png" alt="Default Icon" />';
             const playerName = `<h3>${player.username}</h3>`;
 
-            const kickBtn = player.isHost ? '' : `<img src="exit.png" alt="Kick" class="kickBtn" onclick="kickPlayer('${player.username}')">`;
-            const makeHostBtn = player.isHost ? '' : `<img src="host.png" alt="Make Host" class="makeHostBtn" onclick="makeHost('${player.username}')">`;
+            const kickBtn = player.isHost ? "" : `<img src="exit.png" alt="Kick" class="kickBtn" onclick="kickPlayer('${player.username}')">`;
+            const makeHostBtn = player.isHost ? "" : `<img src="host.png" alt="Make Host" class="makeHostBtn" onclick="makeHost('${player.username}')">`;
 
             playerCard.innerHTML = `
                 ${isHost}
@@ -191,57 +195,48 @@ let roomID = urlParams.get("roomID"); // Extracts room ID from URL
             playerList.appendChild(playerCard);
         });
 
-        // Enable start game button if 3 or more players have joined
         if (players.length >= 3) {
-            document.getElementById('startGameBtn').disabled = false;
+            document.getElementById("startGameBtn").disabled = false;
         }
     }
 
-    // Kick player function
     function kickPlayer(username) {
         socket.send(JSON.stringify({
-            type: 'kickPlayer',
+            type: "kickPlayer",
             roomID: roomID,
             playerID: username
         }));
     }
 
-    // Make player the host
     function makeHost(username) {
         socket.send(JSON.stringify({
-            type: 'makeHost',
+            type: "makeHost",
             roomID: roomID,
             playerID: username
         }));
     }
 
-    // Copy the lobby URL to clipboard
-    document.getElementById('copyURLBtn').addEventListener('click', () => {
-        window.location.href = `lobby.html?roomID=${roomID}/PLAYER`;
-        const url = window.location.href;
-        
-        
+    document.getElementById("copyURLBtn").addEventListener("click", () => {
+        const url = `${window.location.origin}/lobby.html?roomID=${roomID}`;
         navigator.clipboard.writeText(url).then(() => {
-            alert('Lobby URL copied!');
+            alert("Lobby URL copied!");
         });
-         });
+    });
 
-    // Start the game when the button is clicked
-    document.getElementById('startGameBtn').addEventListener('click', () => {
+    document.getElementById("startGameBtn").addEventListener("click", () => {
         socket.send(JSON.stringify({
-            type: 'startGame',
+            type: "startGame",
             roomID: roomID
         }));
     });
 
-    // Delete the lobby (optional functionality)
-    document.getElementById('deleteLobbyBtn').addEventListener('click', () => {
+    document.getElementById("deleteLobbyBtn").addEventListener("click", () => {
         socket.send(JSON.stringify({
-            type: 'deleteLobby',
+            type: "deleteLobby",
             roomID: roomID
         }));
-        alert('Lobby deleted');
-        window.location.href = '/'; // Redirect to home or entry page
+        alert("Lobby deleted");
+        window.location.href = "/";
     });
 </script>
 
