@@ -129,17 +129,27 @@ let roomID = urlParams.get("roomID"); // Extracts room ID from URL
 // Select display div
 let get = document.getElementById("display");
 let label = document.createElement("label");
+let play={};
 
 if (window.location.pathname === "/lobby.html" && roomID && !window.location.search.includes("PLAYER")) {
     label.textContent = "HOST";
     get.appendChild(label);
+    play[host] = localStorage.getItem('username');
+    
 
     // Redirect the host to the player URL
     
 } 
 else if (window.location.search.includes("PLAYER")) {
-    label.textContent = "PLAYER";
+    const item = localStorage.getItem('username');
+    if (item == play[host]){
+        
+    label.textContent = "HOST";}
+     else if (item != play[host]){
+        
+    label.textContent = "PLAYER";}
     get.appendChild(label);
+    
 }
     const socket = new WebSocket('wss://multiplyer-game.onrender.com');
         
