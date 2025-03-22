@@ -135,7 +135,7 @@ if (window.location.pathname === "/lobby.html" && roomID && !window.location.sea
     get.appendChild(label);
 
     // Redirect the host to the player URL
-    window.location.href = `lobby.html?roomID=${roomID}/PLAYER`;
+    
 } 
 else if (window.location.search.includes("PLAYER")) {
     label.textContent = "PLAYER";
@@ -231,7 +231,10 @@ else if (window.location.search.includes("PLAYER")) {
 
     // Copy the lobby URL to clipboard
     document.getElementById('copyURLBtn').addEventListener('click', () => {
+        window.location.href = `lobby.html?roomID=${roomID}/PLAYER`;
         const url = window.location.href;
+        
+        
         navigator.clipboard.writeText(url).then(() => {
             alert('Lobby URL copied!');
         });
