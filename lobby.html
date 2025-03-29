@@ -26,13 +26,63 @@
     let username = localStorage.getItem("username");
     let icon = localStorage.getItem("icon");
     let playerid = localStorage.getItem("playerID");
-    socket.onopen=()={
-      socket.send(JSON.stringify({
-        "type":check;
-      "roomid":roomID;
-       "player":playerID;}))}
-
     
+    if(playerid&&username&&icon){
+     let host =  document.getElementById("host-card");
+     host.style.display = "block";
+     host.img.src = icon;
+     host.input.value = username;
+    }
+    
+     
+
+      </script>
+  <form>
+            
+        <div id = "host-card" style = "position:fixed;top:40px;left:250px;border-style:groove;border-radius:10px;height:220px;width:150px;display:hidden">
+            <img src = "exit.png" id = "img1" height = 70 width = 70 style ="position:absolute;top:55px;left:40px;border-radius:10px;">
+            <input type = "text" disabled id = "lab1" name = "l1" style = "border:none; position:absolute ; top:140px;left:40px;font-size:20px;" value = "player";>
+           
+        </div>
+        <div id = "player-card2" style = "position:fixed;top:40px;left:450px;border-style:groove;border-radius:10px;height:220px;width:150px;display:hidden">
+            <img src = "exit.png" id = "img2" height = 70 width = 70 style ="position:absolute;top:55px;left:40px;border-radius:10px;">
+            <input type = "text" disabled id = "lab2" name = "l1" style = "border:none; position:absolute ; top:140px;left:40px;font-size:20px;" value = "player">
+           
+        </div>
+        <div id = "player-card3" style = "position:fixed;top:40px;left:650px;border-style:groove;border-radius:10px;height:220px;width:150px;display:hidden">
+            <img src = "exit.png" id = "img3" height = 70 width = 70 style ="position:absolute;top:55px;left:40px;border-radius:10px;">
+            <input type = "text" disabled id = "lab3" name = "l1" style = "border:none; position:absolute ; top:140px;left:40px;font-size:20px;" value = "player">
+           
+        </div>
+        <div id = "player-card4" style = "position:fixed;top:40px;left:850px;border-style:groove;border-radius:10px;height:220px;width:150px;display:hidden">
+            <img src = "exit.png" id = "img4" height = 70 width = 70 style ="position:absolute;top:55px;left:40px;border-radius:10px;">
+            <input type = "text" disabled id = "lab4" name = "l1" style = "border:none; position:absolute ; top:140px;left:40px;font-size:20px;" value = "player">
+           
+        </div>
+        <div id = "player-card5" style = "position:fixed;top:280px;left:250px;border-style:groove;border-radius:10px;height:220px;width:150px;display:hidden">
+            <img src = "exit.png" id = "img5" height = 70 width = 70 style ="position:absolute;top:55px;left:40px;border-radius:10px;">
+            <input type = "text" disabled id = "lab5" name = "l1" style = "border:none; position:absolute ; top:140px;left:40px;font-size:20px;" value = "player">
+           
+        </div>
+        <div id = "player-card6" style = "position:fixed;top:280px;left:450px;border-style:groove;border-radius:10px;height:220px;width:150px;display:hidden">
+            <img src = "exit.png" id = "img6" height = 70 width = 70 style ="position:absolute;top:55px;left:40px;border-radius:10px;">
+            <input type = "text" disabled id = "lab6" name = "l1" style = "border:none; position:absolute ; top:140px;left:40px;font-size:20px;" value = "player">
+           
+        </div>
+        <div id = "player-card7" style = "position:fixed;top:280px;left:650px;border-style:groove;border-radius:10px;height:220px;width:150px;display:hidden">
+            <img src = "exit.png" id = "img7" height = 70 width = 70 style ="position:absolute;top:55px;left:40px;border-radius:10px;">
+            <input type = "text" disabled id = "lab7" name = "l1" style = "border:none; position:absolute ; top:140px;left:40px;font-size:20px;" value = "player">
+           
+        </div>
+        <div id = "player-card8" style = "position:fixed;top:280px;left:850px;border-style:groove;border-radius:10px;height:220px;width:150px;display:hidden">
+            <img src = "exit.png" id = "img8" height = 70 width = 70 style ="position:absolute;top:55px;left:40px;border-radius:10px;">
+            <input type = "text" disabled id = "lab8" name = "l1" style = "border:none; position:absolute ; top:140px;left:40px;font-size:20px;" value = "player">
+           
+        </div>
+    
+        </form>
+        </body>
+        </html>
 
 </body>
 </html>
