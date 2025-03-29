@@ -33,7 +33,8 @@ wss.on("connection", (ws) => {
             ws.send(JSON.stringify({ type: "lobbyCreated", roomID }));
             broadcastLobbyState(roomID);
         }
-
+        if (message.type === "check"){
+          
         if (message.type === "joinLobby") {
             const { roomID, username, icon } = message;
             if (lobbies[roomID]) {
