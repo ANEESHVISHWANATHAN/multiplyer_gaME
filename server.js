@@ -23,16 +23,32 @@ wss.on("connection", (ws) => {
     ws.on("message", (data) => {
         const message = JSON.parse(data);
 
-        if (message.type === "createLobby") {
-            const roomID = generateRoomID();
-            lobbies[roomID] = {
-                host: ws,
-                players: [{ id: ws, username: message.username, icon: message.icon, isHost: true }],
-            };
+       if (message.type === "createLobby") {
+    const roomID = generateRoomID();
+    const playerID = Math.random().toString(36).substr(2, 9); // Unique player ID
 
-            ws.send(JSON.stringify({ type: "lobbyCreated", roomID }));
-            broadcastLobbyState(roomID);
-        }
+    const player = {
+        id: playerID, // Assign the ID
+        ws: ws, // Store the WebSocket instance
+        username: message.username,
+        icon: message.icon,
+        isHost: true
+    };
+
+    lobbies[roomID] = {
+        host: playerID,
+        players: [player]
+    };
+
+    ws.send(JSON.stringify({ 
+        type: "lobbyCreated", 
+        roomID, 
+        playerID // Send the player ID back
+    }));
+
+    broadcastLobbyState(roomID);
+}
+
         if (message.type === "check"){
           
         if (message.type === "joinLobby") {
