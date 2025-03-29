@@ -1,4 +1,4 @@
-                const express = require("express");
+const express = require("express");
 const http = require("http");
 const { WebSocketServer } = require("ws");
 const path = require("path");
@@ -21,41 +21,49 @@ wss.on("connection", (ws) => {
     console.log("A player connected");
 
     ws.on("message", (data) => {
-        const message = JSON.parse(data);
+        let message;
+        try {
+            message = JSON.parse(data);
+        } catch (error) {
+            ws.send(JSON.stringify({ type: "error", message: "Invalid JSON format" }));
+            return;
+        }
 
-       if (message.type === "createLobby") {
-    const roomID = generateRoomID();
-    const playerID = Math.random().toString(36).substr(2, 9); // Unique player ID
+        if (message.type === "createLobby") {
+            const roomID = generateRoomID();
+            const playerID = Math.random().toString(36).substr(2, 9);
 
-    const player = {
-        id: playerID, // Assign the ID
-        ws: ws, // Store the WebSocket instance
-        username: message.username,
-        icon: message.icon,
-        isHost: true
-    };
+            const player = {
+                id: playerID,
+                ws: ws,
+                username: message.username,
+                icon: message.icon,
+                isHost: true
+            };
 
-    lobbies[roomID] = {
-        host: playerID,
-        players: [player]
-    };
+            lobbies[roomID] = {
+                host: playerID,
+                players: [player]
+            };
 
-    ws.send(JSON.stringify({ 
-        type: "lobbyCreated", 
-        roomID, 
-        playerID // Send the player ID back
-    }));
+            ws.send(JSON.stringify({
+                type: "lobbyCreated",
+                roomID,
+                playerID
+            }));
 
-    broadcastLobbyState(roomID);
-}
+            broadcastLobbyState(roomID);
+        }
 
-        if (message.type === "check"){
-          
         if (message.type === "joinLobby") {
             const { roomID, username, icon } = message;
             if (lobbies[roomID]) {
-                lobbies[roomID].players.push({ id: ws, username, icon, isHost: false });
-                ws.send(JSON.stringify({ type: "joinedLobby", roomID }));
+                const playerID = Math.random().toString(36).substr(2, 9);
+                const player = { id: playerID, ws, username, icon, isHost: false };
+
+                lobbies[roomID].players.push(player);
+
+                ws.send(JSON.stringify({ type: "joinedLobby", roomID, playerID }));
                 broadcastLobbyState(roomID);
             } else {
                 ws.send(JSON.stringify({ type: "error", message: "Lobby not found" }));
@@ -64,7 +72,7 @@ wss.on("connection", (ws) => {
 
         if (message.type === "kickPlayer") {
             const { roomID, playerID } = message;
-            if (lobbies[roomID] && lobbies[roomID].host === ws) {
+            if (lobbies[roomID] && lobbies[roomID].host === getPlayerID(ws, roomID)) {
                 lobbies[roomID].players = lobbies[roomID].players.filter(p => p.id !== playerID);
                 broadcastLobbyState(roomID);
             } else {
@@ -74,7 +82,7 @@ wss.on("connection", (ws) => {
 
         if (message.type === "makeHost") {
             const { roomID, playerID } = message;
-            if (lobbies[roomID] && lobbies[roomID].host === ws) {
+            if (lobbies[roomID] && lobbies[roomID].host === getPlayerID(ws, roomID)) {
                 const newHost = lobbies[roomID].players.find(p => p.id === playerID);
                 if (newHost) {
                     lobbies[roomID].host = newHost.id;
@@ -87,23 +95,23 @@ wss.on("connection", (ws) => {
 
         if (message.type === "startGame") {
             const { roomID } = message;
-            if (lobbies[roomID] && lobbies[roomID].host === ws) {
+            if (lobbies[roomID] && lobbies[roomID].host === getPlayerID(ws, roomID)) {
                 broadcast(roomID, { type: "gameStarted" });
             }
         }
 
         if (message.type === "deleteLobby") {
             const { roomID } = message;
-            if (lobbies[roomID] && lobbies[roomID].host === ws) {
+            if (lobbies[roomID] && lobbies[roomID].host === getPlayerID(ws, roomID)) {
                 delete lobbies[roomID];
                 broadcast(roomID, { type: "lobbyDeleted" });
             }
         }
-    };
+    });
 
     ws.on("close", () => {
         for (const roomID in lobbies) {
-            lobbies[roomID].players = lobbies[roomID].players.filter(p => p.id !== ws);
+            lobbies[roomID].players = lobbies[roomID].players.filter(p => p.ws !== ws);
             if (lobbies[roomID].players.length === 0) {
                 delete lobbies[roomID];
             } else {
@@ -120,6 +128,7 @@ function broadcastLobbyState(roomID) {
     const state = {
         type: "updateLobby",
         players: lobby.players.map(p => ({
+            id: p.id,
             username: p.username,
             icon: p.icon,
             isHost: lobby.host === p.id,
@@ -127,15 +136,20 @@ function broadcastLobbyState(roomID) {
     };
 
     lobby.players.forEach(player => {
-        player.id.send(JSON.stringify(state));
+        player.ws.send(JSON.stringify(state));
     });
 }
 
 function broadcast(roomID, message) {
     if (!lobbies[roomID]) return;
     lobbies[roomID].players.forEach(player => {
-        player.id.send(JSON.stringify(message));
+        player.ws.send(JSON.stringify(message));
     });
+}
+
+function getPlayerID(ws, roomID) {
+    const player = lobbies[roomID]?.players.find(p => p.ws === ws);
+    return player ? player.id : null;
 }
 
 app.use(express.static(path.join(__dirname, "public"))); // Serve static files
