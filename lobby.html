@@ -25,11 +25,12 @@
     
     let username = localStorage.getItem("username");
     let icon = localStorage.getItem("icon");
-
+    let playerid = localStorage.getItem("playerID");
     socket.onopen=()={
       socket.send(JSON.stringify({
         "type":check;
-      "roomid":roomID;}))}
+      "roomid":roomID;
+       "player":playerID;}))}
 
     
 
