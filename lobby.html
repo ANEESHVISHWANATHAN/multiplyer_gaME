@@ -126,29 +126,10 @@
     let username = localStorage.getItem("username");
     let icon = localStorage.getItem("icon");
 
-    socket.onopen = () => {
-        if (!username || !icon) {
-            const enteredUsername = prompt("Enter your username:");
-            if (!enteredUsername) return; // Stop if user cancels
-
-            const fileInput = document.createElement("input");
-            fileInput.type = "file";
-            fileInput.accept = "image/*";
-            fileInput.addEventListener("change", (event) => {
-                const file = event.target.files[0];
-                const reader = new FileReader();
-                reader.onload = () => {
-                    localStorage.setItem("username", enteredUsername);
-                    localStorage.setItem("icon", reader.result);
-                    sendJoinRequest(enteredUsername, reader.result);
-                };
-                reader.readAsDataURL(file);
-            });
-            fileInput.click();
-        } else {
-            sendJoinRequest(username, icon);
-        }
-    };
+    socket.onopen=()={
+      socket.send(JSON.stringify({
+        "type":check;
+      "roomid":roomID;}))}
 
     function sendJoinRequest(username, icon) {
         socket.send(JSON.stringify({ type: "joinLobby", roomID, username, icon }));
