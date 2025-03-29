@@ -82,14 +82,22 @@
                     }));
                 };
 
-                socket.onmessage = (event) => {
-                    const message = JSON.parse(event.data);
+                socket.onmessage = function(event) {
+    const message = JSON.parse(event.data);
 
-                    if (message.type === 'lobbyCreated') {
-                        localStorage.setItem('roomID', message.roomID);
-                        window.location.href = `lobby.html?roomID=${message.roomID}`;
-                    }
-                };
+    if (message.type === "lobbyCreated") {
+        console.log("Lobby Created:", message.roomID);
+        console.log("Your Player ID:", message.playerID);
+
+        // Store the data for future reference
+        localstorage.setItem("roomID", message.roomID);
+        localStorage.setItem("playerID", message.playerID);
+
+        // Redirect to lobby.html or update the UI
+        window.location.href = "lobby.html";
+    }
+};
+
 
                 socket.onerror = (error) => {
                     console.error("WebSocket Error:", error);
