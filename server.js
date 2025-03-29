@@ -99,7 +99,7 @@ wss.on("connection", (ws) => {
                 broadcast(roomID, { type: "lobbyDeleted" });
             }
         }
-    });
+    };
 
     ws.on("close", () => {
         for (const roomID in lobbies) {
