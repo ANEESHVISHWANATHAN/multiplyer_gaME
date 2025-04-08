@@ -10,12 +10,12 @@ const wss = new WebSocket.Server({ server });
 const lobbies = {}; // Stores active lobbies
 
 // Serve HTML files directly
-app.get("/", (req, res) => res.sendFile(path.join(__dirname, "bingo/index.html")));
-app.get("/hstdet.html", (req, res) => res.sendFile(path.join(__dirname, "bingo/hstdet.html")));
-app.get("/plyrdet.html", (req, res) => res.sendFile(path.join(__dirname, "bingo/plyrdet.html")));
-app.get("/lobby.html", (req, res) => res.sendFile(path.join(__dirname, "bingo/lobby.html")));
-app.get("/style.css", (req, res) => res.sendFile(path.join(__dirname, "bingo/style.css")));
-app.get("/script.js", (req, res) => res.sendFile(path.join(__dirname, "bingo/script.js")));
+app.get("/", (req, res) => res.sendFile(path.join(__dirname, "index.html")));
+app.get("/hstdet.html", (req, res) => res.sendFile(path.join(__dirname, "hstdet.html")));
+app.get("/plyrdet.html", (req, res) => res.sendFile(path.join(__dirname, "plyrdet.html")));
+app.get("/lobby.html", (req, res) => res.sendFile(path.join(__dirname, "lobby.html")));
+app.get("/style.css", (req, res) => res.sendFile(path.join(__dirname, "style.css")));
+app.get("/script.js", (req, res) => res.sendFile(path.join(__dirname, "script.js")));
 
 // Serve images if needed
 app.use("/images", express.static(path.join(__dirname, "bingo/images")));
