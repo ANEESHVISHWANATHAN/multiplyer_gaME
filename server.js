@@ -27,36 +27,78 @@ wss.on("connection", (ws) => {
         } 
         
         else if (message.type === "joinLobby") {
-            const { roomID, username, icon } = message;
+    const { roomID, username, icon } = message;
 
-            if (!lobbies[roomID]) {
-                ws.send(JSON.stringify({ type: "notActive" }));
-            } else if (!lobbies[roomID].host) {
-                ws.send(JSON.stringify({ type: "hostNot" }));
-            } else {
-                lobbies[roomID].players.push({ username, icon });
-                ws.send(JSON.stringify({ type: "lobbyJoined", roomID }));
+    if (!lobbies[roomID]) {
+        ws.send(JSON.stringify({ type: "notActive" }));
+        return;
+    }
 
-                // Broadcast updated lobby state
-                broadcastLobbyState(roomID);
-            }
+    if (!lobbies[roomID].host) {
+        ws.send(JSON.stringify({ type: "hostNot" }));
+        return;
+    }
+
+    const playerID = generatePlayerID();
+    const playerData = { username, icon, ws };
+
+    lobbies[roomID].players[playerID] = playerData;
+
+    // Send lobbyJoined message to the player who just joined
+    ws.send(JSON.stringify({
+        type: "lobbyJoined",
+        playerID
+    }));
+
+    // Broadcast updated lobby state to **everyone** in the room (including host and all players)
+    broadcastLobbyState(roomID);
+}
+
         }
     });
 });
 
 function broadcastLobbyState(roomID) {
-    const lobbyState = {
-        type: "lobbyState",
-        players: lobbies[roomID]?.players || [],
-        host: lobbies[roomID]?.host,
-        hostIcon: lobbies[roomID]?.hostIcon
-    };
+    const lobby = lobbies[roomID];
+    if (!lobby) return;
 
-    wss.clients.forEach(client => {
-        if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify(lobbyState));
-        }
+    const playersList = [];
+
+    // Add host first
+    if (lobby.host) {
+        playersList.push({
+            username: lobby.host.username,
+            icon: lobby.host.icon
+        });
+    }
+
+    // Add all players
+    for (const playerID in lobby.players) {
+        const p = lobby.players[playerID];
+        playersList.push({
+            username: p.username,
+            icon: p.icon
+        });
+    }
+
+    const message = JSON.stringify({
+        type: "updateLobby",
+        players: playersList
     });
+
+    // Send to host
+    if (lobby.host.ws && lobby.host.ws.readyState === WebSocket.OPEN) {
+        lobby.host.ws.send(message);
+    }
+
+    // Send to all players
+    for (const playerID in lobby.players) {
+        const p = lobby.players[playerID];
+        if (p.ws && p.ws.readyState === WebSocket.OPEN) {
+            p.ws.send(message);
+        }
+    }
 }
+
 
 server.listen(3000, () => console.log("Server running on http://localhost:3000"));
