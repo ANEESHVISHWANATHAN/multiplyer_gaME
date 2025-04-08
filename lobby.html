@@ -66,6 +66,19 @@
             if (message.type === "lobbyState") {
                 updateLobbyUI(message);
             }
+             if (message.type === "updateLobby") {
+        const players = message.players;
+        for (let i = 0; i < players.length && i < 8; i++) {
+            const player = players[i];
+            const card = document.getElementById(`player${i + 1}`);
+            const img = card.querySelector("img");
+            const name = card.querySelector(".name");
+
+            img.src = player.icon;
+            name.textContent = player.username;
+            card.style.display = "block";
+        }
+    }
         };
 
         function updateLobbyUI(lobbyData) {
