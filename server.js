@@ -68,22 +68,9 @@ wss.on("connection", (ws) => {
 
         } else if (data.type === "joinLobby") {
             const roomID = data.roomID;
-            const lobby = lobbies[roomID];
-            console.log(roomID+"  "+data.username);
-
-            if (!lobby) {
-                ws.send(JSON.stringify({ type: "notActive" }));
-        
-                console.log("its a ");
-                return;
-            }
-
-            if (!lobby.host || lobby.host.readyState !== WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: "hostNot" }));
             
-                console.log("its b");
-                return;
-            }
+            console.log(roomID+"  "+data.username);
+            if(lobbies[roomID]){
 
             const playerID = Date.now().toString();
             lobby.players.push({ ws, username: data.username, icon: data.icon, playerID });
@@ -91,9 +78,9 @@ wss.on("connection", (ws) => {
             ws.send(JSON.stringify({
                 type: "lobbyJoined",
                 playerID
-                
+            
             }));
-
+            }
             broadcastLobbyState(roomID);
         }
     });
