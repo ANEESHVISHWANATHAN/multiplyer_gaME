@@ -71,7 +71,7 @@ wss.on("connection", (ws) => {
             
             console.log(roomID+"  "+data.username);
             if(lobbies[roomID]){
-
+            console.log("ok");
             const playerID = Date.now().toString();
             lobby.players.push({ ws, username: data.username, icon: data.icon, playerID });
 
@@ -80,8 +80,9 @@ wss.on("connection", (ws) => {
                 playerID
             
             }));
-            }
+            
             broadcastLobbyState(roomID);
+            }
         }
     });
 
