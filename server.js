@@ -54,7 +54,7 @@ wss.on("connection", (ws) => {
     broadcastLobbyState(roomID);
 }
 
-        }
+      
     });
 });
 
