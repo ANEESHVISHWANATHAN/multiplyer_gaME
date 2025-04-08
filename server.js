@@ -72,11 +72,13 @@ wss.on("connection", (ws) => {
             if (!lobby) {
                 ws.send(JSON.stringify({ type: "notActive" }));
                 return;
+                console.log("its a ");
             }
 
             if (!lobby.host || lobby.host.readyState !== WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: "hostNot" }));
                 return;
+                console.log("its b");
             }
 
             const playerID = Date.now().toString();
@@ -85,6 +87,7 @@ wss.on("connection", (ws) => {
             ws.send(JSON.stringify({
                 type: "lobbyJoined",
                 playerID
+                
             }));
 
             broadcastLobbyState(roomID);
