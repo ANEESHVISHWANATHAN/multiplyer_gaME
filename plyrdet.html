@@ -35,8 +35,11 @@
                         if (message.type === "lobbyJoined") {
                             localStorage.setItem("roomID", roomID);
                             window.location.href = `lobby.html?roomID=${roomID}`;
-                        } else {
-                            alert("Error joining room!");
+                        } else if(message.type === "notActive") {
+                            alert("not active error");
+                        }
+                        else if(message.type === "hostNot") {
+                            alert("host not error");
                         }
                     };
                 };
