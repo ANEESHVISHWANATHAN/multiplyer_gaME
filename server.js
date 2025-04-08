@@ -84,7 +84,7 @@ wss.on("connection", (ws) => {
             broadcastLobbyState(roomID);
             }
             else{
-                console.log("error");
+                console.log("error");}
         }
     });
 
