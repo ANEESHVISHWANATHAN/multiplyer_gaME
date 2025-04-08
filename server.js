@@ -58,6 +58,7 @@ wss.on("connection", (ws) => {
                 host: ws,
                 players: [{ ws, username: data.username, icon: data.icon, playerID }],
             };
+            console.log(lobbies[roomID].players[0].username);
 
             ws.send(JSON.stringify({
                 type: "lobbyCreated",
@@ -71,14 +72,16 @@ wss.on("connection", (ws) => {
 
             if (!lobby) {
                 ws.send(JSON.stringify({ type: "notActive" }));
-                return;
+        
                 console.log("its a ");
+                return;
             }
 
             if (!lobby.host || lobby.host.readyState !== WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: "hostNot" }));
-                return;
+            
                 console.log("its b");
+                return;
             }
 
             const playerID = Date.now().toString();
