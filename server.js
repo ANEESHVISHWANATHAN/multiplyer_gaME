@@ -70,7 +70,7 @@ wss.on("connection", (ws) => {
             const roomID = data.roomID;
             
             console.log(roomID+"  "+data.username);
-            if(lobbies[roomID]){
+            if(roomID in lobbies){
             console.log("ok");
             const playerID = Date.now().toString();
             lobby.players.push({ ws, username: data.username, icon: data.icon, playerID });
