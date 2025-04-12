@@ -87,6 +87,24 @@ wss.on("connection", (ws) => {
             else{
                 console.log("error not found dsad");}
         }
+                else if (data.type === "requestLobbyState") {
+            const roomID = data.roomID;
+            const lobby = lobbies[roomID];
+            if (lobby) {
+                const hostPlayer = lobby.players[0]; // first player is host
+                const players = lobby.players.slice(1); // exclude host
+                ws.send(JSON.stringify({
+                    type: "lobbyState",
+                    host: hostPlayer.username,
+                    hostIcon: hostPlayer.icon,
+                    players: players.map(p => ({
+                        username: p.username,
+                        icon: p.icon
+                    }))
+                }));
+            }
+        }
+
     });
 
     ws.on("close", () => {
