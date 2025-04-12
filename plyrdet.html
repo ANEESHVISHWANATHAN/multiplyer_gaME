@@ -14,38 +14,45 @@
     <button onclick="joinLobby()">Submit</button>
 
     <script>
-        function joinLobby() {
-            const username = document.getElementById("username").value;
-            const iconFile = document.getElementById("icon").files[0];
-            const roomID = document.getElementById("roomID").value;
+const socket = new WebSocket('wss://multiplyer-game.onrender.com'); // <-- GLOBAL
 
-            if (username && iconFile && roomID) {
-                const reader = new FileReader();
-                reader.onload = () => {
-                    localStorage.setItem("username", username);
-                    localStorage.setItem("icon", reader.result);
-                    localStorage.setItem("host", false);
+socket.onmessage = (event) => {
+    const message = JSON.parse(event.data);
+    if (message.type === "lobbyJoined") {
+        localStorage.setItem("roomID", localStorage.getItem("tempRoomID")); // Save permanently
+        window.location.href = `lobby.html?roomID=${localStorage.getItem("roomID")}`;
+    } else if(message.type === "notActive") {
+        alert("Room not active");
+    } else if(message.type === "hostNot") {
+        alert("Host not present");
+    }
+};
 
-                    const socket = new WebSocket('wss://multiplyer-game.onrender.com');
-                    socket.onopen = () => {
-                        socket.send(JSON.stringify({ type: "joinLobby", roomID, username, icon: reader.result }));
-                    };
-                    socket.onmessage = (event) => {
-                        const message = JSON.parse(event.data);
-                        if (message.type === "lobbyJoined") {
-                            localStorage.setItem("roomID", roomID);
-                            window.location.href = `lobby.html?roomID=${roomID}`;
-                        } else if(message.type === "notActive") {
-                            alert("not active error");
-                        }
-                        else if(message.type === "hostNot") {
-                            alert("host not error");
-                        }
-                    };
+function joinLobby() {
+    const username = document.getElementById("username").value;
+    const iconFile = document.getElementById("icon").files[0];
+    const roomID = document.getElementById("roomID").value;
+
+    if (username && iconFile && roomID) {
+        const reader = new FileReader();
+        reader.onload = () => {
+            localStorage.setItem("username", username);
+            localStorage.setItem("icon", reader.result);
+            localStorage.setItem("host", false);
+            localStorage.setItem("tempRoomID", roomID);
+
+            if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: "joinLobby", roomID, username, icon: reader.result }));
+            } else {
+                socket.onopen = () => {
+                    socket.send(JSON.stringify({ type: "joinLobby", roomID, username, icon: reader.result }));
                 };
-                reader.readAsDataURL(iconFile);
             }
-        }
-    </script>
+        };
+        reader.readAsDataURL(iconFile);
+    }
+}
+</script>
+
 </body>
 </html>
