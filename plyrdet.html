@@ -42,13 +42,15 @@ function joinLobby() {
     const message = JSON.parse(event.data);
     if (message.type === "lobbyJoined") {
         
-        window.location.href = `lobby.html?roomID=${localStorage.getItem("roomID")}`;
+        window.location.href = `lobby.html?roomID=${roomID}`;
     } 
 };
             }
         };
         reader.readAsDataURL(iconFile);
     }
+else{
+    document.write("big fat error");
 }
 </script>
 
