@@ -1,49 +1,96 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html>
 <head>
-    <title>Host</title>
-    <style>
-        body { background-color: black; color: white; text-align: center; }
-        .form { background-color: black; padding: 20px; border: 2px solid darkslategrey; display: inline-block; }
-    </style>
+  <title>Host Details</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #c3ec52, #0ba29d);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    h2 {
+      font-size: 2em;
+      color: white;
+      margin-bottom: 20px;
+    }
+    .form-box {
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.2);
+      width: 90%;
+      max-width: 400px;
+    }
+    input, button {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      font-size: 1em;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    button {
+      background-color: #0ba29d;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #08756d;
+    }
+  </style>
 </head>
 <body>
-    <h1>Enter Your Details</h1>
-    <div class="form">
-        <label>Username:</label> 
-        <input type="text" id="username"><br><br>
-        <label>Choose Icon:</label> 
-        <input type="file" id="icon" accept="image/*"><br><br>
-        <button onclick="createLobby()">Submit</button>
-    </div>
+  <h2>Enter your details</h2>
+  <div class="form-box">
+    <input type="text" id="username" placeholder="Enter your name" required />
+    <input type="file" id="icon" accept="image/*" />
+    <button onclick="submitHost()">Submit</button>
+  </div>
 
-    <script>
-        function createLobby() {
-            const username = document.getElementById("username").value;
-            const iconFile = document.getElementById("icon").files[0];
+  <script>
+    const ws = new WebSocket('wss://multiplyer-game.onrender.com');
 
-            if (username && iconFile) {
-                const reader = new FileReader();
-                reader.onload = () => {
-                    localStorage.setItem("username", username);
-                    localStorage.setItem("icon", reader.result);
-                    localStorage.setItem("host", true);
+    function submitHost() {
+      const username = document.getElementById('username').value.trim();
+      const iconInput = document.getElementById('icon').files[0];
 
-                    const socket = new WebSocket('wss://multiplyer-game.onrender.com');
-                    socket.onopen = () => {
-                        socket.send(JSON.stringify({ type: "createLobby", username, icon: reader.result }));
-                    };
-                    socket.onmessage = (event) => {
-                        const message = JSON.parse(event.data);
-                        if (message.type === "lobbyCreated") {
-                            localStorage.setItem("roomID", message.roomID);
-                            window.location.href = `lobby.html?roomID=${message.roomID}`;
-                        }
-                    };
-                };
-                reader.readAsDataURL(iconFile);
-            }
-        }
-    </script>
+      if (!username || !iconInput) {
+        alert('Please enter username and select an icon.');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        const iconData = event.target.result;
+        localStorage.setItem('username', username);
+        localStorage.setItem('icon', iconData);
+
+        ws.send(JSON.stringify({
+          type: 'createLobby',
+          username: username,
+          icon: iconData
+        }));
+      };
+      reader.readAsDataURL(iconInput);
+    }
+
+    ws.onmessage = function(event) {
+      const data = JSON.parse(event.data);
+      if (data.type === 'lobbyCreated') {
+        localStorage.setItem('roomID', data.roomID);
+        localStorage.setItem('host', true);
+        localStorage.setItem('playerID', data.playerID);
+        window.location.href = `lobby.html?room=${data.roomID}`;
+      }
+    };
+  </script>
 </body>
 </html>
