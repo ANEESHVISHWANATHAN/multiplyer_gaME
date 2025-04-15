@@ -21,9 +21,10 @@ function joinLobby() {
     const username = document.getElementById("username").value;
     const iconFile = document.getElementById("icon").files[0];
     const roomID = document.getElementById("roomID").value;
-    
+    console.log("see");
     if (username && iconFile && roomID) {
         document.write("yes");
+        console.log("perfect");
         const reader = new FileReader();
         reader.onload = () => {
             const socket = new WebSocket('wss://multiplyer-game.onrender.com'); 
@@ -51,6 +52,7 @@ function joinLobby() {
     }
 else{
     document.write("big fat error");
+    console.log("errikfknfj");
 }
 </script>
 
