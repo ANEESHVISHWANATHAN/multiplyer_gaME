@@ -46,6 +46,10 @@ wss.on('connection', (ws) => {
     }
 
     else if (data.type === 'joinLobby') {
+      const keys = Object.keys(lobbies);
+      for(let i in keys){
+        console.log(i);}
+        
       const lobby = lobbies[data.roomID];
       console.log(lobby);
       if (!lobby) {
