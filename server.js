@@ -47,6 +47,7 @@ wss.on('connection', (ws) => {
 
     else if (data.type === 'joinLobby') {
       const lobby = lobbies[data.roomID];
+      console.log(lobby);
       if (!lobby) {
         ws.send(JSON.stringify({ type: 'notActive' }));
         return;
