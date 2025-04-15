@@ -8,10 +8,9 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-const PORT = process.env.PORT || 3000;
-const lobbies = {}; // Format: { roomID: { host: ws, players: [ {username, icon, ws, playerID} ] } }
+const PORT = process.env.PORT || 10000;
+const lobbies = {}; // Format: { roomID: { host, players: [ {username, icon, ws, playerID} ] } }
 
-// Utility to generate unique 5-digit room ID
 function generateRoomID() {
   let id;
   do {
@@ -20,7 +19,6 @@ function generateRoomID() {
   return id;
 }
 
-// Serve all HTML files
 const serveFile = (filename) => (req, res) => {
   res.sendFile(path.join(__dirname, filename));
 };
@@ -31,13 +29,8 @@ app.get('/hstdet.html', serveFile('hstdet.html'));
 app.get('/plyrdet.html', serveFile('plyrdet.html'));
 app.get('/lobby.html', serveFile('lobby.html'));
 
-// Debug route (optional)
-app.get('/debug/lobbies', (req, res) => {
-  res.json(Object.keys(lobbies));
-});
-
 wss.on('connection', (ws) => {
-  console.log("🔌 New WebSocket connection");
+  console.log('🔌 New WebSocket connection');
 
   ws.on('message', (msg) => {
     const data = JSON.parse(msg);
@@ -47,37 +40,36 @@ wss.on('connection', (ws) => {
       const playerID = 0;
       lobbies[roomID] = {
         host: ws,
-        players: [{ username: data.username, icon: data.icon, ws, playerID }]
+        players: [{ username: data.username, icon: data.icon, ws, playerID }],
       };
       console.log(`✅ Lobby created: ${roomID}`);
       ws.send(JSON.stringify({ type: 'lobbyCreated', roomID, playerID }));
     }
 
     else if (data.type === 'joinLobby') {
-      const roomID = data.roomID;
-      const lobby = lobbies[roomID];
+      console.log(`🔍 Join request for Room ID: ${data.roomID}`);
+      console.log(`📦 Current lobbies: ${JSON.stringify(Object.keys(lobbies))}`);
 
-      console.log(`🔍 Join request for Room ID: ${roomID}`);
-      console.log(`📦 Current lobbies: ${Object.keys(lobbies).join(', ')}`);
+      const lobby = lobbies[data.roomID];
 
       if (!lobby) {
-        console.log("❌ Room not active.");
+        console.log('❌ Room not active.');
         ws.send(JSON.stringify({ type: 'notActive' }));
         return;
       }
 
       if (!lobby.host || lobby.host.readyState !== WebSocket.OPEN) {
-        console.log("❌ Host not connected.");
+        console.log('⚠️ Host not available in room:', data.roomID);
         ws.send(JSON.stringify({ type: 'hostNot' }));
         return;
       }
 
       const playerID = lobby.players.length;
       lobby.players.push({ username: data.username, icon: data.icon, ws, playerID });
+      console.log(`✅ ${data.username} joined Room ${data.roomID} with ID ${playerID}`);
 
-      ws.send(JSON.stringify({ type: 'lobbyJoined', roomID, playerID }));
+      ws.send(JSON.stringify({ type: 'lobbyJoined', roomID: data.roomID, playerID }));
 
-      // Sync all players
       lobby.players.forEach(p => {
         if (p.ws.readyState === WebSocket.OPEN) {
           p.ws.send(JSON.stringify({
@@ -86,19 +78,18 @@ wss.on('connection', (ws) => {
           }));
         }
       });
-
-      console.log(`✅ Player joined Room ${roomID} — total players: ${lobby.players.length}`);
     }
 
     else if (data.type === 'syncRequest') {
       const lobby = lobbies[data.roomID];
       if (!lobby) return;
 
-      // Update player's WebSocket (for refresh recovery)
-      const player = lobby.players.find(p => p.playerID == data.playerID);
-      if (player) player.ws = ws;
+      lobby.players.forEach(p => {
+        if (p.playerID === data.playerID) {
+          p.ws = ws;
+        }
+      });
 
-      // Sync update
       lobby.players.forEach(p => {
         if (p.ws.readyState === WebSocket.OPEN) {
           p.ws.send(JSON.stringify({
@@ -118,22 +109,29 @@ wss.on('connection', (ws) => {
           }
         });
         delete lobbies[data.roomID];
-        console.log(`❌ Lobby ${data.roomID} deleted`);
       }
     }
   });
 
   ws.on('close', () => {
-    // Cleanup on disconnect
     for (const roomID in lobbies) {
       const lobby = lobbies[roomID];
       const index = lobby.players.findIndex(p => p.ws === ws);
-
       if (index !== -1) {
         console.log(`⚠️ Player disconnected from Room ${roomID}, index ${index}`);
         lobby.players.splice(index, 1);
 
-        // Notify remaining players
+        if (lobby.players.length === 0) {
+          console.log(`❌ No players left. Deleting Room ${roomID}`);
+          delete lobbies[roomID];
+          break;
+        }
+
+        if (lobby.host === ws) {
+          console.log(`⚠️ Host disconnected from Room ${roomID}`);
+          lobby.host = null;
+        }
+
         lobby.players.forEach(p => {
           if (p.ws.readyState === WebSocket.OPEN) {
             p.ws.send(JSON.stringify({
@@ -142,17 +140,6 @@ wss.on('connection', (ws) => {
             }));
           }
         });
-
-        // Delete if host left
-        if (lobby.host === ws) {
-          console.log(`❌ Host left. Closing Room ${roomID}`);
-          lobby.players.forEach(p => {
-            if (p.ws.readyState === WebSocket.OPEN) {
-              p.ws.send(JSON.stringify({ type: 'kicked' }));
-            }
-          });
-          delete lobbies[roomID];
-        }
 
         break;
       }
@@ -163,4 +150,3 @@ wss.on('connection', (ws) => {
 server.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
-
