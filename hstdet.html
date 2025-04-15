@@ -82,15 +82,16 @@
       reader.readAsDataURL(iconInput);
     }
 
-    ws.onmessage = function(event) {
-      const data = JSON.parse(event.data);
-      if (data.type === 'lobbyCreated') {
-        localStorage.setItem('roomID', data.roomID);
-        localStorage.setItem('host', true);
-        localStorage.setItem('playerID', data.playerID);
-        window.location.href = `lobby.html?room=${data.roomID}`;
-      }
-    };
+   ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  if (data.type === "lobbyCreated") {
+    localStorage.setItem("roomID", data.roomID);
+    localStorage.setItem("host", "true");
+    localStorage.setItem("playerID", data.playerID); // Store this
+    window.location.href = `lobby.html?roomID=${data.roomID}`;
+  }
+};
+
   </script>
 </body>
 </html>
