@@ -14,19 +14,8 @@
     <button onclick="joinLobby()">Submit</button>
 
     <script>
-const socket = new WebSocket('wss://multiplyer-game.onrender.com'); // <-- GLOBAL
 
-socket.onmessage = (event) => {
-    const message = JSON.parse(event.data);
-    if (message.type === "lobbyJoined") {
-        localStorage.setItem("roomID", localStorage.getItem("tempRoomID")); // Save permanently
-        window.location.href = `lobby.html?roomID=${localStorage.getItem("roomID")}`;
-    } else if(message.type === "notActive") {
-        alert("Room not active");
-    } else if(message.type === "hostNot") {
-        alert("Host not present");
-    }
-};
+
 
 function joinLobby() {
     const username = document.getElementById("username").value;
@@ -36,17 +25,25 @@ function joinLobby() {
     if (username && iconFile && roomID) {
         const reader = new FileReader();
         reader.onload = () => {
+            const socket = new WebSocket('wss://multiplyer-game.onrender.com'); 
+
             localStorage.setItem("username", username);
             localStorage.setItem("icon", reader.result);
             localStorage.setItem("host", false);
-            localStorage.setItem("tempRoomID", roomID);
+            
 
-            if (socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({ type: "joinLobby", roomID, username, icon: reader.result }));
-            } else {
-                socket.onopen = () => {
+                
+           
+            socket.onopen = () => {
                     socket.send(JSON.stringify({ type: "joinLobby", roomID, username, icon: reader.result }));
                 };
+            socket.onmessage = (event) => {
+    const message = JSON.parse(event.data);
+    if (message.type === "lobbyJoined") {
+        
+        window.location.href = `lobby.html?roomID=${localStorage.getItem("roomID")}`;
+    } 
+};
             }
         };
         reader.readAsDataURL(iconFile);
