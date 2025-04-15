@@ -14,13 +14,15 @@
     <button onclick="joinLobby()">Submit</button>
 
     <script>
-
+     
 
 
 function joinLobby() {
+    
     const username = document.getElementById("username").value;
     const iconFile = document.getElementById("icon").files[0];
     const roomID = document.getElementById("roomID").value;
+    username.textContent = "fuck off";
     console.log("see");
     if (username && iconFile && roomID) {
         document.write("yes");
