@@ -4,7 +4,7 @@
     <style>
       .cont{
         margin-top:200px;
-        margin-left:230px;
+        margin-left:430px;
         height:200px;
         width:500px;
         border-style:groove;
@@ -15,10 +15,11 @@
         width:200px;}
       .btn{
         width:300px;
-        height:50px;
+        height:318:42 16-04-20250px;
         border-radius:20px;
         border-style:groove;
         border-color:grey;
+        margin-left:50px;
       }
       .btn:hover{
         border-color:yellow;
@@ -26,17 +27,49 @@
     </style>
   </head>
   <body>
-    <h1>ENTER YOUR DETAILS </h1>
+  <center>  <h1>ENTER YOUR DETAILS </h1> </center>
     <div id = "container" class = "cont">
       <form name = "f1">
+         <br> 
         ENTER USERNAME : <input type = "text" id = "username" class = "field">
         <br> <br> <br>
         CHOOSE ICON : <input type = "file" id = "icon" >
         <br> <br> <br> <br> <br>
         <button onclick = "create()" class = "btn">SUBMIT </button>
       </form>
+
     </div>
-    
-        
+    <script type = "text/javascript">
+    function create(){
+      const username = document.getElementById("username).value;     
+      const icon = document.getElementById("icon").files[0];
+      if(username && icon){
+         const reader = new FileReader();
+         reader.onload=()=>{
+             localStorage.setItem('username',username);
+             localStorage.setItem('icon',reader.result);
+             const ws = new WebSocket('wss://multiplyer-game.onrender.com');
+             ws.onopen=()=>{
+               ws.send(JSON.stringify({
+                    type:'createLobby',
+                    username:username,
+                    icon:reader.result,
+                   }));
+                }
+             ws.onmessage=(event)=>{
+                const message = JSON.parse(event.data);
+                if(message.type = 'LobbyCreated'){
+                   const roomID = message.roomID;
+                   const playerID = message.playerID;
+                   localStorage.setItem('roomID',roomID);
+                   localStorage.setItem('playerID',playerID);
+                   localStorage.setItem('host',true);
+                   window.location.href = "lobby.html?roomid = ${roomID}"; 
+                    }} }
+         reader.readAsDataURL(icon);
+}
+                              
+        }
+</script>
   </body>
 </html>
