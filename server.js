@@ -52,7 +52,7 @@ ws.on('message',(message)=>{
       PlayerID : plyrrid }));
   } }) 
 });
-server.listen(PORT=>{
+server.listen(PORT,()=>{
 console.log('SERVER RUNNING ON PORT')});
   
   
