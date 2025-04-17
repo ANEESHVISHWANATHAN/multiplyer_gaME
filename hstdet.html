@@ -58,7 +58,7 @@
                 }
              ws.onmessage=(event)=>{
                 const message = JSON.parse(event.data);
-                if(message.type = 'LobbyCreated'){
+                if(message.type === 'LobbyCreated'){
                    const roomID = message.roomID;
                    const playerID = message.playerID;
                    localStorage.setItem('roomID',roomID);
