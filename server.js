@@ -53,7 +53,7 @@ ws.on('message',(message)=>{
   } }) 
 });
 server.listen(PORT=>{
-console.log('SERVER RUNNING ON PORT')};
+console.log('SERVER RUNNING ON PORT')});
   
   
     
