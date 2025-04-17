@@ -50,7 +50,8 @@ ws.on('message',(message)=>{
       type :'LobbyCreated',
       roomID : roomID,
       PlayerID : plyrrid }));
-  }
+  } }) 
+});
   
   
     
