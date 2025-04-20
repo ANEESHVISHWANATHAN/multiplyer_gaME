@@ -30,12 +30,14 @@ app.get('/plyrdet.html', serveFile('plyrdet.html'));
 app.get('/lobby.html', serveFile('lobby.html'));
 
 wss.on('connection',(ws)=>{
+  console.log("new websocket connection");
 ws.on('message',(message)=>{
   const data = JSON.parse(message);
-  
+  console.log(data.type+"ok");
   if(data.type === 'createLobby'){
     const plyrrid = 0;
     const roomID = generateRoomID();
+    console.log("room generated");
     lobbies[roomID]={
         Host : ws,
         Players : [{
