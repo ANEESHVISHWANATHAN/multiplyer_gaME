@@ -71,7 +71,7 @@
          reader.onload=()=>{
              localStorage.setItem('username',username);
              localStorage.setItem('icon',reader.result);
-             const ws = new WebSocket('wss://multiplyer-game.onrender.com');
+             const ws = new WebSocket(`wss://multiplyer-game.onrender.com`);
              document.getElementById("log3").textContent = "Reader Function called";
              ws.onopen=()=>{
                ws.send(JSON.stringify({
