@@ -79,7 +79,7 @@
                     username:username,
                     icon:reader.result,
                    }));
-                }
+                };
              ws.onmessage=(event)=>{
                 const message = JSON.parse(event.data);
                  document.getElementById("log4").textContent = "receivd";
@@ -91,7 +91,7 @@
                   
                    localStorage.setItem('host',true);
                    window.location.href = `lobby.html?roomid = ${roomID}`; 
-                    }} }
+                    }}; };
          reader.readAsDataURL(icon);
 }
                               
