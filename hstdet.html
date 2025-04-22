@@ -79,8 +79,9 @@
                     username:username,
                     icon:reader.result
                    }));
-                };
+               
                document.getElementById("log4").textContent = "sent";
+                };
                ws.onmessage=(event)=>{
                 const message = JSON.parse(event.data);
                 
