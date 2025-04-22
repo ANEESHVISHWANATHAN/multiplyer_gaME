@@ -55,35 +55,35 @@
  <body>
   <div id = "player-container" class = "sec" >
      <form name = "f1">
-     <div id = "pl1" class = "card" style = "position:fixed;top:120px;left:250px;height:140px;width:150px;">
+     <div id = "pl1" class = "card" style = "position:fixed;top:120px;left:250px;height:140px;width:150px;display:hidden">
         <input type = "text" value = "user" id = "u1" class = "label" disabled> 
         <img src = "host.jpg" height = 50 width = 50 id = "i1" class = "icon">
      </div>
-     <div id = "pl2" class = "card" style = "position:fixed;top:120px;left:450px;height:140px;width:150px">
+     <div id = "pl2" class = "card" style = "position:fixed;top:120px;left:450px;height:140px;width:150px;display:hidden">
         <input type = "text" value = "user" id = "u2" class = "label"disabled> 
         <img src = "host.jpg" height = 50 width = 50 id = "i2" class = "icon">
      </div>
-     <div id = "pl3" class = "card" style = "position:fixed;top:120px;left:650px;height:140px;width:150px">
+     <div id = "pl3" class = "card" style = "position:fixed;top:120px;left:650px;height:140px;width:150px;display:hidden">
         <input type = "text" value = "user" id = "u3" class = "label"disabled> 
         <img src = "host.jpg" height = 50 width = 50 id = "i3" class = "icon">
      </div>
-     <div id = "pl4" class = "card" style = "position:fixed;top:120px;left:850px;height:140px;width:150px">
+     <div id = "pl4" class = "card" style = "position:fixed;top:120px;left:850px;height:140px;width:150px;display:hidden">
         <input type = "text" value = "user" id = "u4" class = "label"disabled> 
         <img src = "host.jpg" height = 50 width = 50 id = "i4" class = "icon">
      </div>
-     <div id = "pl5" class = "card" style = "position:fixed;top:310px;left:250px;height:140px;width:150px">
+     <div id = "pl5" class = "card" style = "position:fixed;top:310px;left:250px;height:140px;width:150px;display:hidden">
         <input type = "text" value = "user" id = "u5" class = "label"disabled> 
         <img src = "host.jpg" height = 50 width = 50 id = "i5" class = "icon">
      </div>
-     <div id = "pl6" class = "card" style = "position:fixed;top:310px;left:450px;height:140px;width:150px">
+     <div id = "pl6" class = "card" style = "position:fixed;top:310px;left:450px;height:140px;width:150px;display:hidden">
         <input type = "text" value = "user" id = "u6" class = "label"disabled> 
         <img src = "host.jpg" height = 50 width = 50 id = "i6" class = "icon">
      </div>
-     <div id = "pl7" class = "card" style = "position:fixed;top:310px;left:650px;height:140px;width:150px">
+     <div id = "pl7" class = "card" style = "position:fixed;top:310px;left:650px;height:140px;width:150px;display:hidden">
         <input type = "text" value = "user" id = "u7" class = "label"disabled> 
         <img src = "host.jpg" height = 50 width = 50 id = "i7" class = "icon">
      </div>
-     <div id = "pl8" class = "card" style = "position:fixed;top:310px;left:850px;height:140px;width:150px">
+     <div id = "pl8" class = "card" style = "position:fixed;top:310px;left:850px;height:140px;width:150px;display:hidden">
         <input type = "text" value = "user" id = "u8" class = "label"disabled> 
         <img src = "host.jpg" height = 50 width = 50 id = "i8" class = "icon">
      </div>
@@ -97,7 +97,16 @@
   <script type = "text/javascript">
    const ws = new WebSocket("wss://multiplyer-game.onrender.com");
    ws.onmessage=(event)=>{
-      const data = event.data;
+      const data = JSON.parse(event.data);
       if(data.type === 'Ijoin'){
-        data.player
+       const id = data.playerid;
+       const username = data.username;
+       const icon = data.icon;
+       document.getElementById(`u${id}`).textContent = username;
+       document.getElementById(`i${id}`).src = icon;
+       document.getElementById(`pl${id}`).style.display = "block";
+       
+      } };
+  </script>
+       
   </html>
