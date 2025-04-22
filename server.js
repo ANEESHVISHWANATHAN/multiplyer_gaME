@@ -57,6 +57,9 @@ wss.on("connection", (ws) => {
           roomID: roomID,
           playerID: plyrid
         }));
+        const u = data.username;
+        const i = data.icon;
+        sync_join(u,i,plyrid,roomID);
       }
 
     } catch (err) {
@@ -68,6 +71,22 @@ wss.on("connection", (ws) => {
     console.log("🔌 WebSocket disconnected");
   });
 });
+function sync_join(username,icon,playerid,code){
+  const username = username;
+  const icon = icon;
+  const player_id = playerid;
+  const lobby = code;
+  if(player_id == 0){
+    const web = lobbies[code].Players[player_id].id;
+    web.send(JSON.stringify({
+       type:'Ijoin',
+       username : username,
+       icon:icon,
+       playerid:player_id
+    }));
+  }
+}
+     
 
 server.listen(PORT, () => {
   console.log(`🚀 SERVER RUNNING ON PORT ${PORT}`);
