@@ -1,102 +1,131 @@
+<!DOCTYPE html>
 <html>
-  <head>
-    <title> HOST DETAILS PAGE </title>
-    <style>
-      .cont{
-        margin-top:80px;
-        margin-left:430px;
-        height:200px;
-        width:500px;
-        border-style:groove;
-        border-radius:20px;
-        border-color:grey;}
-      .field{
-        border-radius:20px;
-        width:200px;}
-      .btn{
-        width:300px;
-        height:318:42 16-04-20250px;
-        border-radius:20px;
-        border-style:groove;
-        border-color:grey;
-        margin-left:50px;
+<head>
+  <title>HOST DETAILS PAGE</title>
+  <style>
+    .cont {
+      margin-top: 80px;
+      margin-left: 430px;
+      height: 250px;
+      width: 500px;
+      border-style: groove;
+      border-radius: 20px;
+      border-color: grey;
+      padding: 20px;
+    }
+
+    .field {
+      border-radius: 10px;
+      width: 200px;
+      margin-top: 10px;
+    }
+
+    .btn {
+      width: 300px;
+      height: 40px;
+      border-radius: 20px;
+      border-style: groove;
+      border-color: grey;
+      margin-left: 100px;
+      margin-top: 20px;
+    }
+
+    .btn:hover {
+      border-color: green;
+      color: red;
+    }
+
+    .logss {
+      margin-top: 20px;
+      margin-left: 100px;
+      height: auto;
+      width: 800px;
+      border-style: groove;
+      border-color: grey;
+      background-color: black;
+      color: white;
+      font-size: 20px;
+      padding: 10px;
+    }
+  </style>
+</head>
+<body>
+  <center><h1>ENTER YOUR DETAILS</h1></center>
+
+  <div class="cont">
+    <form id="hostForm">
+      <label>ENTER USERNAME:</label>
+      <input type="text" id="username" class="field" required><br><br>
+      <label>CHOOSE ICON:</label>
+      <input type="file" id="icon" class="field" accept="image/*" required><br><br>
+      <input type="submit" value="Create Lobby" class="btn">
+    </form>
+  </div>
+
+  <div class="logss" id="logs">
+    <div id="log1"></div>
+    <div id="log2"></div>
+    <div id="log3"></div>
+    <div id="log4"></div>
+  </div>
+
+  <script>
+    document.getElementById("hostForm").addEventListener("submit", function (event) {
+      event.preventDefault();
+      const username = document.getElementById("username").value;
+      const iconFile = document.getElementById("icon").files[0];
+
+      document.getElementById("log1").textContent = "🛠️ Create function started";
+
+      if (username && iconFile) {
+        const reader = new FileReader();
+
+        reader.onload = () => {
+          const iconData = reader.result;
+
+          localStorage.setItem('username', username);
+          localStorage.setItem('icon', iconData);
+
+          const ws = new WebSocket('wss://multiplyer-game.onrender.com');
+
+          ws.onopen = () => {
+            document.getElementById("log2").textContent = "✅ WebSocket connected";
+
+            ws.send(JSON.stringify({
+              type: 'createLobby',
+              username: username,
+              icon: iconData
+            }));
+          };
+
+          ws.onmessage = (event) => {
+            const message = JSON.parse(event.data);
+
+            if (message.type === 'LobbyCreated') {
+              document.getElementById("log3").textContent = "🎉 Lobby created successfully";
+              const roomID = message.roomID;
+              const playerID = message.playerID;
+
+              localStorage.setItem('roomID', roomID);
+              localStorage.setItem('playerID', playerID);
+              localStorage.setItem('host', true);
+
+              window.location.href = `lobby.html?roomid=${roomID}`;
+            }
+          };
+
+          ws.onerror = (err) => {
+            document.getElementById("log4").textContent = "❌ WebSocket error: " + err.message;
+          };
+
+          ws.onclose = () => {
+            console.log("🔌 WebSocket closed");
+          };
+        };
+
+        reader.readAsDataURL(iconFile);
       }
-      .btn:hover{
-        border-color:green;
-        color:red}
-      .logss{
-        margin-top:10px;
-        margin-left:220px;
-        height:300px;
-        width:800px;
-        border-style:groove;
-        border-color:grey;
-        background-color:black;
-        color:white;
-        font-size:40px;
-        
-
-}
-    </style>
-  </head>
-  <body>
-  <center>  <h1>ENTER YOUR DETAILS </h1> </center>
-    <div id = "container" class = "cont">
-      <form name = "f1">
-         <br> 
-        ENTER USERNAME : <input type = "text" id = "username" class = "field">
-        <br> <br> <br>
-        CHOOSE ICON : <input type = "file" id = "icon" >
-        <br> <br> <br> <br> <br>
-       <input type = "submit" onclick = "create()" class = "btn">
-      </form>
-
-    </div>
-    <div id = "logs" class = "logss">
-     <div id = "log1"> </div><br>
-     <div id = "log2"> </div><br>
-     <div id = "log3"> </div><br>
-     <div id = "log4"> </div><br>
-     </div>
-    
-      
-    <script type = "text/javascript">
-    function create(){
-      const username = document.getElementById("username").value;     
-      const icon = document.getElementById("icon").files[0];
-      document.getElementById("log1").textContent = "Create Function Created";
-      if(username && icon){
-         const reader = new FileReader();
-         document.getElementById("log2").textContent = "Reader function created";
-         reader.onload=()=>{
-             localStorage.setItem('username',username);
-             localStorage.setItem('icon',reader.result);
-             const ws = new WebSocket('wss://multiplyer-game.onrender.com');
-             document.getElementById("log3").textContent = "Reader Function called";
-             ws.onopen=()=>{
-               ws.send(JSON.stringify({
-                    type:'createLobby',
-                    username:username,
-                    icon:reader.result
-                   }));
-               
-             };
-               ws.onmessage=(event)=>{
-                const message = JSON.parse(event.data);
-                
-                if(message.type === 'LobbyCreated'){
-                   const roomID = message.roomID;
-                   const playerID = message.playerID;
-                   localStorage.setItem('roomID',roomID);
-                   localStorage.setItem('playerID',playerID);
-                  
-                   localStorage.setItem('host',true);
-                   window.location.href = `lobby.html?roomid = ${roomID}`; 
-                    }}; };
-         reader.readAsDataURL(icon);
-}
-                              
-        }
-</script>
-  </body>
+    });
+  </script>
+</body>
 </html>
