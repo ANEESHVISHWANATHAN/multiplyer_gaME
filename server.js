@@ -7,7 +7,7 @@ const path = require('path');
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
-console.log(wss.readyState);
+
 const PORT = process.env.PORT || 10000;
 const lobbies = {}; // Format: { roomID: { host, players: [ {username, icon, ws, playerID} ] } }
 
@@ -31,6 +31,7 @@ app.get('/lobby.html', serveFile('lobby.html'));
 
 wss.on("connection",(ws)=>{
   console.log("new websocket connection");
+  console.log(ws.readyState);
 ws.on("message",(message)=>{
   const data = JSON.parse(message);
   console.log(data.type+"ok");
