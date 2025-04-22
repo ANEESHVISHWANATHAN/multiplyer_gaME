@@ -71,18 +71,19 @@
          reader.onload=()=>{
              localStorage.setItem('username',username);
              localStorage.setItem('icon',reader.result);
-             const ws = new WebSocket(`wss://multiplyer-game.onrender.com`);
+             const ws = new WebSocket('wss://multiplyer-game.onrender.com');
              document.getElementById("log3").textContent = "Reader Function called";
              ws.onopen=()=>{
                ws.send(JSON.stringify({
                     type:'createLobby',
                     username:username,
-                    icon:reader.result,
+                    icon:reader.result
                    }));
                 };
-             ws.onmessage=(event)=>{
+               document.getElementById("log4").textContent = "sent";
+               ws.onmessage=(event)=>{
                 const message = JSON.parse(event.data);
-                 document.getElementById("log4").textContent = "receivd";
+                
                 if(message.type === 'LobbyCreated'){
                    const roomID = message.roomID;
                    const playerID = message.playerID;
