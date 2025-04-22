@@ -7,7 +7,7 @@ const path = require('path');
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
-
+console.log(wss.readyState);
 const PORT = process.env.PORT || 10000;
 const lobbies = {}; // Format: { roomID: { host, players: [ {username, icon, ws, playerID} ] } }
 
@@ -29,9 +29,9 @@ app.get('/hstdet.html', serveFile('hstdet.html'));
 app.get('/plyrdet.html', serveFile('plyrdet.html'));
 app.get('/lobby.html', serveFile('lobby.html'));
 
-wss.on('connection',(ws)=>{
+wss.on("connection",(ws)=>{
   console.log("new websocket connection");
-ws.on('message',(message)=>{
+ws.on("message",(message)=>{
   const data = JSON.parse(message);
   console.log(data.type+"ok");
   if(data.type === 'createLobby'){
@@ -47,7 +47,7 @@ ws.on('message',(message)=>{
                  plyrid : 0 }]
     }
     const lobby = lobbies[roomID].Players[plyrrid].username;
-    console.log("ROOM CREATED WITH ID ${roomID} AND USERNAME ${lobby}"); 
+    console.log(`ROOM CREATED WITH ID ${roomID} AND USERNAME ${lobby}`); 
     ws.send(JSON.stringify({
       type :'LobbyCreated',
       roomID : roomID,
