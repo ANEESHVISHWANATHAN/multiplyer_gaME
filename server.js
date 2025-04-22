@@ -72,16 +72,16 @@ wss.on("connection", (ws) => {
   });
 });
 function sync_join(username,icon,playerid,code){
-  const username = username;
-  const icon = icon;
+  const usernam = username;
+  const ico = icon;
   const player_id = playerid;
   const lobby = code;
   if(player_id == 0){
     const web = lobbies[code].Players[player_id].id;
     web.send(JSON.stringify({
        type:'Ijoin',
-       username : username,
-       icon:icon,
+       username : usernam,
+       icon:ico,
        playerid:player_id
     }));
   }
