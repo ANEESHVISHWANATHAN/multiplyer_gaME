@@ -96,17 +96,9 @@
    </body>
   <script type = "text/javascript">
    const ws = new WebSocket("wss://multiplyer-game.onrender.com");
-   ws.onmessage=(event)=>{
-      const data = JSON.parse(event.data);
-      if(data.type === 'Ijoin'){
-       const id = data.playerid;
-       const username = data.username;
-       const icon = data.icon;
-       document.getElementById(`u${id}`).textContent = username;
-       document.getElementById(`i${id}`).src = icon;
-       document.getElementById(`pl${id}`).style.display = "block";
-       
-      } };
+   const username = localStorage.getItem("username");
+   const icon = localStorage.getItem("icon");
+   
   </script>
        
   </html>
