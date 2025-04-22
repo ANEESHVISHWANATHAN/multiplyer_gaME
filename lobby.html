@@ -1,1 +1,103 @@
-
+<html>
+ <head>
+  <title> BINGO LOBBY PAGE </title>
+  <style>
+    .card{
+      border-style:groove;
+      border-radius:20px;
+      border-color:red;
+      color:white;
+      background-color:grey;
+      }
+    .icon{
+      border-radius:20px;
+      position:absolute;
+      top:35px;
+      left:40px;
+      height:50px;
+      width:70px; }
+    .label{
+     position:absolute;
+     top:100px;
+     left:50px;
+     width:50px;
+     border-style:none;
+     background-color:grey;
+     font-size:16px;
+     
+ }
+  .bottom{
+    position:fixed;
+    top:530px;
+    left:0px;
+    height:200px;
+    width:1500px; 
+    background-color:#d3d3d3;
+    border-top-style:groove;
+    border-top-color:yellow;
+  }
+ .btn{
+    border-style:groove;
+    border-color:green;
+    border-radius:20px;
+    height:70px;
+    width:400px;
+    font-size:40px;
+    color:blue;
+    }
+.btn:hover{
+   border-color:yellow;
+   color:red; }
+    
+      
+</style>
+ </head>
+ <body>
+  <div id = "player-container" class = "sec" >
+     <form name = "f1">
+     <div id = "pl1" class = "card" style = "position:fixed;top:120px;left:250px;height:140px;width:150px;">
+        <input type = "text" value = "user" id = "u1" class = "label" disabled> 
+        <img src = "host.jpg" height = 50 width = 50 id = "i1" class = "icon">
+     </div>
+     <div id = "pl2" class = "card" style = "position:fixed;top:120px;left:450px;height:140px;width:150px">
+        <input type = "text" value = "user" id = "u2" class = "label"disabled> 
+        <img src = "host.jpg" height = 50 width = 50 id = "i2" class = "icon">
+     </div>
+     <div id = "pl3" class = "card" style = "position:fixed;top:120px;left:650px;height:140px;width:150px">
+        <input type = "text" value = "user" id = "u3" class = "label"disabled> 
+        <img src = "host.jpg" height = 50 width = 50 id = "i3" class = "icon">
+     </div>
+     <div id = "pl4" class = "card" style = "position:fixed;top:120px;left:850px;height:140px;width:150px">
+        <input type = "text" value = "user" id = "u4" class = "label"disabled> 
+        <img src = "host.jpg" height = 50 width = 50 id = "i4" class = "icon">
+     </div>
+     <div id = "pl5" class = "card" style = "position:fixed;top:310px;left:250px;height:140px;width:150px">
+        <input type = "text" value = "user" id = "u5" class = "label"disabled> 
+        <img src = "host.jpg" height = 50 width = 50 id = "i5" class = "icon">
+     </div>
+     <div id = "pl6" class = "card" style = "position:fixed;top:310px;left:450px;height:140px;width:150px">
+        <input type = "text" value = "user" id = "u6" class = "label"disabled> 
+        <img src = "host.jpg" height = 50 width = 50 id = "i6" class = "icon">
+     </div>
+     <div id = "pl7" class = "card" style = "position:fixed;top:310px;left:650px;height:140px;width:150px">
+        <input type = "text" value = "user" id = "u7" class = "label"disabled> 
+        <img src = "host.jpg" height = 50 width = 50 id = "i7" class = "icon">
+     </div>
+     <div id = "pl8" class = "card" style = "position:fixed;top:310px;left:850px;height:140px;width:150px">
+        <input type = "text" value = "user" id = "u8" class = "label"disabled> 
+        <img src = "host.jpg" height = 50 width = 50 id = "i8" class = "icon">
+     </div>
+     </form>
+    </div>
+  <div id = "bott-bar" class =  "bottom">
+   <input type = "button" value = "START" class = "btn" style = "position:absolute;top:20px;left:150px"> 
+   <input type = "button" value = "DELETE" class = "btn" style = "position:absolute;top:20px;left:750px">
+  </div>
+   </body>
+  <script type = "text/javascript">
+   const ws = new WebSocket("wss://multiplyer-game.onrender.com");
+   ws.onmessage=(event)=>{
+      const data = event.data;
+      if(data.type === 'Ijoin'){
+        data.player
+  </html>
