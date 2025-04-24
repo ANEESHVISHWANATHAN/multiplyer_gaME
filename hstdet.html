@@ -105,10 +105,13 @@
               document.getElementById("log3").textContent = "🎉 Lobby created successfully";
               const roomID = message.roomID;
               const playerID = message.playerID;
+              const wscode = message.wscode;
 
               localStorage.setItem('roomID', roomID);
               localStorage.setItem('playerID', playerID);
               localStorage.setItem('host', true);
+              localStorage.setItem('wscode',wscode);
+
 
               window.location.href = `lobby.html?roomid=${roomID}`;
             }
