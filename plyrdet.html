@@ -1,121 +1,140 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Bingo - Player Join</title>
+  <title>Player Details Page</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: linear-gradient(to right, #d3cce3, #e9e4f0);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
+      background-color: #f5f5f5;
       margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
     }
-
-    .container {
-      background-color: white;
+    .cont {
+      background-color: #fff;
       padding: 30px;
       border-radius: 15px;
-      box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.2);
-      max-width: 90vw;
-      width: 400px;
-      text-align: center;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      width: 350px;
     }
-
-    h2 {
-      margin-bottom: 20px;
-    }
-
-    input, select {
+    .field {
+      width: 100%;
       padding: 10px;
       margin: 10px 0;
-      border-radius: 10px;
+      border-radius: 5px;
       border: 1px solid #ccc;
-      width: 100%;
-      font-size: 16px;
     }
-
-    button {
+    .btn {
+      width: 100%;
+      padding: 10px;
       background-color: #4CAF50;
       color: white;
       border: none;
-      padding: 15px 20px;
-      font-size: 18px;
-      border-radius: 10px;
+      border-radius: 5px;
       cursor: pointer;
-      width: 100%;
+      font-size: 16px;
     }
-
-    button:hover {
+    .btn:hover {
       background-color: #45a049;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
     }
-
-    #error {
-      color: red;
-      font-weight: bold;
-    }
-
-    @media (max-width: 500px) {
-      .container {
-        width: 90%;
-      }
+    .logss {
+      margin-top: 20px;
+      background-color: #333;
+      color: white;
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h2>Join Bingo Room</h2>
-    <input type="text" id="username" placeholder="Enter your name">
-    <input type="text" id="icon" placeholder="Icon URL (or emoji)">
-    <input type="text" id="roomid" placeholder="Enter 5-digit Room Code" maxlength="5">
-    <button onclick="joinLobby()">Join</button>
-    <div id="error"></div>
+
+  <div class="cont">
+    <center><h2>Enter Your Details</h2></center>
+
+    <form id="playerForm">
+      <input type="text" id="username" class="field" placeholder="Enter username" required><br>
+      <input type="file" id="icon" class="field" accept="image/*" required><br>
+      <input type="text" id="roomCode" class="field" placeholder="Enter Room Code" required><br>
+      <button type="submit" class="btn">Join Lobby</button>
+    </form>
+
+    <div class="logss" id="logs">
+      <div id="log1"></div>
+      <div id="log2"></div>
+      <div id="log3"></div>
+      <div id="log4"></div>
+    </div>
   </div>
 
   <script>
-    const ws = new WebSocket("wss://multiplyer-game.onrender.com");
+    document.getElementById("playerForm").addEventListener("submit", function (event) {
+      event.preventDefault();
+      const username = document.getElementById("username").value;
+      const iconFile = document.getElementById("icon").files[0];
+      const roomCode = document.getElementById("roomCode").value;
 
-    function joinLobby() {
-      const username = document.getElementById('username').value.trim();
-      const icon = document.getElementById('icon').value.trim();
-      const roomid = document.getElementById('roomid').value.trim();
+      document.getElementById("log1").textContent = "🛠️ Join function started";
 
-      if (!username || !icon || roomid.length !== 5) {
-        document.getElementById('error').textContent = "Please fill all fields correctly.";
-        return;
+      if (username && iconFile && roomCode) {
+        const reader = new FileReader();
+
+        reader.onload = () => {
+          const iconData = reader.result;
+
+          localStorage.setItem('username', username);
+          localStorage.setItem('icon', iconData);
+
+          const ws = new WebSocket('wss://multiplyer-game.onrender.com');
+
+          ws.onopen = () => {
+            document.getElementById("log2").textContent = "✅ WebSocket connected";
+
+            ws.send(JSON.stringify({
+              type: 'joinLobby',
+              username: username,
+              iconURL: iconData,  // Send the icon URL directly
+              roomid: roomCode
+            }));
+          };
+
+          ws.onmessage = (event) => {
+            const message = JSON.parse(event.data);
+
+            if (message.type === 'lobbyJoined') {
+              document.getElementById("log3").textContent = "🎉 Successfully joined the lobby!";
+              const playerID = message.playerID;
+
+              localStorage.setItem('roomID', roomCode);
+              localStorage.setItem('playerID', playerID);
+              localStorage.setItem('host', false);
+
+              window.location.href = `lobby.html?roomid=${roomCode}`;
+            } else if (message.type === 'notActive') {
+              document.getElementById("log4").textContent = "❌ Lobby does not exist!";
+            } else if (message.type === 'hostNot') {
+              document.getElementById("log4").textContent = "❌ Host is missing!";
+            } else if (message.type === 'fullRoom') {
+              document.getElementById("log4").textContent = "❌ Room is full!";
+            }
+          };
+
+          ws.onerror = (err) => {
+            document.getElementById("log4").textContent = "❌ WebSocket error: " + err.message;
+          };
+
+          ws.onclose = () => {
+            console.log("🔌 WebSocket closed");
+          };
+        };
+
+        reader.readAsDataURL(iconFile);
       }
-
-      const joinData = { action: 'joinLobby', username, icon, roomid };
-      ws.send(JSON.stringify(joinData));
-    }
-
-    ws.onmessage = (msg) => {
-      const data = JSON.parse(msg.data);
-      console.log("Received:", data);
-
-      if (data.action === 'notActive' || data.action === 'hostNot' || data.action === 'roomFull') {
-        document.getElementById('error').textContent = data.message;
-        return;
-      }
-
-      if (data.action === 'lobbyJoined') {
-        localStorage.setItem('username', data.username);
-        localStorage.setItem('icon', data.icon);
-        localStorage.setItem('playerID', data.playerID);
-        localStorage.setItem('wscode', data.wscode);
-        localStorage.setItem('roomID', data.roomid);
-        localStorage.setItem('host', false);
-        window.location.href = `lobby.html?room=${data.roomid}`;
-      }
-    };
-
-    ws.onerror = (err) => {
-      console.error("WebSocket error:", err);
-    };
+    });
   </script>
+
 </body>
 </html>
-
