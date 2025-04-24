@@ -101,7 +101,7 @@
           ws.onmessage = (event) => {
             const message = JSON.parse(event.data);
 
-            if (message.type === 'LobbyCreated') {
+            if (message.type === 'lobbyCreated') {
               document.getElementById("log3").textContent = "🎉 Lobby created successfully";
               const roomID = message.roomID;
               const playerID = message.playerID;
