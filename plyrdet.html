@@ -1,1 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Bingo - Player Join</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to right, #d3cce3, #e9e4f0);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .container {
+      background-color: white;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.2);
+      max-width: 90vw;
+      width: 400px;
+      text-align: center;
+    }
+
+    h2 {
+      margin-bottom: 20px;
+    }
+
+    input, select {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      width: 100%;
+      font-size: 16px;
+    }
+
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 15px 20px;
+      font-size: 18px;
+      border-radius: 10px;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    button:hover {
+      background-color: #45a049;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+
+    #error {
+      color: red;
+      font-weight: bold;
+    }
+
+    @media (max-width: 500px) {
+      .container {
+        width: 90%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Join Bingo Room</h2>
+    <input type="text" id="username" placeholder="Enter your name">
+    <input type="text" id="icon" placeholder="Icon URL (or emoji)">
+    <input type="text" id="roomid" placeholder="Enter 5-digit Room Code" maxlength="5">
+    <button onclick="joinLobby()">Join</button>
+    <div id="error"></div>
+  </div>
+
+  <script>
+    const ws = new WebSocket("wss://multiplyer-game.onrender.com");
+
+    function joinLobby() {
+      const username = document.getElementById('username').value.trim();
+      const icon = document.getElementById('icon').value.trim();
+      const roomid = document.getElementById('roomid').value.trim();
+
+      if (!username || !icon || roomid.length !== 5) {
+        document.getElementById('error').textContent = "Please fill all fields correctly.";
+        return;
+      }
+
+      const joinData = { action: 'joinLobby', username, icon, roomid };
+      ws.send(JSON.stringify(joinData));
+    }
+
+    ws.onmessage = (msg) => {
+      const data = JSON.parse(msg.data);
+      console.log("Received:", data);
+
+      if (data.action === 'notActive' || data.action === 'hostNot' || data.action === 'roomFull') {
+        document.getElementById('error').textContent = data.message;
+        return;
+      }
+
+      if (data.action === 'lobbyJoined') {
+        localStorage.setItem('username', data.username);
+        localStorage.setItem('icon', data.icon);
+        localStorage.setItem('playerID', data.playerID);
+        localStorage.setItem('wscode', data.wscode);
+        localStorage.setItem('roomID', data.roomid);
+        localStorage.setItem('host', false);
+        window.location.href = `lobby.html?room=${data.roomid}`;
+      }
+    };
+
+    ws.onerror = (err) => {
+      console.error("WebSocket error:", err);
+    };
+  </script>
+</body>
+</html>
 
