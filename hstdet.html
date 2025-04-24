@@ -1,72 +1,72 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>HOST DETAILS PAGE</title>
+  <title>Host Details Page</title>
   <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f5f5f5;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
     .cont {
-      margin-top: 80px;
-      margin-left: 430px;
-      height: 250px;
-      width: 500px;
-      border-style: groove;
-      border-radius: 20px;
-      border-color: grey;
-      padding: 20px;
+      background-color: #fff;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      width: 350px;
     }
-
     .field {
-      border-radius: 10px;
-      width: 200px;
-      margin-top: 10px;
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 5px;
+      border: 1px solid #ccc;
     }
-
     .btn {
-      width: 300px;
-      height: 40px;
-      border-radius: 20px;
-      border-style: groove;
-      border-color: grey;
-      margin-left: 100px;
-      margin-top: 20px;
+      width: 100%;
+      padding: 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
     }
-
     .btn:hover {
-      border-color: green;
-      color: red;
+      background-color: #45a049;
     }
-
     .logss {
       margin-top: 20px;
-      margin-left: 100px;
-      height: auto;
-      width: 800px;
-      border-style: groove;
-      border-color: grey;
-      background-color: black;
+      background-color: #333;
       color: white;
-      font-size: 20px;
       padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
-  <center><h1>ENTER YOUR DETAILS</h1></center>
 
   <div class="cont">
-    <form id="hostForm">
-      <label>ENTER USERNAME:</label>
-      <input type="text" id="username" class="field" required><br><br>
-      <label>CHOOSE ICON:</label>
-      <input type="file" id="icon" class="field" accept="image/*" required><br><br>
-      <input type="submit" value="Create Lobby" class="btn">
-    </form>
-  </div>
+    <center><h2>Enter Your Details</h2></center>
 
-  <div class="logss" id="logs">
-    <div id="log1"></div>
-    <div id="log2"></div>
-    <div id="log3"></div>
-    <div id="log4"></div>
+    <form id="hostForm">
+      <input type="text" id="username" class="field" placeholder="Enter username" required><br>
+      <input type="file" id="icon" class="field" accept="image/*" required><br>
+      <button type="submit" class="btn">Create Lobby</button>
+    </form>
+
+    <div class="logss" id="logs">
+      <div id="log1"></div>
+      <div id="log2"></div>
+      <div id="log3"></div>
+      <div id="log4"></div>
+    </div>
   </div>
 
   <script>
@@ -94,7 +94,7 @@
             ws.send(JSON.stringify({
               type: 'createLobby',
               username: username,
-              icon: iconData
+              iconURL: iconData // Send the icon URL directly
             }));
           };
 
@@ -127,5 +127,6 @@
       }
     });
   </script>
+
 </body>
 </html>
