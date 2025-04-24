@@ -1,5 +1,5 @@
 
-    const express = require('express');
+ const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
 const path = require('path');
@@ -9,7 +9,7 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 const PORT = process.env.PORT || 10000;
 
-const lobbies = {}; // roomID: { HostWS, Players: [{ username, icon, ws, playerID, wscode }] }
+const lobbies = {}; // roomID: { HostWS, Players: [{ username, iconURL, ws, playerID, wscode }] }
 
 function generateRoomID() {
   let id;
@@ -31,6 +31,7 @@ app.get('/hstdet.html', serveFile('hstdet.html'));
 app.get('/plyrdet.html', serveFile('plyrdet.html'));
 app.get('/lobby.html', serveFile('lobby.html'));
 
+// WebSocket Logic
 wss.on('connection', (ws) => {
   console.log('✅ New WebSocket connected');
 
@@ -48,7 +49,7 @@ wss.on('connection', (ws) => {
           HostWS: ws,
           Players: [{
             username: data.username,
-            icon: data.icon,
+            iconURL: data.iconURL, // store URL of the icon
             ws: ws,
             playerID,
             wscode
@@ -58,7 +59,6 @@ wss.on('connection', (ws) => {
         console.log(`🎉 Lobby Created: ${roomID} by ${data.username}`);
         ws.send(JSON.stringify({ type: 'lobbyCreated', roomID, playerID, wscode }));
 
-        // Cleanup if host doesn't enter the lobby
         setTimeout(() => {
           if (lobbies[roomID] && lobbies[roomID].Players[0].ws.readyState !== WebSocket.OPEN) {
             console.log(`🗑️ Stale Lobby Removed: ${roomID}`);
@@ -68,7 +68,7 @@ wss.on('connection', (ws) => {
       }
 
       else if (data.type === 'joinLobby') {
-        const { roomID, username, icon } = data;
+        const { roomID, username, iconURL } = data;
         const lobby = lobbies[roomID];
 
         if (!lobby) {
@@ -95,7 +95,7 @@ wss.on('connection', (ws) => {
 
         lobby.Players.push({
           username,
-          icon,
+          iconURL,
           ws,
           playerID,
           wscode
@@ -106,7 +106,7 @@ wss.on('connection', (ws) => {
       }
 
       else if (data.type === 'lobbyEntered') {
-        const { wscode, playerID, roomID, username, icon } = data;
+        const { wscode, playerID, roomID, username, iconURL } = data;
         const lobby = lobbies[roomID];
 
         if (!lobby) return console.log('❌ No such lobby during lobbyEntered');
@@ -122,7 +122,6 @@ wss.on('connection', (ws) => {
           console.log('🧑‍✈️ Host entered lobby');
         }
 
-        // Notify all players about each other
         lobby.Players.forEach((p1) => {
           lobby.Players.forEach((p2) => {
             if (p1.playerID !== p2.playerID) {
@@ -130,7 +129,7 @@ wss.on('connection', (ws) => {
                 p1.ws.send(JSON.stringify({
                   type: 'Ijoin',
                   username: p2.username,
-                  icon: p2.icon,
+                  iconURL: p2.iconURL, // send iconURL now
                   playerid: p2.playerID
                 }));
               } catch (err) {
@@ -154,4 +153,3 @@ wss.on('connection', (ws) => {
 server.listen(PORT, () => {
   console.log(`🚀 Server running on PORT ${PORT}`);
 });
-
