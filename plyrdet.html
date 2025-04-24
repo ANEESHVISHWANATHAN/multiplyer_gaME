@@ -107,9 +107,12 @@
             if (message.type === 'lobbyJoined') {
               document.getElementById("log3").textContent = "🎉 Successfully joined the lobby!";
               const playerID = message.playerID;
+              const wscode = message.wscode;
 
               localStorage.setItem('roomID', roomCode);
               localStorage.setItem('playerID', playerID);
+              localStorage.setItem('wscode',wscode);
+
               localStorage.setItem('host', false);
 
               window.location.href = `lobby.html?roomid=${roomCode}`;
