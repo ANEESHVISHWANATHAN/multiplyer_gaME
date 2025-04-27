@@ -105,40 +105,54 @@ wss.on('connection', (ws) => {
         ws.send(JSON.stringify({ type: 'lobbyJoined', playerID, wscode }));
       }
 
-      else if (data.type === 'lobbyEntered') {
-        const { wscode, playerID, roomID, username, iconURL } = data;
-        const lobby = lobbies[roomID];
+     else if (data.type === 'lobbyEntered') {
+  const { wscode, playerID, roomID, username, iconURL } = data;
+  const lobby = lobbies[roomID];
 
-        if (!lobby) return console.log('❌ No such lobby during lobbyEntered');
+  if (!lobby) {
+    console.log('❌ No such lobby during lobbyEntered');
+    return;
+  }
+  console.log('✅ Lobby found:', roomID);
 
-        const player = lobby.Players.find(p => p.wscode === wscode && p.playerID === playerID);
-        if (!player) return console.log('❌ Invalid wscode or playerID in lobbyEntered');
+  const player = lobby.Players.find(p => p.playerID === playerID);
+  if (!player) {
+    console.log('❌ PlayerID not found in lobby:', playerID);
+    return;
+  }
+  console.log('✅ PlayerID found:', playerID);
 
-        console.log(`🔄 Updating WS for ${username} (ID: ${playerID})`);
-        player.ws = ws;
+  if (player.wscode !== wscode) {
+    console.log('❌ WSCODE mismatch. Expected:', player.wscode, 'Got:', wscode);
+    return;
+  }
+  console.log('✅ WSCODE matched:', wscode);
 
-        if (playerID === 0) {
-          ws.send(JSON.stringify({ type: 'hostEntered' }));
-          console.log('🧑‍✈️ Host entered lobby');
+  console.log(`🔄 Updating WS for ${username} (ID: ${playerID})`);
+  player.ws = ws;
+
+  if (playerID === 0) {
+    ws.send(JSON.stringify({ type: 'hostEntered' }));
+    console.log('🧑‍✈️ Host entered lobby');
+  }
+
+  lobby.Players.forEach((p1) => {
+    lobby.Players.forEach((p2) => {
+      if (p1.playerID !== p2.playerID) {
+        try {
+          p1.ws.send(JSON.stringify({
+            type: 'Ijoin',
+            username: p2.username,
+            iconURL: p2.iconURL,
+            playerid: p2.playerID
+          }));
+        } catch (err) {
+          console.log('⚠️ Broadcast failed');
         }
-
-        lobby.Players.forEach((p1) => {
-          lobby.Players.forEach((p2) => {
-            if (p1.playerID !== p2.playerID) {
-              try {
-                p1.ws.send(JSON.stringify({
-                  type: 'Ijoin',
-                  username: p2.username,
-                  iconURL: p2.iconURL, // send iconURL now
-                  playerid: p2.playerID
-                }));
-              } catch (err) {
-                console.log('⚠️ Broadcast failed');
-              }
-            }
-          });
-        });
       }
+    });
+  });
+}
 
     } catch (e) {
       console.error('❌ Error parsing message:', e.message);
