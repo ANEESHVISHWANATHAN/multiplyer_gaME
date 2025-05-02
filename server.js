@@ -10,6 +10,7 @@ const wss = new WebSocket.Server({ server });
 const PORT = process.env.PORT || 10000;
 
 const lobbies = {}; // roomID: { HostWS, Players: [{ username, iconURL, ws, playerID, wscode }] }
+const staleTimeouts = {}; // roomID: Timeout reference
 
 function generateRoomID() {
   let id;
@@ -38,9 +39,9 @@ wss.on('connection', (ws) => {
   ws.on('message', (msg) => {
     try {
       const data = JSON.parse(msg);
-      
+
       if (data.type === 'createLobby') {
-        console.log(data.type,data.username);
+        console.log(data.type, data.username);
         const roomID = generateRoomID();
         const playerID = 0;
         const wscode = generateWSCODE();
@@ -49,7 +50,7 @@ wss.on('connection', (ws) => {
           HostWS: ws,
           Players: [{
             username: data.username,
-            iconURL: data.iconURL, // store URL of the icon
+            iconURL: data.iconURL,
             ws: ws,
             playerID,
             wscode
@@ -59,17 +60,19 @@ wss.on('connection', (ws) => {
         console.log(`🎉 Lobby Created: ${roomID} by ${data.username}`);
         ws.send(JSON.stringify({ type: 'lobbyCreated', roomID, playerID, wscode }));
 
-        setTimeout(() => {
+        // Schedule stale lobby deletion
+        staleTimeouts[roomID] = setTimeout(() => {
           if (lobbies[roomID] && lobbies[roomID].Players[0].ws.readyState !== WebSocket.OPEN) {
             console.log(`🗑️ Stale Lobby Removed: ${roomID}`);
             delete lobbies[roomID];
+            delete staleTimeouts[roomID];
           }
         }, 10000);
       }
 
       else if (data.type === 'joinLobby') {
         const { roomID, username, iconURL } = data;
-        console.log(data.type,data.roomID,data.username);
+        console.log(data.type, data.roomID, data.username);
         const lobby = lobbies[roomID];
 
         if (!lobby) {
@@ -106,55 +109,63 @@ wss.on('connection', (ws) => {
         ws.send(JSON.stringify({ type: 'lobbyJoined', playerID, wscode }));
       }
 
-     else if (data.type === 'lobbyEntered') {
-  const { wscode, playerID, roomID, username, iconURL } = data;
-  console.log(data.type,data.wscode,data.playerID,data.roomID,data.username);
-  const lobby = lobbies[roomID];
+      else if (data.type === 'lobbyEntered') {
+        const { wscode, playerID, roomID, username, iconURL } = data;
+        console.log(data.type, data.wscode, data.playerID, data.roomID, data.username);
+        const lobby = lobbies[roomID];
 
-  if (!lobby) {
-    console.log('❌ No such lobby during lobbyEntered');
-    return;
-  }
-  console.log('✅ Lobby found:', roomID);
-
-  const player = lobby.Players.find(p => p.playerID === playerID);
-  if (!player) {
-    console.log('❌ PlayerID not found in lobby:', playerID);
-    return;
-  }
-  console.log('✅ PlayerID found:', playerID);
-
-  if (player.wscode !== wscode) {
-    console.log('❌ WSCODE mismatch. Expected:', player.wscode, 'Got:', wscode);
-    return;
-  }
-  console.log('✅ WSCODE matched:', wscode);
-
-  console.log(`🔄 Updating WS for ${username} (ID: ${playerID})`);
-  player.ws = ws;
-
-  if (playerID === 0) {
-    ws.send(JSON.stringify({ type: 'hostEntered' }));
-    console.log('🧑‍✈️ Host entered lobby');
-  }
-
-  lobby.Players.forEach((p1) => {
-    lobby.Players.forEach((p2) => {
-      if (p1.playerID !== p2.playerID) {
-        try {
-          p1.ws.send(JSON.stringify({
-            type: 'Ijoin',
-            username: p2.username,
-            iconURL: p2.iconURL,
-            playerid: p2.playerID
-          }));
-        } catch (err) {
-          console.log('⚠️ Broadcast failed');
+        if (!lobby) {
+          console.log('❌ No such lobby during lobbyEntered');
+          return;
         }
+        console.log('✅ Lobby found:', roomID);
+
+        const player = lobby.Players.find(p => p.playerID === playerID);
+        if (!player) {
+          console.log('❌ PlayerID not found in lobby:', playerID);
+          return;
+        }
+        console.log('✅ PlayerID found:', playerID);
+
+        if (player.wscode !== wscode) {
+          console.log('❌ WSCODE mismatch. Expected:', player.wscode, 'Got:', wscode);
+          return;
+        }
+        console.log('✅ WSCODE matched:', wscode);
+
+        console.log(`🔄 Updating WS for ${username} (ID: ${playerID})`);
+        player.ws = ws;
+
+        // Cancel stale timeout if host reconnected
+        if (playerID === 0 && staleTimeouts[roomID]) {
+          clearTimeout(staleTimeouts[roomID]);
+          delete staleTimeouts[roomID];
+          console.log('🛑 Stale lobby removal cancelled - host reconnected');
+        }
+
+        if (playerID === 0) {
+          ws.send(JSON.stringify({ type: 'hostEntered' }));
+          console.log('🧑‍✈️ Host entered lobby');
+        }
+
+        // Send everyone info about everyone else
+        lobby.Players.forEach((p1) => {
+          lobby.Players.forEach((p2) => {
+            if (p1.playerID !== p2.playerID) {
+              try {
+                p1.ws.send(JSON.stringify({
+                  type: 'Ijoin',
+                  username: p2.username,
+                  iconURL: p2.iconURL,
+                  playerid: p2.playerID
+                }));
+              } catch (err) {
+                console.log('⚠️ Broadcast failed');
+              }
+            }
+          });
+        });
       }
-    });
-  });
-}
 
     } catch (e) {
       console.error('❌ Error parsing message:', e.message);
