@@ -10,7 +10,7 @@ const wss = new WebSocket.Server({ server });
 const PORT = process.env.PORT || 10000;
 
 const lobbies = {}; // roomID: { HostWS, Players: [{ username, iconURL, ws, playerID, wscode }] }
-const staleTimeouts = {}; // roomID: Timeout reference
+
 
 function generateRoomID() {
   let id;
@@ -61,13 +61,7 @@ wss.on('connection', (ws) => {
         ws.send(JSON.stringify({ type: 'lobbyCreated', roomID, playerID, wscode }));
 
         // Schedule stale lobby deletion
-        staleTimeouts[roomID] = setTimeout(() => {
-          if (lobbies[roomID] && lobbies[roomID].Players[0].ws.readyState !== WebSocket.OPEN) {
-            console.log(`🗑️ Stale Lobby Removed: ${roomID}`);
-            delete lobbies[roomID];
-            delete staleTimeouts[roomID];
-          }
-        }, 10000);
+       
       }
 
       else if (data.type === 'joinLobby') {
