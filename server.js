@@ -38,9 +38,9 @@ wss.on('connection', (ws) => {
   ws.on('message', (msg) => {
     try {
       const data = JSON.parse(msg);
-      console.log(`📩 Type: ${data.type}`, data.type, data.username );
-
+      
       if (data.type === 'createLobby') {
+        console.log(data.type,data.username);
         const roomID = generateRoomID();
         const playerID = 0;
         const wscode = generateWSCODE();
@@ -69,6 +69,7 @@ wss.on('connection', (ws) => {
 
       else if (data.type === 'joinLobby') {
         const { roomID, username, iconURL } = data;
+        console.log(data.type,data.roomID,data.username);
         const lobby = lobbies[roomID];
 
         if (!lobby) {
@@ -107,6 +108,7 @@ wss.on('connection', (ws) => {
 
      else if (data.type === 'lobbyEntered') {
   const { wscode, playerID, roomID, username, iconURL } = data;
+  console.log(data.type,data.wscode,data.playerID,data.roomID,data.username);
   const lobby = lobbies[roomID];
 
   if (!lobby) {
