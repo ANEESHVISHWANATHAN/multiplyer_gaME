@@ -131,12 +131,7 @@ wss.on('connection', (ws) => {
         player.ws = ws;
 
         // Cancel stale timeout if host reconnected
-        if (playerID === 0 && staleTimeouts[roomID]) {
-          clearTimeout(staleTimeouts[roomID]);
-          delete staleTimeouts[roomID];
-          console.log('🛑 Stale lobby removal cancelled - host reconnected');
-        }
-
+        
         if (playerID === 0) {
           ws.send(JSON.stringify({ type: 'hostEntered' }));
           console.log('🧑‍✈️ Host entered lobby');
