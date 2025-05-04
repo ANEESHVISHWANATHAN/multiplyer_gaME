@@ -139,7 +139,7 @@
 
       if (message.type === 'Ijoin') {
         // Add joined player to the lobby
-        const { username, icon, playerid } = message;
+        const { username, iconURL, playerid } = message;
         addPlayerCard(username, icon, playerid);
       }
     };
