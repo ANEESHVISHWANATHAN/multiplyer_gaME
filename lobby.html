@@ -95,81 +95,93 @@
     <div class="log-section" id="logs"></div>
   </div>
 
-  <script>
-    const ws = new WebSocket('wss://multiplyer-game.onrender.com');
-    const playerCardsContainer = document.getElementById('playerCards');
-    const startBtn = document.getElementById('startBtn');
-    const logsContainer = document.getElementById('logs');
+ <script>
+  const ws = new WebSocket('wss://multiplyer-game.onrender.com');
+  const playerCardsContainer = document.getElementById('playerCards');
+  const startBtn = document.getElementById('startBtn');
+  const logsContainer = document.getElementById('logs');
 
-    const roomID = new URLSearchParams(window.location.search).get('roomid');
-    const username = localStorage.getItem('username');
-    const icon = localStorage.getItem('icon');
-    const playerID = localStorage.getItem('playerID');
-    const wscode = localStorage.getItem('wscode');
+  const roomID = new URLSearchParams(window.location.search).get('roomid');
+  const username = localStorage.getItem('username');
+  const icon = localStorage.getItem('icon');
+  const playerID = parseInt(localStorage.getItem('playerID'));
+  const wscode = localStorage.getItem('wscode');
 
-    // Logs for debugging
-    const log = (message) => {
-      const logElement = document.createElement('div');
-      logElement.textContent = message;
-      logsContainer.appendChild(logElement);
-    };
+  // Logs for debugging
+  const log = (message, obj = null) => {
+    const logElement = document.createElement('div');
+    logElement.textContent = message;
+    logsContainer.appendChild(logElement);
+    if (obj) console.log(message, obj);
+  };
 
-    // Connect to WebSocket
-    ws.onopen = () => {
-      log('✅ WebSocket connected');
-      // Send lobbyEntered message once connected
-      ws.send(JSON.stringify({
-        type: 'lobbyEntered',
-        wscode,
-        playerID,
-        roomID,
-        username,
-        icon
-      }));
-    };
+  // Add a player card at specific index
+  const addPlayerCard = (name, iconURL, id) => {
+    const existing = document.getElementById(`player-${id}`);
+    if (existing) return; // Avoid duplicates
 
-    ws.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      log(`📩 Received: ${message.type}`, message);
+    const card = document.createElement('div');
+    card.classList.add('player-card');
+    card.setAttribute('id', `player-${id}`);
+    card.innerHTML = `
+      <img src="${iconURL || 'default-icon.png'}" alt="Player Icon">
+      <p>${name}</p>
+    `;
 
-      if (message.type === 'hostEntered') {
-        log('🧑‍✈️ Host entered the lobby');
-        startBtn.style.display = 'block';
-      }
+    // Ensure card goes to right position
+    while (playerCardsContainer.children.length <= id) {
+      const emptyDiv = document.createElement('div');
+      playerCardsContainer.appendChild(emptyDiv);
+    }
+    playerCardsContainer.replaceChild(card, playerCardsContainer.children[id]);
+  };
 
-      if (message.type === 'Ijoin') {
-        // Add joined player to the lobby
-        const { username, iconURL, playerid } = message;
-        addPlayerCard(username, icon, playerid);
-      }
-    };
+  // Connect to WebSocket
+  ws.onopen = () => {
+    log('✅ WebSocket connected');
 
-    // Function to add player card dynamically
-    const addPlayerCard = (username, icon, playerid) => {
-      const playerCard = document.createElement('div');
-      playerCard.classList.add('player-card');
-      playerCard.setAttribute('id', `player-${playerid}`);
-      playerCard.innerHTML = `
-        <img src="${icon || 'default-icon.png'}" alt="Player Icon">
-        <p>${username}</p>
-      `;
-      playerCardsContainer.appendChild(playerCard);
-    };
+    // Show your own card
+    addPlayerCard(username, icon, playerID);
 
-    // Host button to start the game (only visible to the host)
-    startBtn.addEventListener('click', () => {
-      log('🚀 Starting game...');
-      ws.send(JSON.stringify({ type: 'startGame', roomID }));
-    });
+    // Send lobbyEntered to server
+    ws.send(JSON.stringify({
+      type: 'lobbyEntered',
+      wscode,
+      playerID,
+      roomID,
+      username,
+      icon
+    }));
+  };
 
-    // Handle WebSocket error and connection close
-    ws.onerror = (err) => {
-      log(`❌ WebSocket error: ${err.message}`);
-    };
+  // Receive data
+  ws.onmessage = (event) => {
+    const message = JSON.parse(event.data);
+    log(`📩 Received: ${message.type}`, message);
 
-    ws.onclose = () => {
-      log('🔌 WebSocket closed');
-    };
-  </script>
+    if (message.type === 'hostEntered') {
+      startBtn.style.display = 'block';
+    }
+
+    if (message.type === 'Ijoin') {
+      const { username, iconURL, playerid } = message;
+      addPlayerCard(username, iconURL, playerid);
+    }
+  };
+
+  startBtn.addEventListener('click', () => {
+    log('🚀 Starting game...');
+    ws.send(JSON.stringify({ type: 'startGame', roomID }));
+  });
+
+  ws.onerror = (err) => {
+    log(`❌ WebSocket error: ${err.message}`);
+  };
+
+  ws.onclose = () => {
+    log('🔌 WebSocket closed');
+  };
+</script>
+
 </body>
 </html>
