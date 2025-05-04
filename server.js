@@ -115,7 +115,8 @@ wss.on('connection', (ws) => {
         }
         console.log('✅ Lobby found:', roomID);
 
-        const player = lobby.Players.find(p => p.playerID === playerID);
+       const player = lobby.Players.find(p => p.playerID == playerID);
+
         if (!player) {
           console.log('❌ PlayerID not found in lobby:', playerID);
           return;
