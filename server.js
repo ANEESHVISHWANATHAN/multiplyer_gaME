@@ -40,7 +40,8 @@ wss.on('connection', (ws) => {
     try {
       const data = JSON.parse(msg);
 
-      if (data.type === 'createLobby') {
+      if (data.type === 'createLobby') 
+      {
         console.log(data.type, data.username);
         const roomID = generateRoomID();
         const playerID = 0;
