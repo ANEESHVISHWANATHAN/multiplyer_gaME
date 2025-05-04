@@ -131,6 +131,7 @@ wss.on('connection', (ws) => {
 
         console.log(`🔄 Updating WS for ${username} (ID: ${playerID})`);
         player.ws = ws;
+        lobby.HostWS = ws;
 
         // Cancel stale timeout if host reconnected
         
