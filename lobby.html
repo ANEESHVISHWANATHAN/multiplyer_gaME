@@ -1,226 +1,186 @@
+<!DOCTYPE html>
 <html>
 <head>
-   <title>Lobby Page</title>
-   <style>
-     /* Basic styles for a modern and responsive design */
-     body {
-       font-family: Arial, sans-serif;
-       background-color: #f4f4f9;
- @@ -24,10 +23,6 @@
-       max-width: 800px;
-     }
- 
-     h1 {
-       margin-bottom: 20px;
-     }
- 
-     .player-cards {
-       display: grid;
-       grid-template-columns: repeat(4, 1fr);
- @@ -44,12 +39,11 @@
-     }
- 
-     .player-card img {
-   width: 80px;
-   height: 80px;
-   border-radius: 50%;
-   object-fit: cover;
- }
- 
-       width: 80px;
-       height: 80px;
-       object-fit: cover;
-       border-radius: 50%;
-     }
- 
-     .player-card p {
-       margin-top: 10px;
- @@ -85,106 +79,91 @@
- <body>
-   <div class="lobby-container">
-     <h1>Welcome to the Lobby</h1>
- 
-     <!-- Player cards -->
-     <div class="player-cards" id="playerCards">
-       <!-- Dynamic player cards will be added here -->
-     </div>
- 
-     <!-- Start button for host -->
-     <div class="player-cards" id="playerCards"></div>
-     <button class="start-btn" id="startBtn" style="display:none;">Start Game</button>
- 
-     <!-- Logs section for debugging -->
-     <div class="log-section" id="logs"></div>
-   </div>
- 
+  <title>Lobby Page</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+
+    .lobby-container {
+      background-color: #fff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      width: 90%;
+      max-width: 800px;
+      text-align: center;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+    }
+
+    .player-cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      margin-top: 20px;
+      margin-bottom: 20px;
+    }
+
+    .player-card {
+      background-color: #f0f0f0;
+      border: 2px solid #ccc;
+      border-radius: 10px;
+      padding: 10px;
+    }
+
+    .player-card img {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .player-card p {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    .start-btn {
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      background-color: #4CAF50;
+      color: white;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    .start-btn:hover {
+      background-color: #45a049;
+    }
+
+    .log-section {
+      margin-top: 20px;
+      background-color: #eef;
+      padding: 10px;
+      border-radius: 8px;
+      max-height: 150px;
+      overflow-y: auto;
+      font-size: 12px;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+  <div class="lobby-container">
+    <h1>Welcome to the Lobby</h1>
+
+    <div class="player-cards" id="playerCards"></div>
+
+    <button class="start-btn" id="startBtn" style="display:none;">Start Game</button>
+
+    <div class="log-section" id="logs"></div>
+  </div>
+
   <script>
-   const ws = new WebSocket('wss://multiplyer-game.onrender.com');
-   const playerCardsContainer = document.getElementById('playerCards');
-   const startBtn = document.getElementById('startBtn');
-   const logsContainer = document.getElementById('logs');
- 
-   const roomID = new URLSearchParams(window.location.search).get('roomid');
-   const username = localStorage.getItem('username');
-   const icon = localStorage.getItem('icon');
-   const playerID = parseInt(localStorage.getItem('playerID'));
-   const wscode = localStorage.getItem('wscode');
- 
-   // Logs for debugging
-   const log = (message, obj = null) => {
-     const logElement = document.createElement('div');
-     logElement.textContent = message;
-     logsContainer.appendChild(logElement);
-     if (obj) console.log(message, obj);
-   };
- 
-   // Add a player card at specific index
-   const addPlayerCard = (name, iconURL, id) => {
-     const existing = document.getElementById(`player-${id}`);
-     if (existing) return; // Avoid duplicates
- 
-     const card = document.createElement('div');
-     card.classList.add('player-card');
-     card.setAttribute('id', `player-${id}`);
-     card.innerHTML = `
-       <img src="${iconURL || 'default-icon.png'}" alt="Player Icon">
-       <p>${name}</p>
-     `;
- 
-     // Ensure card goes to right position
-     while (playerCardsContainer.children.length <= id) {
-       const emptyDiv = document.createElement('div');
-       playerCardsContainer.appendChild(emptyDiv);
-     }
-     playerCardsContainer.replaceChild(card, playerCardsContainer.children[id]);
-   };
- 
-   // Connect to WebSocket
-   ws.onopen = () => {
-     log('✅ WebSocket connected');
- 
-     // Show your own card
-     addPlayerCard(username, icon, playerID);
- 
-     // Send lobbyEntered to server
-     ws.send(JSON.stringify({
-       type: 'lobbyEntered',
-       wscode,
-       playerID,
-       roomID,
-       username,
-       icon
-     }));
-   };
- 
-   // Receive data
-   ws.onmessage = (event) => {
-     const message = JSON.parse(event.data);
-     log(`📩 Received: ${message.type}`, message);
- 
-     if (message.type === 'hostEntered') {
-       startBtn.style.display = 'block';
-     }
- 
-     if (message.type === 'Ijoin') {
-       const { username, iconURL, playerid } = message;
-       addPlayerCard(username, iconURL, playerid);
-     }
-   };
- 
-   startBtn.addEventListener('click', () => {
-     log('🚀 Starting game...');
-     ws.send(JSON.stringify({ type: 'startGame', roomID }));
-   });
- 
-   ws.onerror = (err) => {
-     log(`❌ WebSocket error: ${err.message}`);
-   };
- 
-   ws.onclose = () => {
-     log('🔌 WebSocket closed');
-   };
- </script>
- 
-   <script>
-     const ws = new WebSocket('wss://multiplyer-game.onrender.com');
-     const playerCardsContainer = document.getElementById('playerCards');
-     const startBtn = document.getElementById('startBtn');
-     const logsContainer = document.getElementById('logs');
- 
-     const roomID = new URLSearchParams(window.location.search).get('roomid');
-     const username = localStorage.getItem('username');
-     const icon = localStorage.getItem('icon');
-     const playerID = localStorage.getItem('playerID');
-     const wscode = localStorage.getItem('wscode');
- 
-     const log = (message) => {
-       const logElement = document.createElement('div');
-       logElement.textContent = message;
-       logsContainer.appendChild(logElement);
-     };
- 
-     ws.onopen = () => {
-       log('✅ WebSocket connected');
-       ws.send(JSON.stringify({
-         type: 'lobbyEntered',
-         wscode,
-         playerID,
-         roomID,
-         username,
-         icon
-       }));
-     };
- 
-     ws.onmessage = (event) => {
-       const message = JSON.parse(event.data);
-       log(`📩 Received: ${message.type}`);
- 
-       if (message.type === 'hostEntered') {
-         startBtn.style.display = 'block';
-       }
- 
-       if (message.type === 'Ijoin') {
-         const { username, iconURL, playerid } = message;
-         addPlayerCard(username, iconURL, playerid);
-       }
- 
-       if (message.type === 'fullLobbyState') {
-         playerCardsContainer.innerHTML = '';
-         message.players.forEach(p => {
-           addPlayerCard(p.username, p.iconURL, p.playerid);
-         });
-       }
- 
-       if (message.type === 'gameStarted') {
-         alert('🎮 Game is starting!');
-         // Redirect or change page here if needed
-       }
-     };
- 
-     const addPlayerCard = (username, icon, playerid) => {
-       if (document.getElementById(`player-${playerid}`)) return; // Prevent duplicate
-       const playerCard = document.createElement('div');
-       playerCard.classList.add('player-card');
-       playerCard.id = `player-${playerid}`;
-       playerCard.innerHTML = `
-         <img src="${icon || 'default-icon.png'}" alt="Player Icon">
-         <p>${username}</p>
-       `;
-       playerCardsContainer.appendChild(playerCard);
-     };
- 
-     startBtn.addEventListener('click', () => {
-       log('🚀 Starting game...');
-       ws.send(JSON.stringify({ type: 'startGame', roomID }));
-     });
- 
-     ws.onerror = (err) => {
-       log(`❌ WebSocket error: ${err.message}`);
-     };
- 
-     ws.onclose = () => {
-       log('🔌 WebSocket closed');
-     };
-   </script>
- </body>
- </html>
+    const ws = new WebSocket('wss://multiplyer-game.onrender.com');
+    const playerCardsContainer = document.getElementById('playerCards');
+    const startBtn = document.getElementById('startBtn');
+    const logsContainer = document.getElementById('logs');
+
+    const roomID = new URLSearchParams(window.location.search).get('roomid');
+    const username = localStorage.getItem('username');
+    const icon = localStorage.getItem('icon');
+    const playerID = parseInt(localStorage.getItem('playerID'));
+    const wscode = localStorage.getItem('wscode');
+
+    const log = (message, obj = null) => {
+      const logElement = document.createElement('div');
+      logElement.textContent = message;
+      logsContainer.appendChild(logElement);
+      if (obj) console.log(message, obj);
+    };
+
+    const addPlayerCard = (name, iconURL, id) => {
+      if (document.getElementById(`player-${id}`)) return;
+
+      const card = document.createElement('div');
+      card.classList.add('player-card');
+      card.setAttribute('id', `player-${id}`);
+      card.innerHTML = `
+        <img src="${iconURL || 'default-icon.png'}" alt="Player Icon">
+        <p>${name}</p>
+      `;
+
+      while (playerCardsContainer.children.length <= id) {
+        const emptyDiv = document.createElement('div');
+        playerCardsContainer.appendChild(emptyDiv);
+      }
+      playerCardsContainer.replaceChild(card, playerCardsContainer.children[id]);
+    };
+
+    ws.onopen = () => {
+      log('✅ WebSocket connected');
+
+      addPlayerCard(username, icon, playerID);
+
+      ws.send(JSON.stringify({
+        type: 'lobbyEntered',
+        wscode,
+        playerID,
+        roomID,
+        username,
+        icon
+      }));
+    };
+
+    ws.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      log(`📩 Received: ${message.type}`, message);
+
+      if (message.type === 'hostEntered') {
+        startBtn.style.display = 'block';
+      }
+
+      if (message.type === 'Ijoin') {
+        const { username, iconURL, playerid } = message;
+        addPlayerCard(username, iconURL, playerid);
+      }
+
+      if (message.type === 'fullLobbyState') {
+        message.players.forEach(p => {
+          addPlayerCard(p.username, p.iconURL, p.playerid);
+        });
+      }
+
+      if (message.type === 'gameStarted') {
+        alert('🎮 Game is starting!');
+        // Redirect if needed: window.location.href = 'game.html?roomid=' + roomID;
+      }
+    };
+
+    startBtn.addEventListener('click', () => {
+      log('🚀 Starting game...');
+      ws.send(JSON.stringify({ type: 'startGame', roomID }));
+    });
+
+    ws.onerror = (err) => {
+      log(`❌ WebSocket error: ${err.message}`);
+    };
+
+    ws.onclose = () => {
+      log('🔌 WebSocket closed');
+    };
+  </script>
+</body>
+</html>
