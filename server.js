@@ -1,100 +1,167 @@
-const WebSocket = require('ws');
 const express = require('express');
 const http = require('http');
+const WebSocket = require('ws');
+const path = require('path');
+
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
-
 const PORT = process.env.PORT || 10000;
-server.listen(PORT, () => console.log(`🚀 Server running on PORT ${PORT}`));
 
-app.get('/', (req, res) => res.send('==> Your service is live 🎉'));
+const lobbies = {}; // roomID: { HostWS, Players, timeout }
 
-const lobbies = {}; // { roomID: { players: [..], hostID, ... } }
+function generateRoomID() {
+  let id;
+  do {
+    id = Math.floor(10000 + Math.random() * 90000).toString();
+  } while (lobbies[id]);
+  return id;
+}
 
-function generateWscode() {
+function generateWSCODE() {
   return Math.random().toString(36).substring(2, 10);
 }
 
+const serveFile = (file) => (req, res) => res.sendFile(path.join(__dirname, file));
+
+app.get('/', serveFile('entry.html'));
+app.get('/entry.html', serveFile('entry.html'));
+app.get('/hstdet.html', serveFile('hstdet.html'));
+app.get('/plyrdet.html', serveFile('plyrdet.html'));
+app.get('/lobby.html', serveFile('lobby.html'));
+
+// WebSocket Logic
 wss.on('connection', (ws) => {
   console.log('✅ New WebSocket connected');
 
-  ws.on('message', (data) => {
-    const msg = JSON.parse(data);
-    const { type } = msg;
+  ws.on('message', (msg) => {
+    try {
+      const data = JSON.parse(msg);
 
-    if (type === 'createLobby') {
-      const roomID = Math.floor(10000 + Math.random() * 90000).toString();
-      const wscode = generateWscode();
-      lobbies[roomID] = {
-        players: [{
-          ws, username: msg.username, icon: msg.icon, playerid: 0, wscode
-        }],
-        hostID: 0
-      };
-      ws.send(JSON.stringify({ type: 'lobbyCreated', roomID, playerID: 0, wscode }));
-      console.log(`🎉 Lobby Created: ${roomID} by ${msg.username}`);
+      if (data.type === 'createLobby') {
+        console.log(data.type, data.username);
+        const roomID = generateRoomID();
+        const playerID = 0;
+        const wscode = generateWSCODE();
 
-    } else if (type === 'joinLobby') {
-      const { roomID, username, icon } = msg;
-      const room = lobbies[roomID];
-      if (!room) return ws.send(JSON.stringify({ type: 'notActive' }));
-      if (!room.players[room.hostID]?.ws || room.players[room.hostID].ws.readyState !== 1)
-        return ws.send(JSON.stringify({ type: 'hostNot' }));
-      if (room.players.length >= 8) return ws.send(JSON.stringify({ type: 'fullRoom' }));
+        const timeout = setTimeout(() => {
+          if (lobbies[roomID] && lobbies[roomID].Players.length === 1) {
+            console.log('🧹 Deleting stale lobby:', roomID);
+            delete lobbies[roomID];
+          }
+        }, 10000); // 10 sec
 
-      const wscode = generateWscode();
-      const playerid = room.players.length;
-      room.players.push({ ws, username, icon, playerid, wscode });
-      ws.send(JSON.stringify({ type: 'lobbyJoined', playerID: playerid, wscode }));
-      console.log(`✅ Player joined: ${username} (${roomID}) as ${playerid}`);
-    }
+        lobbies[roomID] = {
+          HostWS: ws,
+          Players: [{
+            username: data.username,
+            iconURL: data.iconURL,
+            ws: ws,
+            playerID,
+            wscode
+          }],
+          timeout
+        };
 
-    else if (type === 'lobbyEntered') {
-      const { roomID, wscode, playerID, username, icon } = msg;
-      const room = lobbies[roomID];
-      if (!room) return;
-      const player = room.players[playerID];
-      if (!player || player.wscode !== wscode) return;
-
-      player.ws = ws; // update with new WS
-      console.log(`🔄 Updating WS for ${username} (ID: ${playerID})`);
-
-      // Send full lobby state to the newly entered player
-      const fullLobby = room.players.map(p => ({
-        username: p.username,
-        iconURL: p.icon,
-        playerid: p.playerid
-      }));
-      ws.send(JSON.stringify({ type: 'fullLobbyState', players: fullLobby }));
-
-      // If host, notify
-      if (playerID == room.hostID) {
-        ws.send(JSON.stringify({ type: 'hostEntered' }));
-        console.log('🧑‍✈️ Host entered lobby');
+        console.log(`🎉 Lobby Created: ${roomID} by ${data.username}`);
+        ws.send(JSON.stringify({ type: 'lobbyCreated', roomID, playerID, wscode }));
       }
 
-      // Notify others someone joined
-      room.players.forEach(p => {
-        if (p.playerid !== playerID && p.ws.readyState === 1) {
-          p.ws.send(JSON.stringify({
-            type: 'Ijoin',
-            username,
-            iconURL: icon,
-            playerid: playerID
-          }));
-        }
-      });
-    }
+      else if (data.type === 'joinLobby') {
+        const { roomID, username, iconURL } = data;
+        console.log(data.type, roomID, username);
+        const lobby = lobbies[roomID];
 
-    else if (type === 'startGame') {
-      const room = lobbies[msg.roomID];
-      if (!room) return;
-      room.players.forEach(p => {
-        if (p.ws.readyState === 1) {
-          p.ws.send(JSON.stringify({ type: 'gameStarted' }));
+        if (!lobby) {
+          ws.send(JSON.stringify({ type: 'notActive' }));
+          console.log('❌ No such lobby');
+          return;
         }
-      });
+
+        if (!lobby.HostWS || lobby.HostWS.readyState !== WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'hostNot' }));
+          console.log('❌ Host WebSocket closed');
+          delete lobbies[roomID];
+          return;
+        }
+
+        if (lobby.Players.length >= 8) {
+          ws.send(JSON.stringify({ type: 'fullRoom' }));
+          console.log('🚫 Room full');
+          return;
+        }
+
+        const playerID = lobby.Players.length;
+        const wscode = generateWSCODE();
+
+        lobby.Players.push({
+          username,
+          iconURL,
+          ws,
+          playerID,
+          wscode
+        });
+
+        console.log(`✅ Player joined: ${username} (${roomID}) as ${playerID}`);
+        ws.send(JSON.stringify({ type: 'lobbyJoined', playerID, wscode }));
+      }
+
+      else if (data.type === 'lobbyEntered') {
+        const { wscode, playerID, roomID, username, iconURL } = data;
+        console.log(data.type, wscode, playerID, roomID, username);
+        const lobby = lobbies[roomID];
+
+        if (!lobby) {
+          console.log('❌ No such lobby during lobbyEntered');
+          return;
+        }
+        console.log('✅ Lobby found:', roomID);
+
+        const player = lobby.Players.find(p => p.playerID == playerID);
+
+        if (!player) {
+          console.log('❌ PlayerID not found in lobby:', playerID);
+          return;
+        }
+        console.log('✅ PlayerID found:', playerID);
+
+        if (player.wscode !== wscode) {
+          console.log('❌ WSCODE mismatch. Expected:', player.wscode, 'Got:', wscode);
+          return;
+        }
+        console.log('✅ WSCODE matched:', wscode);
+
+        console.log(`🔄 Updating WS for ${username} (ID: ${playerID})`);
+        player.ws = ws;
+
+        if (playerID === 0) {
+          lobby.HostWS = ws;
+          clearTimeout(lobby.timeout); // cancel stale lobby removal
+          ws.send(JSON.stringify({ type: 'hostEntered' }));
+          console.log('🧑‍✈️ Host entered lobby');
+        }
+
+        // Send all players info about each other
+        lobby.Players.forEach((p1) => {
+          lobby.Players.forEach((p2) => {
+            if (p1.playerID !== p2.playerID) {
+              try {
+                p1.ws.send(JSON.stringify({
+                  type: 'Ijoin',
+                  username: p2.username,
+                  iconURL: p2.iconURL,
+                  playerid: p2.playerID
+                }));
+              } catch (err) {
+                console.log('⚠️ Broadcast failed to player', p1.playerID);
+              }
+            }
+          });
+        });
+      }
+
+    } catch (e) {
+      console.error('❌ Error parsing message:', e.message);
     }
   });
 
@@ -103,3 +170,6 @@ wss.on('connection', (ws) => {
   });
 });
 
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on PORT ${PORT}`);
+});
