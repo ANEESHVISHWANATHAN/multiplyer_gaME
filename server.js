@@ -8,7 +8,7 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 const PORT = process.env.PORT || 10000;
 
-const lobbies = {}; // roomID: { HostWS, Players, timeout }
+const lobbies = {}; // roomID: { HostWS, Players[], timeout }
 
 function generateRoomID() {
   let id;
@@ -30,7 +30,6 @@ app.get('/hstdet.html', serveFile('hstdet.html'));
 app.get('/plyrdet.html', serveFile('plyrdet.html'));
 app.get('/lobby.html', serveFile('lobby.html'));
 
-// WebSocket Logic
 wss.on('connection', (ws) => {
   console.log('✅ New WebSocket connected');
 
@@ -45,9 +44,15 @@ wss.on('connection', (ws) => {
         const wscode = generateWSCODE();
 
         const timeout = setTimeout(() => {
-          if (lobbies[roomID] && lobbies[roomID].Players.length === 1) {
+          const room = lobbies[roomID];
+          if (!room) return;
+
+          const hostWS = room.Players[0]?.ws;
+          if (!hostWS || hostWS.readyState !== WebSocket.OPEN) {
             console.log('🧹 Deleting stale lobby:', roomID);
             delete lobbies[roomID];
+          } else {
+            console.log('⏳ Lobby still active (host connected):', roomID);
           }
         }, 10000); // 10 sec
 
@@ -56,7 +61,7 @@ wss.on('connection', (ws) => {
           Players: [{
             username: data.username,
             iconURL: data.iconURL,
-            ws: ws,
+            ws,
             playerID,
             wscode
           }],
@@ -78,7 +83,8 @@ wss.on('connection', (ws) => {
           return;
         }
 
-        if (!lobby.HostWS || lobby.HostWS.readyState !== WebSocket.OPEN) {
+        const hostWS = lobby.Players[0]?.ws;
+        if (!hostWS || hostWS.readyState !== WebSocket.OPEN) {
           ws.send(JSON.stringify({ type: 'hostNot' }));
           console.log('❌ Host WebSocket closed');
           delete lobbies[roomID];
@@ -118,7 +124,6 @@ wss.on('connection', (ws) => {
         console.log('✅ Lobby found:', roomID);
 
         const player = lobby.Players.find(p => p.playerID == playerID);
-
         if (!player) {
           console.log('❌ PlayerID not found in lobby:', playerID);
           return;
@@ -131,20 +136,20 @@ wss.on('connection', (ws) => {
         }
         console.log('✅ WSCODE matched:', wscode);
 
-        console.log(`🔄 Updating WS for ${username} (ID: ${playerID})`);
         player.ws = ws;
+        console.log(`🔄 Updating WS for ${username} (ID: ${playerID})`);
 
         if (playerID === 0) {
           lobby.HostWS = ws;
-          clearTimeout(lobby.timeout); // cancel stale lobby removal
+          clearTimeout(lobby.timeout);
           ws.send(JSON.stringify({ type: 'hostEntered' }));
           console.log('🧑‍✈️ Host entered lobby');
         }
 
-        // Send all players info about each other
-        lobby.Players.forEach((p1) => {
-          lobby.Players.forEach((p2) => {
-            if (p1.playerID !== p2.playerID) {
+        // Broadcast player info to others
+        lobby.Players.forEach(p1 => {
+          lobby.Players.forEach(p2 => {
+            if (p1.playerID !== p2.playerID && p1.ws.readyState === WebSocket.OPEN) {
               try {
                 p1.ws.send(JSON.stringify({
                   type: 'Ijoin',
