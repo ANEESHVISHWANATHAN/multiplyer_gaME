@@ -3,7 +3,6 @@
 <head>
   <title>Lobby Page</title>
   <style>
-    /* Basic styles for a modern and responsive design */
     body {
       font-family: Arial, sans-serif;
       background-color: #f4f4f9;
@@ -24,10 +23,6 @@
       max-width: 800px;
     }
 
-    h1 {
-      margin-bottom: 20px;
-    }
-
     .player-cards {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -44,12 +39,11 @@
     }
 
     .player-card img {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 50%;
+    }
 
     .player-card p {
       margin-top: 10px;
@@ -85,106 +79,91 @@
 <body>
   <div class="lobby-container">
     <h1>Welcome to the Lobby</h1>
-
-    <!-- Player cards -->
-    <div class="player-cards" id="playerCards">
-      <!-- Dynamic player cards will be added here -->
-    </div>
-
-    <!-- Start button for host -->
+    <div class="player-cards" id="playerCards"></div>
     <button class="start-btn" id="startBtn" style="display:none;">Start Game</button>
-
-    <!-- Logs section for debugging -->
     <div class="log-section" id="logs"></div>
   </div>
 
- <script>
-  const ws = new WebSocket('wss://multiplyer-game.onrender.com');
-  const playerCardsContainer = document.getElementById('playerCards');
-  const startBtn = document.getElementById('startBtn');
-  const logsContainer = document.getElementById('logs');
+  <script>
+    const ws = new WebSocket('wss://multiplyer-game.onrender.com');
+    const playerCardsContainer = document.getElementById('playerCards');
+    const startBtn = document.getElementById('startBtn');
+    const logsContainer = document.getElementById('logs');
 
-  const roomID = new URLSearchParams(window.location.search).get('roomid');
-  const username = localStorage.getItem('username');
-  const icon = localStorage.getItem('icon');
-  const playerID = parseInt(localStorage.getItem('playerID'));
-  const wscode = localStorage.getItem('wscode');
+    const roomID = new URLSearchParams(window.location.search).get('roomid');
+    const username = localStorage.getItem('username');
+    const icon = localStorage.getItem('icon');
+    const playerID = localStorage.getItem('playerID');
+    const wscode = localStorage.getItem('wscode');
 
-  // Logs for debugging
-  const log = (message, obj = null) => {
-    const logElement = document.createElement('div');
-    logElement.textContent = message;
-    logsContainer.appendChild(logElement);
-    if (obj) console.log(message, obj);
-  };
+    const log = (message) => {
+      const logElement = document.createElement('div');
+      logElement.textContent = message;
+      logsContainer.appendChild(logElement);
+    };
 
-  // Add a player card at specific index
-  const addPlayerCard = (name, iconURL, id) => {
-    const existing = document.getElementById(`player-${id}`);
-    if (existing) return; // Avoid duplicates
+    ws.onopen = () => {
+      log('✅ WebSocket connected');
+      ws.send(JSON.stringify({
+        type: 'lobbyEntered',
+        wscode,
+        playerID,
+        roomID,
+        username,
+        icon
+      }));
+    };
 
-    const card = document.createElement('div');
-    card.classList.add('player-card');
-    card.setAttribute('id', `player-${id}`);
-    card.innerHTML = `
-      <img src="${iconURL || 'default-icon.png'}" alt="Player Icon">
-      <p>${name}</p>
-    `;
+    ws.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      log(`📩 Received: ${message.type}`);
 
-    // Ensure card goes to right position
-    while (playerCardsContainer.children.length <= id) {
-      const emptyDiv = document.createElement('div');
-      playerCardsContainer.appendChild(emptyDiv);
-    }
-    playerCardsContainer.replaceChild(card, playerCardsContainer.children[id]);
-  };
+      if (message.type === 'hostEntered') {
+        startBtn.style.display = 'block';
+      }
 
-  // Connect to WebSocket
-  ws.onopen = () => {
-    log('✅ WebSocket connected');
+      if (message.type === 'Ijoin') {
+        const { username, iconURL, playerid } = message;
+        addPlayerCard(username, iconURL, playerid);
+      }
 
-    // Show your own card
-    addPlayerCard(username, icon, playerID);
+      if (message.type === 'fullLobbyState') {
+        playerCardsContainer.innerHTML = '';
+        message.players.forEach(p => {
+          addPlayerCard(p.username, p.iconURL, p.playerid);
+        });
+      }
 
-    // Send lobbyEntered to server
-    ws.send(JSON.stringify({
-      type: 'lobbyEntered',
-      wscode,
-      playerID,
-      roomID,
-      username,
-      icon
-    }));
-  };
+      if (message.type === 'gameStarted') {
+        alert('🎮 Game is starting!');
+        // Redirect or change page here if needed
+      }
+    };
 
-  // Receive data
-  ws.onmessage = (event) => {
-    const message = JSON.parse(event.data);
-    log(`📩 Received: ${message.type}`, message);
+    const addPlayerCard = (username, icon, playerid) => {
+      if (document.getElementById(`player-${playerid}`)) return; // Prevent duplicate
+      const playerCard = document.createElement('div');
+      playerCard.classList.add('player-card');
+      playerCard.id = `player-${playerid}`;
+      playerCard.innerHTML = `
+        <img src="${icon || 'default-icon.png'}" alt="Player Icon">
+        <p>${username}</p>
+      `;
+      playerCardsContainer.appendChild(playerCard);
+    };
 
-    if (message.type === 'hostEntered') {
-      startBtn.style.display = 'block';
-    }
+    startBtn.addEventListener('click', () => {
+      log('🚀 Starting game...');
+      ws.send(JSON.stringify({ type: 'startGame', roomID }));
+    });
 
-    if (message.type === 'Ijoin') {
-      const { username, iconURL, playerid } = message;
-      addPlayerCard(username, iconURL, playerid);
-    }
-  };
+    ws.onerror = (err) => {
+      log(`❌ WebSocket error: ${err.message}`);
+    };
 
-  startBtn.addEventListener('click', () => {
-    log('🚀 Starting game...');
-    ws.send(JSON.stringify({ type: 'startGame', roomID }));
-  });
-
-  ws.onerror = (err) => {
-    log(`❌ WebSocket error: ${err.message}`);
-  };
-
-  ws.onclose = () => {
-    log('🔌 WebSocket closed');
-  };
-</script>
-
+    ws.onclose = () => {
+      log('🔌 WebSocket closed');
+    };
+  </script>
 </body>
 </html>
