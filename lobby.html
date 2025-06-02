@@ -5,26 +5,49 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      background-color: #f4f4f9;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
+      background-color: #eef1f5;
       margin: 0;
+    }
+
+    .top-bar {
+      height: 10px;
+      width: 100%;
+      background-color: #ccc;
+      transition: background-color 0.5s;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+    }
+
+    .edit-btn {
+      padding: 5px 10px;
+      font-size: 14px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .room-code {
+      font-size: 14px;
+      color: #333;
     }
 
     .lobby-container {
       background-color: #fff;
-      padding: 30px;
+      padding: 20px;
       border-radius: 12px;
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
       width: 90%;
       max-width: 800px;
+      margin: auto;
+      margin-top: 20px;
       text-align: center;
-    }
-
-    h1 {
-      margin-bottom: 20px;
     }
 
     .player-cards {
@@ -59,14 +82,15 @@
       font-size: 16px;
       border: none;
       border-radius: 6px;
-      background-color: #4CAF50;
+      background-color: #28a745;
       color: white;
       cursor: pointer;
       margin-top: 10px;
     }
 
-    .start-btn:hover {
-      background-color: #45a049;
+    .start-btn:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
     }
 
     .log-section {
@@ -79,17 +103,101 @@
       font-size: 12px;
       text-align: left;
     }
+
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      display: none;
+    }
+
+    .alert-box {
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      width: 300px;
+      position: relative;
+    }
+
+    .alert-box h3 {
+      margin-top: 0;
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 15px;
+      background: none;
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    .radio-group {
+      margin: 10px 0;
+      text-align: left;
+    }
+
+    .radio-group label {
+      display: block;
+    }
+
+    .alert-btn {
+      display: block;
+      margin: 20px auto 0;
+      padding: 8px 20px;
+      font-size: 14px;
+      border: none;
+      border-radius: 6px;
+      background-color: #007bff;
+      color: white;
+      cursor: pointer;
+    }
+
+    .alert-btn:disabled {
+      background-color: #aaa;
+    }
   </style>
 </head>
 <body>
+  <div class="top-bar" id="topBar"></div>
+  <div class="header">
+    <button id="editBtn" class="edit-btn" style="display: none;">Edit</button>
+    <div class="room-code">Room Code: <span id="roomCodeDisplay"></span></div>
+  </div>
+
   <div class="lobby-container">
     <h1>Welcome to the Lobby</h1>
-
     <div class="player-cards" id="playerCards"></div>
-
-    <button class="start-btn" id="startBtn" style="display:none;">Start Game</button>
-
+    <button class="start-btn" id="startBtn" disabled>Start Game</button>
     <div class="log-section" id="logs"></div>
+  </div>
+
+  <div class="overlay" id="alertOverlay">
+    <div class="alert-box">
+      <button class="close-btn" id="closeAlert">&times;</button>
+      <h3>Select Game</h3>
+      <div class="radio-group" id="gameOptions">
+        <label><input type="radio" name="game" value="response"> Response Guesser</label>
+        <label><input type="radio" name="game" value="tambola"> Tambola Game</label>
+      </div>
+      <h3>Select Rounds</h3>
+      <div class="radio-group" id="roundOptions">
+        <label><input type="radio" name="rounds" value="3"> 3 Rounds</label>
+        <label><input type="radio" name="rounds" value="4"> 4 Rounds</label>
+        <label><input type="radio" name="rounds" value="5"> 5 Rounds</label>
+        <label><input type="radio" name="rounds" value="6"> 6 Rounds</label>
+        <label><input type="radio" name="rounds" value="7"> 7 Rounds</label>
+      </div>
+      <button class="alert-btn" id="alertOk" disabled>OK</button>
+    </div>
   </div>
 
   <script>
@@ -97,12 +205,23 @@
     const playerCardsContainer = document.getElementById('playerCards');
     const startBtn = document.getElementById('startBtn');
     const logsContainer = document.getElementById('logs');
+    const topBar = document.getElementById('topBar');
+    const editBtn = document.getElementById('editBtn');
+    const roomCodeDisplay = document.getElementById('roomCodeDisplay');
+    const overlay = document.getElementById('alertOverlay');
+    const alertOk = document.getElementById('alertOk');
+    const closeAlert = document.getElementById('closeAlert');
 
     const roomID = new URLSearchParams(window.location.search).get('roomid');
     const username = localStorage.getItem('username');
     const icon = localStorage.getItem('icon');
     const playerID = parseInt(localStorage.getItem('playerID'));
     const wscode = localStorage.getItem('wscode');
+
+    let gameSelection = null;
+    let roundSelection = null;
+
+    roomCodeDisplay.textContent = roomID;
 
     const log = (message, obj = null) => {
       const logElement = document.createElement('div');
@@ -129,6 +248,11 @@
       playerCardsContainer.replaceChild(card, playerCardsContainer.children[id]);
     };
 
+    const showTopBar = (color) => {
+      topBar.style.backgroundColor = color;
+      setTimeout(() => topBar.style.backgroundColor = '#ccc', 1000);
+    };
+
     ws.onopen = () => {
       log('✅ WebSocket connected');
 
@@ -150,6 +274,7 @@
 
       if (message.type === 'hostEntered') {
         startBtn.style.display = 'block';
+        editBtn.style.display = 'inline-block';
       }
 
       if (message.type === 'Ijoin') {
@@ -157,21 +282,40 @@
         addPlayerCard(username, iconURL, playerid);
       }
 
-      if (message.type === 'fullLobbyState') {
-        message.players.forEach(p => {
-          addPlayerCard(p.username, p.iconURL, p.playerid);
-        });
-      }
-
-      if (message.type === 'gameStarted') {
-        alert('🎮 Game is starting!');
-        // Redirect if needed: window.location.href = 'game.html?roomid=' + roomID;
+      if (message.type === 'someonejoin') {
+        const { username, iconURL, playerid } = message;
+        addPlayerCard(username, iconURL, playerid);
+        showTopBar('green');
       }
     };
 
     startBtn.addEventListener('click', () => {
       log('🚀 Starting game...');
       ws.send(JSON.stringify({ type: 'startGame', roomID }));
+    });
+
+    editBtn.addEventListener('click', () => {
+      overlay.style.display = 'flex';
+    });
+
+    closeAlert.addEventListener('click', () => {
+      overlay.style.display = 'none';
+    });
+
+    document.querySelectorAll('input[name="game"], input[name="rounds"]').forEach(el => {
+      el.addEventListener('change', () => {
+        const selectedGame = document.querySelector('input[name="game"]:checked');
+        const selectedRounds = document.querySelector('input[name="rounds"]:checked');
+        alertOk.disabled = !(selectedGame && selectedRounds);
+      });
+    });
+
+    alertOk.addEventListener('click', () => {
+      gameSelection = document.querySelector('input[name="game"]:checked').value;
+      roundSelection = document.querySelector('input[name="rounds"]:checked').value;
+      overlay.style.display = 'none';
+      log(`🎮 Game selected: ${gameSelection}, Rounds: ${roundSelection}`);
+      // Save or use these values as needed
     });
 
     ws.onerror = (err) => {
