@@ -46,7 +46,6 @@ wss.on('connection', (ws) => {
         const timeout = setTimeout(() => {
           const room = lobbies[roomID];
           if (!room) return;
-
           const hostWS = room.Players[0]?.ws;
           if (!hostWS || hostWS.readyState !== WebSocket.OPEN) {
             console.log('🧹 Deleting stale lobby:', roomID);
@@ -54,7 +53,7 @@ wss.on('connection', (ws) => {
           } else {
             console.log('⏳ Lobby still active (host connected):', roomID);
           }
-        }, 10000); // 10 sec
+        }, 10000); // 10 sec timeout for inactive host
 
         lobbies[roomID] = {
           HostWS: ws,
@@ -128,16 +127,14 @@ wss.on('connection', (ws) => {
           console.log('❌ PlayerID not found in lobby:', playerID);
           return;
         }
-        console.log('✅ PlayerID found:', playerID);
 
         if (player.wscode !== wscode) {
           console.log('❌ WSCODE mismatch. Expected:', player.wscode, 'Got:', wscode);
           return;
         }
-        console.log('✅ WSCODE matched:', wscode);
 
         player.ws = ws;
-        console.log(`🔄 Updating WS for ${username} (ID: ${playerID})`);
+        console.log(`🔄 WS updated for ${username} (ID: ${playerID})`);
 
         if (playerID === 0) {
           lobby.HostWS = ws;
@@ -146,22 +143,38 @@ wss.on('connection', (ws) => {
           console.log('🧑‍✈️ Host entered lobby');
         }
 
-        // Broadcast player info to others
-        lobby.Players.forEach(p1 => {
-          lobby.Players.forEach(p2 => {
-            if (p1.playerID !== p2.playerID && p1.ws.readyState === WebSocket.OPEN) {
-              try {
-                p1.ws.send(JSON.stringify({
-                  type: 'Ijoin',
-                  username: p2.username,
-                  iconURL: p2.iconURL,
-                  playerid: p2.playerID
-                }));
-              } catch (err) {
-                console.log('⚠️ Broadcast failed to player', p1.playerID);
-              }
+        // 🔊 Notify all existing players of the new join
+        lobby.Players.forEach(p => {
+          if (p.playerID !== playerID && p.ws.readyState === WebSocket.OPEN) {
+            try {
+              p.ws.send(JSON.stringify({
+                type: 'someonejoin',
+                username,
+                iconURL,
+                playerid: playerID
+              }));
+              console.log(`📣 Sent someonejoin to ${p.username}`);
+            } catch (err) {
+              console.log('⚠️ Failed someonejoin for player', p.playerID);
             }
-          });
+          }
+        });
+
+        // 🔁 Send all existing players (including self) to the newly joined player
+        lobby.Players.forEach(p => {
+          if (ws.readyState === WebSocket.OPEN) {
+            try {
+              ws.send(JSON.stringify({
+                type: 'Ijoin',
+                username: p.username,
+                iconURL: p.iconURL,
+                playerid: p.playerID
+              }));
+              console.log(`📦 Sent Ijoin (playerID ${p.playerID}) to new user`);
+            } catch (err) {
+              console.log('⚠️ Failed Ijoin to joining player');
+            }
+          }
         });
       }
 
@@ -172,9 +185,11 @@ wss.on('connection', (ws) => {
 
   ws.on('close', () => {
     console.log('🔌 WebSocket disconnected');
+    // TODO: Remove player from lobbies and notify others (optional enhancement)
   });
 });
 
 server.listen(PORT, () => {
   console.log(`🚀 Server running on PORT ${PORT}`);
 });
+s
