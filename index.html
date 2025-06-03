@@ -1,1 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BINGO GAMES</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to bottom, #d7e1ec, #f9f9f9);
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    header {
+      text-align: center;
+      padding: 30px 10px 10px;
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #333;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .top-bar {
+      width: 100%;
+      background-color: #fff;
+      display: flex;
+      align-items: center;
+      padding: 10px 20px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      position: relative;
+      z-index: 10;
+    }
+
+    .search-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-left: auto;
+    }
+
+    .search-container img {
+      width: 30px;
+      height: 30px;
+      cursor: pointer;
+    }
+
+    #searchInput {
+      display: none;
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      outline: none;
+      font-size: 1rem;
+      width: 200px;
+      transition: all 0.3s ease-in-out;
+    }
+
+    .games-section {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 20px;
+      padding: 30px;
+      max-width: 1000px;
+      margin: auto;
+    }
+
+    .game-card {
+      background-color: #fff;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      text-align: center;
+      cursor: pointer;
+      transition: transform 0.2s ease-in-out, box-shadow 0.3s;
+      border: 3px solid transparent;
+      animation: pulseBorder 3s infinite ease-in-out;
+    }
+
+    .game-card:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    }
+
+    .game-card img {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+    }
+
+    .game-card p {
+      margin: 10px 0;
+      font-size: 1rem;
+      font-weight: bold;
+    }
+
+    @keyframes pulseBorder {
+      0% { border-color: #ff7eb3; }
+      33% { border-color: #70c1b3; }
+      66% { border-color: #ffb347; }
+      100% { border-color: #ff7eb3; }
+    }
+
+    .steam {
+      position: absolute;
+      width: 20px;
+      height: 80px;
+      background: radial-gradient(white, transparent);
+      opacity: 0.4;
+      animation: steamMove 6s infinite linear;
+    }
+
+    @keyframes steamMove {
+      0% { transform: translateY(100vh) scale(1); opacity: 0.4; }
+      100% { transform: translateY(-100vh) scale(0.8); opacity: 0; }
+    }
+
+    @media (max-width: 600px) {
+      header {
+        font-size: 2rem;
+      }
+      .top-bar {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .search-container {
+        margin-left: 0;
+        margin-top: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>BINGO GAMES</header>
+
+  <div class="top-bar">
+    <div class="search-container">
+      <img src="search.jpg" alt="Search" onclick="toggleSearch()">
+      <input type="text" id="searchInput" oninput="filterGames()" placeholder="Search games...">
+    </div>
+  </div>
+
+  <div class="games-section" id="gamesList">
+    <div class="game-card" data-name="response guesser" onclick="goToGame('response-guesser')">
+      <img src="respguesser.jpg" alt="Response Guesser">
+      <p>Response Guesser</p>
+    </div>
+    <div class="game-card" data-name="tambola" onclick="goToGame('tambola')">
+      <img src="tambola.jpg" alt="Tambola">
+      <p>Tambola</p>
+    </div>
+  </div>
+
+  <!-- Steam effects -->
+  <script>
+    for (let i = 0; i < 10; i++) {
+      const steam = document.createElement('div');
+      steam.classList.add('steam');
+      steam.style.left = Math.random() * window.innerWidth + 'px';
+      steam.style.animationDuration = (4 + Math.random() * 4) + 's';
+      document.body.appendChild(steam);
+    }
+  </script>
+
+  <script>
+    function toggleSearch() {
+      const input = document.getElementById('searchInput');
+      input.style.display = input.style.display === 'none' ? 'inline-block' : 'none';
+      if (input.style.display !== 'none') input.focus();
+    }
+
+    function filterGames() {
+      const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+      const games = document.querySelectorAll('.game-card');
+      games.forEach(card => {
+        const name = card.dataset.name.toLowerCase();
+        card.style.display = name.includes(searchTerm) ? 'block' : 'none';
+      });
+    }
+
+    function goToGame(gameName) {
+      localStorage.setItem('selectedGame', gameName);
+      window.location.href = 'create-profile.html';
+    }
+  </script>
+</body>
+</html>
 
