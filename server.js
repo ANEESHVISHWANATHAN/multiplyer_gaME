@@ -24,8 +24,8 @@ function generateWSCODE() {
 
 const serveFile = (file) => (req, res) => res.sendFile(path.join(__dirname, file));
 
-app.get('/', serveFile('entry.html'));
-app.get('/entry.html', serveFile('entry.html'));
+app.get('/', serveFile('index.html'));
+
 app.get('/hstdet.html', serveFile('hstdet.html'));
 app.get('/plyrdet.html', serveFile('plyrdet.html'));
 app.get('/lobby.html', serveFile('lobby.html'));
