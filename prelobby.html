@@ -1,1 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Pre-Lobby</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #2b5876, #4e4376);
+      color: #fff;
+      overflow-x: hidden;
+    }
+    .container {
+      max-width: 500px;
+      margin: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      min-height: 100vh;
+      justify-content: center;
+    }
+    h1 {
+      margin-bottom: 30px;
+      position: relative;
+      text-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+    }
+    .back-btn {
+      position: absolute;
+      left: 10px;
+      top: 20px;
+      background: #ff7e5f;
+      border: none;
+      color: white;
+      padding: 10px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .action-section {
+      margin: 20px 0;
+      width: 100%;
+    }
+    button {
+      width: 100%;
+      padding: 15px;
+      font-size: 1.2rem;
+      border-radius: 12px;
+      margin-top: 10px;
+      border: none;
+      background: #16a085;
+      color: white;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    button:disabled {
+      background: #7f8c8d;
+      cursor: not-allowed;
+    }
+    .range-container, .roomid-container {
+      margin-top: 15px;
+      transition: all 0.5s ease;
+      width: 100%;
+    }
+    input[type=range] {
+      width: 100%;
+    }
+    input[type=text] {
+      padding: 10px;
+      width: 100%;
+      font-size: 1rem;
+      border-radius: 8px;
+      border: none;
+      margin-top: 10px;
+    }
+    .highlight {
+      font-size: 1.5rem;
+      margin-top: 10px;
+      color: #f1c40f;
+    }
+    .error-message {
+      color: #ff4d4d;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <button class="back-btn" onclick="window.location.href='profile.html'">Back</button>
+  <div class="container">
+    <h1>Pre-Lobby</h1>
 
+    <div class="action-section">
+      <button id="createBtn" onclick="startCreate()">Create</button>
+      <div class="range-container" id="rangeWrap" style="display: none;">
+        <input type="range" id="roundsRange" min="3" max="7" value="3">
+        <div class="highlight">Rounds: <span id="roundsValue">3</span></div>
+        <button id="okBtn" onclick="lockRounds()" disabled>OK</button>
+      </div>
+    </div>
+
+    <div class="action-section">
+      <button id="joinBtn" onclick="startJoin()">Join</button>
+      <div class="roomid-container" id="roomInputWrap" style="display: none;">
+        <input type="text" id="roomIdInput" placeholder="Enter Room ID" oninput="validateRoomId()">
+        <button id="joinFinalBtn" onclick="submitJoin()" disabled>Join Room</button>
+      </div>
+    </div>
+
+    <div id="errorMessage" class="error-message"></div>
+  </div>
+
+  <script>
+    let selectedRounds = null;
+    let creating = false;
+
+    const socket = new WebSocket('wss://bingo-l95v.onrender.com');
+
+    function startCreate() {
+      document.getElementById('createBtn').disabled = true;
+      document.getElementById('rangeWrap').style.display = 'block';
+    }
+
+    document.getElementById('roundsRange').addEventListener('input', (e) => {
+      const val = e.target.value;
+      document.getElementById('roundsValue').innerText = val;
+      document.getElementById('okBtn').disabled = false;
+    });
+
+    function lockRounds() {
+      selectedRounds = document.getElementById('roundsRange').value;
+      document.getElementById('okBtn').innerText = 'Unlock';
+      document.getElementById('okBtn').onclick = unlockRounds;
+      document.getElementById('createBtn').disabled = false;
+      document.getElementById('roundsRange').disabled = true;
+    }
+
+    function unlockRounds() {
+      document.getElementById('okBtn').innerText = 'OK';
+      document.getElementById('okBtn').disabled = true;
+      document.getElementById('okBtn').onclick = lockRounds;
+      document.getElementById('createBtn').disabled = true;
+      document.getElementById('roundsRange').disabled = false;
+      selectedRounds = null;
+    }
+
+    document.getElementById('createBtn').addEventListener('click', () => {
+      if (!selectedRounds) {
+        showError('Please select number of rounds.');
+        return;
+      }
+
+      const username = localStorage.getItem('username');
+      const icon = localStorage.getItem('icon');
+      const game = localStorage.getItem('selectedGame');
+
+      socket.send(JSON.stringify({
+        type: 'createlobby',
+        username,
+        icon,
+        game,
+        round: selectedRounds
+      }));
+    });
+
+    function startJoin() {
+      document.getElementById('joinBtn').disabled = true;
+      document.getElementById('roomInputWrap').style.display = 'block';
+    }
+
+    function validateRoomId() {
+      const val = document.getElementById('roomIdInput').value.trim();
+      document.getElementById('joinFinalBtn').disabled = val === '';
+    }
+
+    function submitJoin() {
+      const roomid = document.getElementById('roomIdInput').value.trim();
+      if (!roomid) return;
+
+      const username = localStorage.getItem('username');
+      const icon = localStorage.getItem('icon');
+      const game = localStorage.getItem('selectedGame');
+
+      socket.send(JSON.stringify({
+        type: 'joinlobby',
+        username,
+        icon,
+        roomid,
+        game
+      }));
+    }
+
+    function showError(message) {
+      document.getElementById('errorMessage').innerText = message;
+    }
+
+    socket.addEventListener('message', (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'lobbycreated') {
+        localStorage.setItem('playerid', data.plyrid);
+        localStorage.setItem('roomid', data.roomid);
+        localStorage.setItem('wscode', data.wscode);
+        window.location.href = `https://bingo-l95v.onrender.com/lobby.html/?roomid=${data.roomid}`;
+      } else if (data.type === 'lobbycreationfailed') {
+        showError('Room failed to create.');
+      } else if (data.type === 'lobbyjoined') {
+        localStorage.setItem('playerid', data.plyrid);
+        localStorage.setItem('roomid', document.getElementById('roomIdInput').value.trim());
+        localStorage.setItem('wscode', data.wscode);
+        localStorage.setItem('round', data.round);
+        window.location.href = `https://bingo-l95v.onrender.com/lobby.html/?roomid=${data.roomid}`;
+      } else if (data.type === 'nohostin') {
+        showError('Host not found.');
+      } else if (data.type === 'roomnot') {
+        showError('Room not found.');
+      }
+    });
+  </script>
+</body>
+</html>
