@@ -1,6 +1,6 @@
 
-const express = require("express");
-const path = require('path');
+    const express = require("express");
+const path = require("path");
 const PDFDocument = require("pdfkit");
 const cors = require("cors");
 
@@ -12,9 +12,10 @@ app.use(express.json());
 
 const dirname = process.cwd();
 
-app.get('/',(req, res) =>{
-    res.status(200).sendFile(path.join(dirname, "index.html");
+app.get("/", (req, res) => {
+    res.status(200).sendFile(path.join(dirname, "index.html"));
 });
+
 // Dummy dataset
 const resumeData = {
     Name: "John Doe",
