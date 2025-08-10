@@ -31,27 +31,34 @@
 const btn = document.getElementById("action-btn");
 
 btn.addEventListener("click", async () => {
-    // Change button text while waiting
     btn.disabled = true;
     btn.innerText = "Generating...";
+    console.log("📤 Requesting PDF from /generate-pdf");
 
     try {
-        const res = await fetch("http://localhost:3000/generate-pdf");
-        if (!res.ok) throw new Error("Failed to generate PDF");
+        const res = await fetch("/generate-pdf"); // relative path
+        console.log("📥 Response status:", res.status);
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const blob = await res.blob();
+        console.log("✅ PDF Blob size:", blob.size);
+
         const url = URL.createObjectURL(blob);
 
-        // Change button into download button
         btn.innerText = "Download PDF";
         btn.disabled = false;
         btn.onclick = () => {
+            console.log("⬇️ Downloading PDF...");
             const a = document.createElement("a");
             a.href = url;
             a.download = "resume.pdf";
+            document.body.appendChild(a);
             a.click();
+            document.body.removeChild(a);
         };
     } catch (err) {
+        console.error("❌ Error generating PDF:", err);
         alert("Error generating PDF: " + err.message);
         btn.innerText = "Generate PDF";
         btn.disabled = false;
@@ -61,7 +68,3 @@ btn.addEventListener("click", async () => {
 
 </body>
 </html>
-
-
-
-
