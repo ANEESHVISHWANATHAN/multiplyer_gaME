@@ -1,4 +1,3 @@
-
 const express = require("express");
 const path = require("path");
 const PDFDocument = require("pdfkit");
@@ -7,13 +6,25 @@ const cors = require("cors");
 const app = express();
 const port = 3000;
 
-app.use(cors()); // allow frontend requests
+app.use(cors());
 app.use(express.json());
 
 const dirname = process.cwd();
 
+console.log("📂 Project root directory:", dirname);
+
 app.get("/", (req, res) => {
-    res.status(200).sendFile(path.join(dirname, "index.html"));
+    console.log("📥 [GET /] Serving index.html");
+    const filePath = path.join(dirname, "index.html");
+    console.log("📄 File path:", filePath);
+    res.status(200).sendFile(filePath, (err) => {
+        if (err) {
+            console.error("❌ Error sending index.html:", err);
+            res.status(500).send("Failed to load index.html");
+        } else {
+            console.log("✅ index.html served successfully");
+        }
+    });
 });
 
 // Dummy dataset
@@ -27,21 +38,36 @@ const resumeData = {
 
 // Route to generate PDF and send it back
 app.get("/generate-pdf", (req, res) => {
-    const doc = new PDFDocument();
+    console.log("📥 [GET /generate-pdf] Request received");
 
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", "inline; filename=resume.pdf");
+    try {
+        const doc = new PDFDocument();
 
-    doc.fontSize(24).text("Resume", { align: "center" });
-    doc.moveDown();
+        // Log headers being sent
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", "inline; filename=resume.pdf");
+        console.log("📄 PDF headers set");
 
-    for (const [key, value] of Object.entries(resumeData)) {
-        doc.fontSize(14).text(`${key}: ${value}`);
-        doc.moveDown(0.5);
+        // Write PDF content
+        console.log("🖨 Writing PDF content...");
+        doc.fontSize(24).text("Resume", { align: "center" });
+        doc.moveDown();
+
+        for (const [key, value] of Object.entries(resumeData)) {
+            console.log(`✏ Adding: ${key} = ${value}`);
+            doc.fontSize(14).text(`${key}: ${value}`);
+            doc.moveDown(0.5);
+        }
+
+        // Finalize and send
+        doc.pipe(res);
+        doc.end();
+        console.log("✅ PDF generated and sent to client");
+
+    } catch (err) {
+        console.error("❌ Error generating PDF:", err);
+        res.status(500).send("Failed to generate PDF");
     }
-
-    doc.end();
-    doc.pipe(res);
 });
 
 app.listen(port, () => {
