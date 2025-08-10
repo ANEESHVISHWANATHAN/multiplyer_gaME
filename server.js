@@ -1,6 +1,6 @@
-import 'path' from path;
-const express = require("express");
 
+const express = require("express");
+const path = require('path');
 const PDFDocument = require("pdfkit");
 const cors = require("cors");
 
