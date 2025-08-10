@@ -1,4 +1,6 @@
+import 'path' from path;
 const express = require("express");
+
 const PDFDocument = require("pdfkit");
 const cors = require("cors");
 
@@ -8,6 +10,11 @@ const port = 3000;
 app.use(cors()); // allow frontend requests
 app.use(express.json());
 
+const dirname = process.cwd();
+
+app.get('/',(req, res) =>{
+    res.status(200).sendFile(path.join(dirname, "index.html");
+});
 // Dummy dataset
 const resumeData = {
     Name: "John Doe",
