@@ -6,7 +6,7 @@ const fs = require("fs");
 
 const app = express();
 app.use(bodyParser.json({ limit: "50mb" }));
-
+app.get("/", (req, res) => res.sendFile(__dirname + "/index.html"));
 // Utility: % -> absolute
 function pct(value, total) {
   if (!value) return 0;
