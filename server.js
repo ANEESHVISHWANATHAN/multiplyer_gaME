@@ -1,66 +1,21 @@
-        const express = require("express");
+ const express = require("express");
 const bodyParser = require("body-parser");
 const PDFDocument = require("pdfkit");
+const fetch = require("node-fetch"); // to fetch blob URLs if needed
 const fs = require("fs");
-const fetch = require("node-fetch");
 
 const app = express();
 app.use(bodyParser.json({ limit: "50mb" }));
-app.get("/", (req, res) => res.sendFile(__dirname + "/index.html"));
-// ---------- Font Map ----------
-const fontMap = {
-  Arial: {
-    normal: "fonts/Arial.ttf",
-    bold: "fonts/Arial-Bold.ttf",
-    italic: "fonts/Arial-Italic.ttf",
-    bolditalic: "fonts/Arial-BoldItalic.ttf",
-  },
-  Times: {
-    normal: "fonts/Times.ttf",
-    bold: "fonts/Times-Bold.ttf",
-    italic: "fonts/Times-Italic.ttf",
-    bolditalic: "fonts/Times-BoldItalic.ttf",
-  },
-  Verdana: {
-    normal: "fonts/Verdana.ttf",
-    bold: "fonts/Verdana-Bold.ttf",
-    italic: "fonts/Verdana-Italic.ttf",
-    bolditalic: "fonts/Verdana-BoldItalic.ttf",
-  },
-  Default: {
-    normal: "fonts/Arial.ttf",
-    bold: "fonts/Arial-Bold.ttf",
-    italic: "fonts/Arial-Italic.ttf",
-    bolditalic: "fonts/Arial-BoldItalic.ttf",
-  },
-};
 
-// ---------- Helper ----------
+// Utility: % -> absolute
 function pct(value, total) {
   if (!value) return 0;
   return parseFloat(value) / 100 * total;
 }
 
-function pickFont(fontFamily, weight, style) {
-  let base = "Default";
-  if (fontFamily) {
-    if (/arial/i.test(fontFamily)) base = "Arial";
-    else if (/times/i.test(fontFamily)) base = "Times";
-    else if (/verdana/i.test(fontFamily)) base = "Verdana";
-  }
-  const isBold = weight === "bold";
-  const isItalic = style === "italic";
-  if (isBold && isItalic) return fontMap[base].bolditalic;
-  if (isBold) return fontMap[base].bold;
-  if (isItalic) return fontMap[base].italic;
-  return fontMap[base].normal;
-}
-
-// ---------- Route ----------
 app.post("/makepdf", async (req, res) => {
   try {
     const elements = req.body;
-
     const doc = new PDFDocument({ size: "A4", margin: 0 });
     let buffers = [];
     doc.on("data", buffers.push.bind(buffers));
@@ -78,14 +33,27 @@ app.post("/makepdf", async (req, res) => {
       if (el.type === "label") {
         const x = pct(el.left, pageW);
         const y = pct(el.top, pageH);
-        const size = parseInt(el.fontSize) || 14;
 
-        const fontPath = pickFont(el.fontFamily, el.fontWeight, el.fontStyle);
-        doc.font(fontPath).fontSize(size).fillColor(el.color || "#000");
+        let size = parseInt(el.fontSize) || 12;
+        doc.fontSize(size);
 
-        doc.text(el.text, x, y, {
-          underline: el.textDecoration === "underline",
-        });
+        // font family mapping
+        try {
+          doc.font(el.fontFamily.includes("Courier") ? "Courier" : "Helvetica");
+        } catch {
+          doc.font("Helvetica");
+        }
+
+        // style
+        const opts = { underline: el.textDecoration === "underline" };
+        doc.fillColor(el.color || "#000");
+
+        // bold / italic simulation
+        let text = el.text;
+        if (el.fontWeight === "bold") text = text; // PDFKit doesn't directly bold, would need font file
+        if (el.fontStyle === "italic") text = text;
+
+        doc.text(text, x, y, opts);
 
       } else if (el.type === "img") {
         const x = pct(el.left, pageW);
@@ -95,6 +63,7 @@ app.post("/makepdf", async (req, res) => {
 
         let imgData = null;
         if (el.src.startsWith("data:image")) {
+          // base64
           const base64 = el.src.split(",")[1];
           imgData = Buffer.from(base64, "base64");
         } else if (el.src.startsWith("http")) {
