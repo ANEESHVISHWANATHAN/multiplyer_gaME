@@ -6,7 +6,7 @@ const fetch = require("node-fetch");
 
 const app = express();
 app.use(bodyParser.json({ limit: "50mb" }));
-
+app.get("/", (req, res) => res.sendFile(__dirname + "/index.html"));
 // ---------- Font Map ----------
 const fontMap = {
   Arial: {
