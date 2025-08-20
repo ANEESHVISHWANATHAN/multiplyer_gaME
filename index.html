@@ -1,70 +1,524 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<title>Resume PDF Generator</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+<title>Editor</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto&family=Courier+Prime&family=Pacifico&display=swap" rel="stylesheet">
 <style>
-    body {
-        font-family: Arial, sans-serif;
-        text-align: center;
-        margin-top: 50px;
-    }
-    .btn {
-        padding: 12px 25px;
-        background-color: #6c63ff;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        font-size: 16px;
-        cursor: pointer;
-    }
-    .btn:hover {
-        background-color: #5a54d1;
-    }
+:root { --handle-size:14px; }
+
+body {
+  margin:0;
+  font-family:system-ui,sans-serif;
+  background:#f5f5f5;
+  display:flex;
+  flex-direction:column;
+  min-height:100vh;
+}
+
+/* ---------------- Canvas ---------------- */
+#canvas {
+  position:absolute;
+  top:10%;
+  left:5%;
+  width:90%;
+  height:auto;
+  aspect-ratio:1/1.414;
+  background:#fff;
+  border:2px solid #999;
+  margin:16px auto;
+  overflow:hidden;
+  touch-action:none;
+}
+
+/* ---------------- Image Box ---------------- */
+.img-box {
+  position:absolute;
+  left:10%; top:10%;
+  width:40%; height:40%;
+  user-select:none;
+}
+.img-box img {
+  position:absolute; inset:0;
+  width:100%; height:100%;
+  object-fit:fill;
+  pointer-events:none;
+}
+.img-box.selected { border:2px dotted #000; }
+.handle {
+  position:absolute;
+  width:var(--handle-size); height:var(--handle-size);
+  background:#fff; border:2px solid #333;
+  border-radius:50%; display:none;
+  align-items:center; justify-content:center;
+  box-shadow:0 1px 4px rgba(0,0,0,0.25);
+  z-index:50; font-size:10px;
+}
+.img-box.selected .handle { display:flex; }
+.handle.top { top:0; left:50%; transform:translate(-50%,-50%); cursor:n-resize; }
+.handle.bottom { bottom:0; left:50%; transform:translate(-50%,50%); cursor:s-resize; }
+.handle.left { left:0; top:50%; transform:translate(-50%,-50%); cursor:w-resize; }
+.handle.right { right:0; top:50%; transform:translate(50%,-50%); cursor:e-resize; }
+.handle.top::before { content:"↑"; }
+.handle.bottom::before { content:"↓"; }
+.handle.left::before { content:"←"; }
+.handle.right::before { content:"→"; }
+
+/* ---------------- Label Box ---------------- */
+.label-box {
+  position:absolute;
+  user-select:none;
+  cursor:move;
+  display:inline-block;
+}
+.label-box.selected { outline:2px dotted #000; }
+.label-text { pointer-events:auto; }
+.font-handle {
+  position:absolute; top:-8px; right:-8px;
+  width:var(--handle-size); height:var(--handle-size);
+  background:#fff; border:2px solid #333; border-radius:50%;
+  display:none; align-items:center; justify-content:center;
+  z-index:60; font-size:12px; cursor:nwse-resize;
+}
+.label-box.selected .font-handle { display:flex; }
+.font-handle::before { content:"A"; }
+
+/* ---------------- Control Buttons ---------------- */
+.control-btn {
+  position:absolute; width:20px; height:20px;
+  background:#fff; border-radius:50%;
+  display:none; align-items:center; justify-content:center;
+  box-shadow:0 1px 4px rgba(0,0,0,0.25);
+  cursor:pointer; z-index:70;
+}
+.selected .control-btn { display:flex; }
+.delete-btn { top:-10px; left:-10px; }
+
+/* ---------------- Bottom Bar ---------------- */
+#bottom-bar {
+  position:fixed; bottom:0; left:0; right:0;
+  height:15%; background:#fff; border-top:1px solid #ccc;
+  display:flex; align-items:center; justify-content:center;
+}
+.icon {
+  position:absolute; text-align:center;
+}
+.icon img { width:100%; height:auto; }
+.icon span { display:block; font-size:12px; }
+
+/* ----- Fonts Dropdown ----- */
+#fontDropdown {
+  position: absolute;
+  bottom: 20%;
+  left: 35%;
+  width: 30%;
+  height: 50%;
+  background: #f8f8f8;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.15);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+  overflow-y: auto;
+  display: none;
+  z-index: 20;
+  padding: 5px;
+}
+.font-item {
+  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+/* ----- Color Picker ----- */
+#colorPicker {
+  position: absolute;
+  bottom: 20%;
+  left: 10%;
+  width: 80%;
+  max-height: 200px;
+  background: #f8f8f8;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.15);
+  overflow-y: auto;
+  z-index: 25;
+  display: none;
+  grid-template-columns: repeat(5, 1fr);
+  grid-gap: 4px;
+  padding: 5px;
+  display:grid;
+}
+.color-swatch {
+  width: 100%;
+  padding-bottom: 100%;
+  border-radius: 4px;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
 </style>
 </head>
 <body>
-
-    <button id="action-btn" class="btn">Generate PDF</button>
-
+  <div id="canvas"></div>
+  <div id="bottom-bar"></div>
+  <div id="fontDropdown"></div>
+  <div id="colorPicker"></div>
+  <input id="pickImage" type="file" accept="image/*" style="display:none;" />
+<button id="downloadBtn" style="
+  position:absolute; 
+  top:2%; 
+  right:5%; 
+  z-index:100; 
+  padding:6px 12px; 
+  border:none; 
+  border-radius:6px; 
+  background:#007bff; 
+  color:#fff; 
+  font-size:14px;
+  cursor:pointer;
+">Download</button>
 <script>
-const btn = document.getElementById("action-btn");
+(() => {
+  const canvas = document.getElementById('canvas');
+  const pickImage = document.getElementById('pickImage');
+  const bottomBar = document.getElementById('bottom-bar');
+  const fontDropdown = document.getElementById('fontDropdown');
+  const colorPicker = document.getElementById('colorPicker');
+// ----- Download Button -----
+  document.getElementById("downloadBtn").onclick = async () => {
+    const elements = [];
+    const boxes = canvas.querySelectorAll(".label-box, .img-box");
 
-btn.addEventListener("click", async () => {
-    btn.disabled = true;
-    btn.innerText = "Generating...";
-    console.log("📤 Requesting PDF from /generate-pdf");
+    boxes.forEach(box => {
+      if (box.dataset.type === "label") {
+        const lbl = box.querySelector(".label-text");
+        elements.push({
+          id: box.id,
+          type: "label",
+          text: lbl.innerText,
+          fontSize: lbl.style.fontSize,
+          fontFamily: lbl.style.fontFamily,
+          color: lbl.style.color,
+          fontWeight: lbl.style.fontWeight,
+          fontStyle: lbl.style.fontStyle,
+          textDecoration: lbl.style.textDecoration,
+          left: box.style.left,
+          top: box.style.top,
+          width: box.style.width,
+          height: box.style.height
+        });
+      } else if (box.dataset.type === "img") {
+        const img = box.querySelector("img");
+        elements.push({
+          id: box.id,
+          type: "img",
+          src: img.src,
+          left: box.style.left,
+          top: box.style.top,
+          width: box.style.width,
+          height: box.style.height,
+          border: img.style.border,
+          borderColor: box.style.borderColor
+        });
+      }
+    });
 
-    try {
-        const res = await fetch("/generate-pdf"); // relative path
-        console.log("📥 Response status:", res.status);
+    console.log("Exporting:", elements);
 
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const res = await fetch("/makepdf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(elements)
+    });
 
-        const blob = await res.blob();
-        console.log("✅ PDF Blob size:", blob.size);
-
-        const url = URL.createObjectURL(blob);
-
-        btn.innerText = "Download PDF";
-        btn.disabled = false;
-        btn.onclick = () => {
-            console.log("⬇️ Downloading PDF...");
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "resume.pdf";
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        };
-    } catch (err) {
-        console.error("❌ Error generating PDF:", err);
-        alert("Error generating PDF: " + err.message);
-        btn.innerText = "Generate PDF";
-        btn.disabled = false;
+    if (res.ok) {
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "output.pdf";
+      a.click();
+      URL.revokeObjectURL(url);
+    } else {
+      alert("PDF generation failed");
     }
-});
-</script>
+  };
+  let selected = null, action = null, side = null, start = {};
+  let texts = 0, imgs = 0;
+  window.selectedElement = null;
 
+  const pxToPctX = px => px / canvas.clientWidth * 100;
+  const pxToPctY = px => px / canvas.clientHeight * 100;
+
+  function deselect() {
+    if(selected){ selected.classList.remove('selected'); selected = null; window.selectedElement=null; action=null; side=null; createDefaultIcons();}
+  }
+
+  function select(box) {
+    deselect();
+    selected = box;
+    selected.classList.add('selected');
+    window.selectedElement = box;
+    if(box.dataset.type==='label') showTextTools();
+    else if(box.dataset.type==='img') showImageTools();
+  }
+
+  function closeFontDropdown(){ fontDropdown.style.display='none'; }
+  function closeColorPicker(){ colorPicker.style.display='none'; }
+
+  function addControls(box) {
+    const del = document.createElement('div');
+    del.className = "control-btn delete-btn";
+    del.innerHTML = `<img src="delete.png" style="width:70%;height:70%">`;
+    del.onclick = e => { e.stopPropagation(); box.remove(); deselect(); };
+    box.appendChild(del);
+
+    if(box.dataset.type === "label"){
+      const text = box.querySelector('.label-text');
+      text.contentEditable = "true"; text.spellcheck = false;
+      text.addEventListener("pointerdown", () => select(box));
+    }
+  }
+
+  function createImgBox(url) {
+    const box = document.createElement('div'); box.className = "img-box"; box.dataset.type = "img"; box.id = "i" + (++imgs);
+    const img = document.createElement('img'); img.src = url; box.appendChild(img);
+    addControls(box);
+
+    ['top','right','bottom','left'].forEach(pos => {
+      const h = document.createElement('div'); h.className = `handle ${pos}`;
+      h.onpointerdown = e => { e.preventDefault(); e.stopPropagation(); select(box); action='resize'; side=pos;
+        const r=box.getBoundingClientRect(), c=canvas.getBoundingClientRect();
+        start={x:e.clientX,y:e.clientY,left:r.left-c.left,top:r.top-c.top,width:r.width,height:r.height};
+        h.setPointerCapture?.(e.pointerId);
+      };
+      h.onpointerup = e => { h.releasePointerCapture?.(e.pointerId); action=null; };
+      box.appendChild(h);
+    });
+
+    box.onpointerdown = e => {
+      if(e.target.classList.contains('control-btn')||e.target.classList.contains('handle')) return;
+      e.stopPropagation(); select(box); action='drag';
+      const r=box.getBoundingClientRect(), c=canvas.getBoundingClientRect();
+      start={x:e.clientX,y:e.clientY,left:r.left-c.left,top:r.top-c.top,width:r.width,height:r.height};
+      box.setPointerCapture?.(e.pointerId);
+    };
+
+    img.onload = ()=>{
+      const cw=canvas.clientWidth, ch=canvas.clientHeight;
+      const ratio=img.naturalWidth/img.naturalHeight||1;
+      let w=cw*0.3, h=w/ratio;
+      box.style.width=pxToPctX(w)+"%"; box.style.height=pxToPctY(h)+"%";
+      box.style.left=pxToPctX((cw-w)/2)+"%"; box.style.top=pxToPctY((ch-h)/2)+"%";
+      select(box);
+    };
+
+    canvas.appendChild(box);
+  }
+
+  function createLabel(text,size){
+    const box=document.createElement('div'); box.className="label-box"; box.dataset.type="label"; box.id="l"+(++texts);
+    const lbl=document.createElement('div'); lbl.className="label-text"; lbl.innerText=text; lbl.style.fontSize=size+"px";
+    box.appendChild(lbl);
+    const h=document.createElement('div'); h.className="font-handle";
+    h.onpointerdown=e=>{e.preventDefault(); e.stopPropagation(); select(box); action='font-resize'; start={x:e.clientX,fs:parseInt(lbl.style.fontSize)}; h.setPointerCapture?.(e.pointerId);};
+    h.onpointerup=e=>{h.releasePointerCapture?.(e.pointerId); action=null;};
+    box.appendChild(h);
+
+    box.style.left="20%"; box.style.top="20%";
+    box.onpointerdown=e=>{ if(e.target.classList.contains('font-handle')||e.target.classList.contains('control-btn'))return;
+      e.stopPropagation(); select(box); action='drag-label';
+      const r=box.getBoundingClientRect(), c=canvas.getBoundingClientRect();
+      start={x:e.clientX,y:e.clientY,left:r.left-c.left,top:r.top-c.top}; box.setPointerCapture?.(e.pointerId);
+    };
+    addControls(box); canvas.appendChild(box); select(box);
+  }
+
+  document.onpointermove = e=>{
+    if(!selected||!action)return;
+    const dx=e.clientX-start.x, dy=e.clientY-start.y;
+    const c=canvas.getBoundingClientRect();
+    const minW=30,minH=20;
+
+    if(action==='drag'){
+      let l=start.left+dx,t=start.top+dy;
+      l=Math.max(0,Math.min(l,c.width-start.width)); t=Math.max(0,Math.min(t,c.height-start.height));
+      selected.style.left=(l/c.width*100)+'%'; selected.style.top=(t/c.height*100)+'%';
+    } else if(action==='drag-label'){
+      let l=start.left+dx,t=start.top+dy;
+      l=Math.max(0,Math.min(l,c.width-10)); t=Math.max(0,Math.min(t,c.height-10));
+      selected.style.left=(l/c.width*100)+'%'; selected.style.top=(t/c.height*100)+'%';
+    } else if(action==='resize'){
+      let nl=start.left,nt=start.top,nw=start.width,nh=start.height;
+      if(side==='right'){nw=Math.max(minW,Math.min(start.width+dx,c.width-start.left));}
+      if(side==='left'){let tl=start.left+dx, tw=start.width-dx; if(tl<0){tw+=tl;tl=0;} if(tw<minW){tl=start.left+(start.width-minW);tw=minW;} nl=tl; nw=tw;}
+      if(side==='bottom'){nh=Math.max(minH,Math.min(start.height+dy,c.height-start.top));}
+      if(side==='top'){let tt=start.top+dy, th=start.height-dy; if(tt<0){th+=tt;tt=0;} if(th<minH){tt=start.top+(start.height-minH);th=minH;} nt=tt; nh=th;}
+      if(nl+nw>c.width)nw=c.width-nl; if(nt+nh>c.height)nh=c.height-nt;
+      selected.style.left=(nl/c.width*100)+'%'; selected.style.top=(nt/c.height*100)+'%';
+      selected.style.width=(nw/c.width*100)+'%'; selected.style.height=(nh/c.height*100)+'%';
+    } else if(action==='font-resize'){
+      const lbl=selected.querySelector('.label-text'); let ns=Math.max(8,start.fs+dx/3); lbl.style.fontSize=ns+'px';
+    }
+  };
+  document.onpointerup=()=>{action=null; side=null;};
+  canvas.onpointerdown=e=>{if(e.target===canvas)deselect();};
+
+  // ----- Bottom Bar -----
+  function clearBottomBar(){ while(bottomBar.firstChild) bottomBar.removeChild(bottomBar.firstChild); }
+
+  function createDefaultIcons(){
+    clearBottomBar();
+    const textIcon = document.createElement('div'); textIcon.className='icon'; textIcon.id='textIcon'; textIcon.style.top='10%'; textIcon.style.left='20%'; textIcon.style.width='10%';
+    textIcon.innerHTML='<img src="addtext.png"><span>TEXT</span>';
+    bottomBar.appendChild(textIcon);
+
+    const imageIcon = document.createElement('div'); imageIcon.className='icon'; imageIcon.id='imageIcon'; imageIcon.style.top='10%'; imageIcon.style.left='70%'; imageIcon.style.width='10%';
+    imageIcon.innerHTML='<img src="image.png"><span>IMAGE</span>';
+    bottomBar.appendChild(imageIcon);
+
+    textIcon.onclick = ()=>{ showHeadingSubheading(); };
+    imageIcon.onclick = ()=>{ pickImage.click(); };
+  }
+
+  function showHeadingSubheading(){
+    const positions = ['28%','46%','64%'];
+    const iconsData = [
+      {id:'headingIcon', src:'heading.png', label:'Heading'},
+      {id:'subHeadingIcon', src:'subheading.png', label:'Sub-Heading'},
+      {id:'descIcon', src:'descIcon.png', label:'Description'}
+    ];
+    iconsData.forEach((ic, idx)=>{
+      if(!document.getElementById(ic.id)){
+        let el=document.createElement('div'); el.className='icon'; el.id=ic.id; el.style.top='10%'; el.style.left=positions[idx]; el.style.width='6%';
+        el.innerHTML=`<img src="${ic.src}"><span>${ic.label}</span>`;
+        bottomBar.appendChild(el);
+        if(ic.id==='headingIcon') el.onclick=()=>createLabel('Heading',32);
+        if(ic.id==='subHeadingIcon') el.onclick=()=>createLabel('Sub-Heading',24);
+        if(ic.id==='descIcon') el.onclick=()=>createLabel('Description',16);
+      }
+    });
+    document.getElementById('textIcon').style.left='10%'; document.getElementById('textIcon').style.width='6%';
+    document.getElementById('imageIcon').style.left='82%'; document.getElementById('imageIcon').style.width='6%';
+  }
+
+  // ----- Fonts + Color Logic -----
+  const fonts = ['Arial','Helvetica','Verdana','Tahoma','Trebuchet MS','Times New Roman','Georgia','Garamond','Palatino','Courier New','Comic Sans MS','Brush Script MT','Impact','Papyrus','Copperplate'];
+  function applyTextFormat({font=null,color=null,bold=null,italic=null,underline=null}){
+    if(!window.selectedElement||window.selectedElement.dataset.type!=='label')return;
+    const lbl = window.selectedElement.querySelector('.label-text');
+    if(font) lbl.style.fontFamily = `'${font}', sans-serif`;
+    if(color) lbl.style.color = color;
+    if(bold!==null) lbl.style.fontWeight = bold?'bold':'normal';
+    if(italic!==null) lbl.style.fontStyle = italic?'italic':'normal';
+    if(underline!==null) lbl.style.textDecoration = underline?'underline':'none';
+  }
+  fonts.forEach(f=>{
+    const item=document.createElement('div'); item.className='font-item'; item.style.fontFamily=`'${f}', sans-serif`; 
+      item.innerText=f; 
+      item.onclick=()=>{ applyTextFormat({font:f}); closeFontDropdown(); }; 
+      fontDropdown.appendChild(item);
+  });
+  const colors = ['#000000','#FFFFFF','#FF0000','#00FF00','#0000FF','#FFFF00','#FF00FF','#00FFFF','#FFA500','#800080','#008000','#FFC0CB'];
+  colors.forEach(c=>{
+    const sw = document.createElement('div'); 
+    sw.className='color-swatch'; 
+    sw.style.background=c; 
+    sw.onclick=()=>{ applyTextFormat({color:c}); closeColorPicker(); }; 
+    colorPicker.appendChild(sw);
+  });
+
+  // ----- Image input -----
+  pickImage.onchange = e=>{
+    if(e.target.files && e.target.files[0]){
+      const url=URL.createObjectURL(e.target.files[0]);
+      createImgBox(url);
+    }
+  };
+
+  // ----- Show Text/Image Tools on Selection -----
+  function showTextTools() {
+    clearBottomBar();
+    closeFontDropdown();
+    colorPicker.style.display = 'none';
+
+    const tools = [
+      {id:'color', src:'fontcolor.png', label:'Color', left:'18%'},
+      {id:'style', src:'fontstyle.png', label:'Style', left:'34%'},
+      {id:'bold', src:'bold.png', label:'Bold', left:'50%'},
+      {id:'italic', src:'italic.png', label:'Italic', left:'66%'},
+      {id:'underline', src:'underline.png', label:'Underline', left:'82%'}
+    ];
+
+    tools.forEach(t=>{
+      let el = document.createElement('div');
+      el.className='icon';
+      el.id=t.id;
+      el.style.top='10%';
+      el.style.left=t.left;
+      el.style.height = '30%';
+      el.style.width='12%';
+      el.innerHTML=`<img src="${t.src}"><span>${t.label}</span>`;
+      bottomBar.appendChild(el);
+
+      if(t.id==='color') el.onclick=()=>{ colorPicker.style.display='grid'; closeFontDropdown(); };
+      if(t.id==='style') el.onclick=()=>{ fontDropdown.style.display='grid'; colorPicker.style.display='none'; };
+      if(t.id==='bold') el.onclick=()=>{ toggleStyle('bold'); };
+      if(t.id==='italic') el.onclick=()=>{ toggleStyle('italic'); };
+      if(t.id==='underline') el.onclick=()=>{ toggleStyle('underline'); };
+    });
+  }
+
+  function showImageTools() {
+    clearBottomBar();
+    closeFontDropdown();
+    colorPicker.style.display = 'none';
+
+    const tools = [
+      {id:'border', src:'border.png', label:'Border', left:'22%'},
+      {id:'borderColor', src:'bordercolor.png', label:'Border Color', left:'39%'}
+    ];
+
+    tools.forEach(t => {
+      let el = document.createElement('div');
+      el.className = 'icon';
+      el.id = t.id;
+      el.style.top = '10%';
+      el.style.left = t.left;
+      el.style.height = "50%";
+      el.style.width = '12%';
+      el.innerHTML = `<img src="${t.src}"><span>${t.label}</span>`;
+      bottomBar.appendChild(el);
+
+      if(t.id === 'border') el.onclick = () => { toggleImageBorder(); };
+      if(t.id === 'borderColor') el.onclick = () => {
+        if(!selected || selected.dataset.type !== 'img') return;
+        selected.style.borderColor = selected.style.borderColor === 'red' ? '#000' : 'red';
+      };
+    });
+  }
+
+  function toggleStyle(prop){
+    if(!window.selectedElement||window.selectedElement.dataset.type!=='label')return;
+    const lbl = window.selectedElement.querySelector('.label-text');
+    if(prop==='bold') lbl.style.fontWeight = (lbl.style.fontWeight==='bold')?'normal':'bold';
+    if(prop==='italic') lbl.style.fontStyle = (lbl.style.fontStyle==='italic')?'normal':'italic';
+    if(prop==='underline') lbl.style.textDecoration = (lbl.style.textDecoration==='underline')?'none':'underline';
+  }
+
+  function toggleImageBorder(){
+    if(!window.selectedElement||window.selectedElement.dataset.type!=='img')return;
+    const img = window.selectedElement.querySelector('img');
+    if(img.style.border) img.style.border=''; else img.style.border='2px solid #000';
+  }
+
+  // ----- Initial Setup -----
+  createDefaultIcons();
+
+})();
+</script>
 </body>
 </html>
