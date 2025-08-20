@@ -1,75 +1,127 @@
-const express = require("express");
-const path = require("path");
+        const express = require("express");
+const bodyParser = require("body-parser");
 const PDFDocument = require("pdfkit");
-const cors = require("cors");
+const fs = require("fs");
+const fetch = require("node-fetch");
 
 const app = express();
-const port = 3000;
+app.use(bodyParser.json({ limit: "50mb" }));
 
-app.use(cors());
-app.use(express.json());
-
-const dirname = process.cwd();
-
-console.log("📂 Project root directory:", dirname);
-
-app.get("/", (req, res) => {
-    console.log("📥 [GET /] Serving index.html");
-    const filePath = path.join(dirname, "index.html");
-    console.log("📄 File path:", filePath);
-    res.status(200).sendFile(filePath, (err) => {
-        if (err) {
-            console.error("❌ Error sending index.html:", err);
-            res.status(500).send("Failed to load index.html");
-        } else {
-            console.log("✅ index.html served successfully");
-        }
-    });
-});
-
-// Dummy dataset
-const resumeData = {
-    Name: "John Doe",
-    Email: "john@example.com",
-    Phone: "+1 234 567 890",
-    Skills: "HTML, CSS, JavaScript, Node.js",
-    Experience: "2 years as a Full Stack Developer"
+// ---------- Font Map ----------
+const fontMap = {
+  Arial: {
+    normal: "fonts/Arial.ttf",
+    bold: "fonts/Arial-Bold.ttf",
+    italic: "fonts/Arial-Italic.ttf",
+    bolditalic: "fonts/Arial-BoldItalic.ttf",
+  },
+  Times: {
+    normal: "fonts/Times.ttf",
+    bold: "fonts/Times-Bold.ttf",
+    italic: "fonts/Times-Italic.ttf",
+    bolditalic: "fonts/Times-BoldItalic.ttf",
+  },
+  Verdana: {
+    normal: "fonts/Verdana.ttf",
+    bold: "fonts/Verdana-Bold.ttf",
+    italic: "fonts/Verdana-Italic.ttf",
+    bolditalic: "fonts/Verdana-BoldItalic.ttf",
+  },
+  Default: {
+    normal: "fonts/Arial.ttf",
+    bold: "fonts/Arial-Bold.ttf",
+    italic: "fonts/Arial-Italic.ttf",
+    bolditalic: "fonts/Arial-BoldItalic.ttf",
+  },
 };
 
-// Route to generate PDF and send it back
-app.get("/generate-pdf", (req, res) => {
-    console.log("📥 [GET /generate-pdf] Request received");
+// ---------- Helper ----------
+function pct(value, total) {
+  if (!value) return 0;
+  return parseFloat(value) / 100 * total;
+}
 
-    try {
-        const doc = new PDFDocument();
+function pickFont(fontFamily, weight, style) {
+  let base = "Default";
+  if (fontFamily) {
+    if (/arial/i.test(fontFamily)) base = "Arial";
+    else if (/times/i.test(fontFamily)) base = "Times";
+    else if (/verdana/i.test(fontFamily)) base = "Verdana";
+  }
+  const isBold = weight === "bold";
+  const isItalic = style === "italic";
+  if (isBold && isItalic) return fontMap[base].bolditalic;
+  if (isBold) return fontMap[base].bold;
+  if (isItalic) return fontMap[base].italic;
+  return fontMap[base].normal;
+}
 
-        // Log headers being sent
-        res.setHeader("Content-Type", "application/pdf");
-        res.setHeader("Content-Disposition", "inline; filename=resume.pdf");
-        console.log("📄 PDF headers set");
+// ---------- Route ----------
+app.post("/makepdf", async (req, res) => {
+  try {
+    const elements = req.body;
 
-        // Write PDF content
-        console.log("🖨 Writing PDF content...");
-        doc.fontSize(24).text("Resume", { align: "center" });
-        doc.moveDown();
+    const doc = new PDFDocument({ size: "A4", margin: 0 });
+    let buffers = [];
+    doc.on("data", buffers.push.bind(buffers));
+    doc.on("end", () => {
+      const pdfData = Buffer.concat(buffers);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", "attachment; filename=output.pdf");
+      res.send(pdfData);
+    });
 
-        for (const [key, value] of Object.entries(resumeData)) {
-            console.log(`✏ Adding: ${key} = ${value}`);
-            doc.fontSize(14).text(`${key}: ${value}`);
-            doc.moveDown(0.5);
+    const pageW = doc.page.width;
+    const pageH = doc.page.height;
+
+    for (let el of elements) {
+      if (el.type === "label") {
+        const x = pct(el.left, pageW);
+        const y = pct(el.top, pageH);
+        const size = parseInt(el.fontSize) || 14;
+
+        const fontPath = pickFont(el.fontFamily, el.fontWeight, el.fontStyle);
+        doc.font(fontPath).fontSize(size).fillColor(el.color || "#000");
+
+        doc.text(el.text, x, y, {
+          underline: el.textDecoration === "underline",
+        });
+
+      } else if (el.type === "img") {
+        const x = pct(el.left, pageW);
+        const y = pct(el.top, pageH);
+        const w = pct(el.width, pageW);
+        const h = pct(el.height, pageH);
+
+        let imgData = null;
+        if (el.src.startsWith("data:image")) {
+          const base64 = el.src.split(",")[1];
+          imgData = Buffer.from(base64, "base64");
+        } else if (el.src.startsWith("http")) {
+          const r = await fetch(el.src);
+          imgData = Buffer.from(await r.arrayBuffer());
         }
 
-        // Finalize and send
-        doc.pipe(res);
-        doc.end();
-        console.log("✅ PDF generated and sent to client");
+        if (imgData) {
+          doc.image(imgData, x, y, { width: w, height: h });
+        }
 
-    } catch (err) {
-        console.error("❌ Error generating PDF:", err);
-        res.status(500).send("Failed to generate PDF");
+        if (el.border) {
+          doc.rect(x, y, w, h)
+            .lineWidth(2)
+            .strokeColor(el.borderColor || "#000")
+            .stroke();
+        }
+      }
     }
+
+    doc.end();
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("PDF generation failed");
+  }
 });
 
-app.listen(port, () => {
-    console.log(`🚀 Server running at http://localhost:${port}`);
+app.listen(3000, () => {
+  console.log("Server running at http://localhost:3000");
 });
