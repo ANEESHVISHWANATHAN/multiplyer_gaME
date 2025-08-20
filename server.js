@@ -1,15 +1,16 @@
- const express = require("express");
+const express = require("express");
 const bodyParser = require("body-parser");
 const PDFDocument = require("pdfkit");
-const fetch = require("node-fetch"); // to fetch blob URLs if needed
-const fs = require("fs");
+const path = require("path");
 
 const app = express();
 app.use(bodyParser.json({ limit: "50mb" }));
-app.get("/", (req, res) => res.sendFile(__dirname + "/index.html"));
-// Utility: % -> absolute
+
+app.get("/", (req, res) => res.sendFile(path.join(__dirname, "index.html")));
+
+// Utility to convert percentage to absolute points
 function pct(value, total) {
-  if (!value) return 0;
+  if (typeof value !== 'string') return 0;
   return parseFloat(value) / 100 * total;
 }
 
@@ -33,48 +34,38 @@ app.post("/makepdf", async (req, res) => {
       if (el.type === "label") {
         const x = pct(el.left, pageW);
         const y = pct(el.top, pageH);
+        const size = parseInt(el.fontSize) || 12;
 
-        let size = parseInt(el.fontSize) || 12;
         doc.fontSize(size);
-
-        // font family mapping
-        try {
-          doc.font(el.fontFamily.includes("Courier") ? "Courier" : "Helvetica");
-        } catch {
-          doc.font("Helvetica");
-        }
-
-        // style
-        const opts = { underline: el.textDecoration === "underline" };
+        
+        // Use a default font like Helvetica
+        doc.font('Helvetica');
+        
         doc.fillColor(el.color || "#000");
 
-        // bold / italic simulation
-        let text = el.text;
-        if (el.fontWeight === "bold") text = text; // PDFKit doesn't directly bold, would need font file
-        if (el.fontStyle === "italic") text = text;
+        // Options for text (e.g., underline)
+        const opts = {
+          underline: el.textDecoration === "underline"
+        };
 
-        doc.text(text, x, y, opts);
+        doc.text(el.text, x, y, opts);
 
       } else if (el.type === "img") {
         const x = pct(el.left, pageW);
         const y = pct(el.top, pageH);
         const w = pct(el.width, pageW);
         const h = pct(el.height, pageH);
-
-        let imgData = null;
+        
         if (el.src.startsWith("data:image")) {
-          // base64
+          // Extract Base64 data and create a buffer
           const base64 = el.src.split(",")[1];
-          imgData = Buffer.from(base64, "base64");
-        } else if (el.src.startsWith("http")) {
-          const r = await fetch(el.src);
-          imgData = Buffer.from(await r.arrayBuffer());
-        }
-
-        if (imgData) {
+          const imgData = Buffer.from(base64, "base64");
           doc.image(imgData, x, y, { width: w, height: h });
+        } else {
+          console.log("Image source is not Base64:", el.src);
         }
 
+        // Check if there's a border and draw it
         if (el.border) {
           doc.rect(x, y, w, h)
             .lineWidth(2)
@@ -86,7 +77,7 @@ app.post("/makepdf", async (req, res) => {
 
     doc.end();
   } catch (err) {
-    console.error(err);
+    console.error("PDF generation failed:", err);
     res.status(500).send("PDF generation failed");
   }
 });
