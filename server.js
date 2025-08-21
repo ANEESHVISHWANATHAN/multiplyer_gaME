@@ -14,10 +14,29 @@ const fontDir = path.join(__dirname, "font");
 const fonts = {};
 fs.readdirSync(fontDir).forEach(file => {
   if (file.toLowerCase().endsWith(".ttf")) {
-    const name = path.basename(file, ".ttf");
+    const name = path.basename(file, ".ttf").toLowerCase(); // normalize
     fonts[name] = path.join(fontDir, file);
   }
 });
+
+// Map editor font names to font files
+const fontMap = {
+  "arial": "arial",
+  "times new roman": "timesnewroman",
+  "courier new": "couriernew",
+  "comic sans ms": "comicsansms",
+  "trebuchet ms": "trebuchetms",
+  "brush script mt": "brushscriptmt",
+  "copperplate": "copperplate",
+  "helvetica": "helvetica",
+  "impact": "impact",
+  "palatino": "palatino",
+  "tahoma": "tahoma",
+  "verdana": "verdana",
+  "georgia": "georgia",
+  "garamond": "garamond",
+  "papyrus": "papyrus"
+};
 
 // Utility to convert percentage to absolute points
 function pct(value, total) {
@@ -60,10 +79,17 @@ app.post("/makepdf", async (req, res) => {
 
         doc.fontSize(size);
 
-        // Use client font if exists, else Helvetica
-        if (el.fontFamily && fonts[el.fontFamily]) doc.font(el.fontFamily);
-        else doc.font("Helvetica");
+        // normalize font name from client
+        const clientFont = (el.fontFamily || "").toLowerCase();
+        const mappedFont = fontMap[clientFont];
 
+        if (mappedFont && fonts[mappedFont]) {
+          doc.font(mappedFont);
+        } else {
+          doc.font("Helvetica"); // fallback
+        }
+
+        // apply color
         doc.fillColor(el.color || "#000");
 
         const opts = {
