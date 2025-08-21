@@ -2,11 +2,22 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const PDFDocument = require("pdfkit");
 const path = require("path");
+const fs = require("fs");
 
 const app = express();
 app.use(bodyParser.json({ limit: "50mb" }));
 
 app.get("/", (req, res) => res.sendFile(path.join(__dirname, "index.html")));
+
+// Register all TTF fonts in the "font" folder
+const fontDir = path.join(__dirname, "font");
+const fonts = {};
+fs.readdirSync(fontDir).forEach(file => {
+  if (file.toLowerCase().endsWith(".ttf")) {
+    const name = path.basename(file, ".ttf");
+    fonts[name] = path.join(fontDir, file);
+  }
+});
 
 // Utility to convert percentage to absolute points
 function pct(value, total) {
@@ -23,6 +34,11 @@ app.post("/makepdf", async (req, res) => {
       size: width && height ? [width, height] : "A4",
       margin: 0
     });
+
+    // Register fonts in PDFKit
+    for (const f in fonts) {
+      doc.registerFont(f, fonts[f]);
+    }
 
     let buffers = [];
     doc.on("data", buffers.push.bind(buffers));
@@ -43,7 +59,11 @@ app.post("/makepdf", async (req, res) => {
         const size = parseInt(el.fontSize) || 12;
 
         doc.fontSize(size);
-        doc.font("Helvetica");
+
+        // Use client font if exists, else Helvetica
+        if (el.fontFamily && fonts[el.fontFamily]) doc.font(el.fontFamily);
+        else doc.font("Helvetica");
+
         doc.fillColor(el.color || "#000");
 
         const opts = {
@@ -59,7 +79,6 @@ app.post("/makepdf", async (req, res) => {
         const h = pct(el.height, pageH);
 
         if (el.src.startsWith("data:image")) {
-          // Extract Base64 data and create a buffer
           const base64 = el.src.split(",")[1];
           const imgData = Buffer.from(base64, "base64");
           doc.image(imgData, x, y, { width: w, height: h });
@@ -67,7 +86,6 @@ app.post("/makepdf", async (req, res) => {
           console.log("Image source is not Base64:", el.src);
         }
 
-        // Draw border if defined
         if (el.border) {
           doc.rect(x, y, w, h)
             .lineWidth(2)
