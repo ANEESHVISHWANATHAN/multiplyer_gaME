@@ -77,18 +77,30 @@ app.post("/makepdf", async (req, res) => {
         const y = pct(el.top, pageH);
         const size = parseInt(el.fontSize) || 12;
 
-        doc.fontSize(size);
+        // inside your label rendering block
+doc.fontSize(size);
 
-        // normalize font name from client
-        const clientFont = (el.fontFamily || "").toLowerCase();
-        const mappedFont = fontMap[clientFont];
+// normalize font name from client
+const clientFont = (el.fontFamily || "").toLowerCase();
+const mappedFont = fontMap[clientFont];
 
-        if (mappedFont && fonts[mappedFont]) {
-          doc.font(mappedFont);
-        } else {
-          doc.font("Helvetica"); // fallback
-        }
+// pick font variant
+let fontKey = mappedFont;
 
+if (mappedFont) {
+  if (el.fontWeight === "bold" && fonts[mappedFont + "bd"]) {
+    fontKey = mappedFont + "bd"; // ex: arialbd.ttf → registered as "arialbd"
+  } else if (el.fontStyle === "italic" && fonts[mappedFont + "i"]) {
+    fontKey = mappedFont + "i"; // ex: ariali.ttf → registered as "ariali"
+  }
+}
+
+// apply font if found
+if (fontKey && fonts[fontKey]) {
+  doc.font(fontKey);
+} else {
+  doc.font("Helvetica"); // fallback
+}
         // apply color
         doc.fillColor(el.color || "#000");
 
