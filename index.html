@@ -225,25 +225,97 @@ body {
       text.addEventListener("pointerdown", () => select(box));
     }
   }
-document.getElementById("downloadPdfBtn").addEventListener("click", () => {
-  const canvas = document.getElementById("editorCanvas"); // your main editor
-  const dataUrl = canvas.toDataURL("image/png");
+document.getElementById("downloadBtn").onclick = async () => {
+const elements = [];
+const boxes = canvas.querySelectorAll(".label-box, .img-box");
 
-  fetch("/makepdf", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ image: dataUrl })
-  })
-  .then(res => res.blob())
-  .then(blob => {
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "editor.pdf";
-    a.click();
-    window.URL.revokeObjectURL(url);
-  });
-});
+// Use a Promise.all to handle asynchronous operations  
+const promises = Array.from(boxes).map(async box => {  
+  if (box.dataset.type === "label") {  
+    const lbl = box.querySelector(".label-text");  
+    return {  
+      id: box.id,  
+      type: "label",  
+      text: lbl.innerText,  
+      fontSize: lbl.style.fontSize,  
+      fontFamily: lbl.style.fontFamily,  
+      color: lbl.style.color,  
+      fontWeight: lbl.style.fontWeight,  
+      fontStyle: lbl.style.fontStyle,  
+      textDecoration: lbl.style.textDecoration,  
+      left: box.style.left,  
+      top: box.style.top,  
+      width: box.style.width,  
+      height: box.style.height  
+    };  
+  } else if (box.dataset.type === "img") {  
+    const img = box.querySelector("img");  
+
+    // Check if the image source is a blob URL  
+    if (img.src.startsWith("blob:")) {  
+        // Asynchronously fetch the blob and convert it to Base64  
+        const response = await fetch(img.src);  
+        const blob = await response.blob();  
+
+        return new Promise((resolve, reject) => {  
+            const reader = new FileReader();  
+            reader.onloadend = () => {  
+                resolve({  
+                    id: box.id,  
+                    type: "img",  
+                    src: reader.result, // This will be the Base64 string  
+                    left: box.style.left,  
+                    top: box.style.top,  
+                    width: box.style.width,  
+                    height: box.style.height,  
+                    border: img.style.border,  
+                    borderColor: box.style.borderColor  
+                });  
+            };  
+            reader.onerror = reject;  
+            reader.readAsDataURL(blob);  
+        });  
+    }  
+
+    // Return existing image data (e.g., from an external URL or static asset)  
+    return {  
+      id: box.id,  
+      type: "img",  
+      src: img.src,  
+      left: box.style.left,  
+      top: box.style.top,  
+      width: box.style.width,  
+      height: box.style.height,  
+      border: img.style.border,  
+      borderColor: box.style.borderColor  
+    };  
+  }  
+});  
+
+// Wait for all image conversions to complete  
+const updatedElements = await Promise.all(promises);  
+
+console.log("Exporting:", updatedElements);  
+
+const res = await fetch("/makepdf", {  
+  method: "POST",  
+  headers: { "Content-Type": "application/json" },  
+  body: JSON.stringify(updatedElements)  
+});  
+
+if (res.ok) {  
+  const blob = await res.blob();  
+  const url = URL.createObjectURL(blob);  
+  const a = document.createElement("a");  
+  a.href = url;  
+  a.download = "output.pdf";  
+  a.click();  
+  URL.revokeObjectURL(url);  
+} else {  
+  alert("PDF generation failed");  
+}
+
+};
   function createImgBox(url) {
     const box = document.createElement('div'); box.className = "img-box"; box.dataset.type = "img"; box.id = "i" + (++imgs);
     const img = document.createElement('img'); img.src = url; box.appendChild(img);
