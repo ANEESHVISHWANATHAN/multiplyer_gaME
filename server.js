@@ -6,15 +6,20 @@ const puppeteer = require("puppeteer");
 const app = express();
 app.use(bodyParser.json({ limit: "50mb" }));
 
-app.get("/", (req, res) => res.sendFile(path.join(__dirname, "index.html")));
+app.get("/", (req, res) => {
+  console.log("[GET] / - Sending index.html");
+  res.sendFile(path.join(__dirname, "index.html"));
+});
 
 app.post("/makepdf", async (req, res) => {
+  console.log("[POST] /makepdf - Request received");
   try {
     const { elements, width, height } = req.body;
+    console.log("[INFO] Elements received:", elements.length);
 
-    // Default to A4 if no size
     const pageWidth = width || 595;   // A4 width in pt
     const pageHeight = height || 842; // A4 height in pt
+    console.log(`[INFO] Page size set to ${pageWidth} x ${pageHeight}`);
 
     // Build HTML dynamically
     let html = `
@@ -66,31 +71,40 @@ app.post("/makepdf", async (req, res) => {
     }
 
     html += `</body></html>`;
+    console.log("[INFO] HTML content built");
 
-    // Launch Puppeteer with correct Chrome path
+    // Launch Puppeteer
+    console.log("[INFO] Launching Puppeteer...");
     const browser = await puppeteer.launch({
-  headless: true,
-  executablePath: puppeteer.executablePath(),
-  args: ["--no-sandbox", "--disable-setuid-sandbox"]
-});
+      headless: true,
+      executablePath: puppeteer.executablePath(),
+      args: ["--no-sandbox", "--disable-setuid-sandbox"]
+    });
+    console.log("[INFO] Puppeteer launched");
 
     const page = await browser.newPage();
+    console.log("[INFO] New page created");
+
     await page.setContent(html, { waitUntil: "networkidle0" });
+    console.log("[INFO] Page content set, ready for PDF");
 
     const pdfBuffer = await page.pdf({
       printBackground: true,
       width: `${pageWidth}px`,
       height: `${pageHeight}px`
     });
+    console.log("[INFO] PDF generated");
 
     await browser.close();
+    console.log("[INFO] Puppeteer browser closed");
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", "attachment; filename=output.pdf");
     res.send(pdfBuffer);
+    console.log("[INFO] PDF sent to client");
 
   } catch (err) {
-    console.error("Puppeteer PDF generation failed:", err);
+    console.error("[ERROR] Puppeteer PDF generation failed:", err);
     res.status(500).send("PDF generation failed");
   }
 });
