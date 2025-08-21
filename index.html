@@ -297,11 +297,15 @@ const updatedElements = await Promise.all(promises);
 
 console.log("Exporting:", updatedElements);  
 
-const res = await fetch("/makepdf", {  
-  method: "POST",  
-  headers: { "Content-Type": "application/json" },  
-  body: JSON.stringify(updatedElements)  
-});  
+const res = await fetch("/makepdf", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    elements: updatedElements,
+    width: canvas.offsetWidth,
+    height: canvas.offsetHeight
+  })
+}); 
 
 if (res.ok) {  
   const blob = await res.blob();  
