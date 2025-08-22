@@ -215,7 +215,7 @@ body {
   function addControls(box) {
     const del = document.createElement('div');
     del.className = "control-btn delete-btn";
-    del.innerHTML = `<img src="delete.png" style="width:70%;height:70%">`;
+    del.innerHTML = `<img src="images/delete.png" style="width:70%;height:70%">`;
     del.onclick = e => { e.stopPropagation(); box.remove(); deselect(); };
     box.appendChild(del);
 
@@ -410,11 +410,11 @@ if (res.ok) {
   function createDefaultIcons(){
     clearBottomBar();
     const textIcon = document.createElement('div'); textIcon.className='icon'; textIcon.id='textIcon'; textIcon.style.top='10%'; textIcon.style.left='20%'; textIcon.style.width='10%';
-    textIcon.innerHTML='<img src="addtext.png"><span>TEXT</span>';
+    textIcon.innerHTML = '<img src="images/addtext.png"><span>TEXT</span>';
     bottomBar.appendChild(textIcon);
 
     const imageIcon = document.createElement('div'); imageIcon.className='icon'; imageIcon.id='imageIcon'; imageIcon.style.top='10%'; imageIcon.style.left='70%'; imageIcon.style.width='10%';
-    imageIcon.innerHTML='<img src="image.png"><span>IMAGE</span>';
+    imageIcon.innerHTML = '<img src="images/image.png"><span>IMAGE</span>';
     bottomBar.appendChild(imageIcon);
 
     textIcon.onclick = ()=>{ showHeadingSubheading(); };
@@ -424,9 +424,9 @@ if (res.ok) {
   function showHeadingSubheading(){
     const positions = ['28%','46%','64%'];
     const iconsData = [
-      {id:'headingIcon', src:'heading.png', label:'Heading'},
-      {id:'subHeadingIcon', src:'subheading.png', label:'Sub-Heading'},
-      {id:'descIcon', src:'descIcon.png', label:'Description'}
+      {id:'headingIcon', src:'images/heading.png', label:'Heading'},
+{id:'subHeadingIcon', src:'images/subheading.png', label:'Sub-Heading'},
+{id:'descIcon', src:'images/descIcon.png', label:'Description'}
     ];
     iconsData.forEach((ic, idx)=>{
       if(!document.getElementById(ic.id)){
@@ -483,12 +483,13 @@ if (res.ok) {
     colorPicker.style.display = 'none';
 
     const tools = [
-      {id:'color', src:'fontcolor.png', label:'Color', left:'18%'},
-      {id:'style', src:'fontstyle.png', label:'Style', left:'34%'},
-      {id:'bold', src:'bold.png', label:'Bold', left:'50%'},
-      {id:'italic', src:'italic.png', label:'Italic', left:'66%'},
-      {id:'underline', src:'underline.png', label:'Underline', left:'82%'}
-    ];
+  {id:'color', src:'images/fontcolor.png', label:'Color', left:'18%'},
+  {id:'style', src:'images/fontstyle.png', label:'Style', left:'34%'},
+  {id:'bold', src:'images/bold.png', label:'Bold', left:'50%'},
+  {id:'italic', src:'images/italic.png', label:'Italic', left:'66%'},
+  {id:'underline', src:'images/underline.png', label:'Underline', left:'82%'}
+];
+
 
     tools.forEach(t=>{
       let el = document.createElement('div');
@@ -515,9 +516,9 @@ if (res.ok) {
     colorPicker.style.display = 'none';
 
     const tools = [
-      {id:'border', src:'border.png', label:'Border', left:'22%'},
-      {id:'borderColor', src:'bordercolor.png', label:'Border Color', left:'39%'}
-    ];
+  {id:'border', src:'images/border.png', label:'Border', left:'22%'},
+  {id:'borderColor', src:'images/bordercolor.png', label:'Border Color', left:'39%'}
+];
 
     tools.forEach(t => {
       let el = document.createElement('div');
