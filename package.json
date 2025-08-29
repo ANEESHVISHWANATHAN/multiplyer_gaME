@@ -4,7 +4,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "postinstall": "puppeteer install"
+     
+  "postinstall": "puppeteer install --cache-dir=/opt/render/.cache/puppeteer"
+}
   },
   "author": "",
   "license": "ISC",
