@@ -76,10 +76,10 @@ app.post("/makepdf", async (req, res) => {
     // Launch Puppeteer
     console.log("[INFO] Launching Puppeteer...");
     const browser = await puppeteer.launch({
-      headless: true,
-      
-      args: ["--no-sandbox", "--disable-setuid-sandbox"]
-    });
+  headless: true,
+  executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath(),
+  args: ["--no-sandbox", "--disable-setuid-sandbox"]
+});
     console.log("[INFO] Puppeteer launched");
 
     const page = await browser.newPage();
