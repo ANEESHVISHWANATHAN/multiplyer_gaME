@@ -1,5 +1,4 @@
- // server.jsdx
-const express = require("express");
+ const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
 const path = require("path");
@@ -8,10 +7,13 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-app.use(express.static(path.join(__dirname, "public"))); // your HTML files
-app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/index.html');
+app.use(express.static(path.join(__dirname, "public"))); // HTML, CSS, images
+
+// Serve entry.html as root
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "entry.html"));
 });
+
 // Room stores
 let publicRooms = {};
 let privateRooms = {};
@@ -34,35 +36,33 @@ wss.on("connection", (ws) => {
       console.log("📩 Received:", data);
 
       // CREATE LOBBY
-      if (data.typeReq === "createLobby") {
-        const { username, icon, lobbyType } = data;
+      if (data.action === "createLobby") {
+        const { username, icon, type } = data;
         const roomId = randomRoomId();
         const playerId = 0;
         const wscode = randomWsCode();
 
         const player = { username, icon, playerId, wscode };
-
-        if (lobbyType === "pub") {
+        if (type === "pub") {
           publicRooms[roomId] = { players: [player] };
         } else {
           privateRooms[roomId] = { players: [player] };
         }
 
         ws.send(JSON.stringify({
-          type: "lobbyCreated",
+          action: "lobbyCreated",
           roomId, playerId, wscode
         }));
-        console.log(`🎉 Lobby created ${roomId} (${lobbyType}) by ${username}`);
-
+        console.log(`🎉 Lobby created ${roomId} (${type}) by ${username}`);
       }
 
       // JOIN LOBBY
-      else if (data.typeReq === "joinLobby") {
-        const { username, icon, lobbyType, roomId } = data;
-        const rooms = (lobbyType === "pub") ? publicRooms : privateRooms;
+      else if (data.action === "joinLobby") {
+        const { username, icon, type, roomId } = data;
+        const rooms = (type === "pub") ? publicRooms : privateRooms;
 
         if (!rooms[roomId]) {
-          ws.send(JSON.stringify({ type: "noRoom" }));
+          ws.send(JSON.stringify({ action: "noRoom" }));
           console.log("❌ No such room", roomId);
           return;
         }
@@ -74,12 +74,11 @@ wss.on("connection", (ws) => {
         rooms[roomId].players.push(player);
 
         ws.send(JSON.stringify({
-          type: "lobbyJoined",
+          action: "lobbyJoined",
           roomId, playerId, wscode
         }));
-        console.log(`👤 ${username} joined room ${roomId} (${lobbyType})`);
+        console.log(`👤 ${username} joined room ${roomId} (${type})`);
       }
-
     } catch (e) {
       console.error("⚠️ Error parsing msg", e);
     }
@@ -90,12 +89,7 @@ wss.on("connection", (ws) => {
   });
 });
 
-// Serve files
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "entry.html"));
-});
-
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
-});                 
+});
