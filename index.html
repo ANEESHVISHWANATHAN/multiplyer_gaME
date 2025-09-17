@@ -111,33 +111,20 @@ Pick your avatar, enter your lucky name, and get ready for fun, numbers, and thr
 </div>
 
 <script>
-const ws = new WebSocket("wss://multiplyer-game.onrender.com");
+const ws = new WebSocket("wss://my-4a9r.onrender.com");
 ws.onopen = () => console.log("WS connected");
 ws.onmessage = (msg) => {
   console.log("WS message:", msg.data);
   try {
     const data = JSON.parse(msg.data);
-
-    if(data.type === "lobbyCreated"){
+    if(data.action === "lobbyCreated"){
       console.log("Lobby Created:", data);
-      localStorage.setItem("roomId", data.roomId);
-      localStorage.setItem("playerId", data.playerId);
-      localStorage.setItem("wscode", data.wscode);
-      window.location.href = `https://multiplyer-game.onrender.com/tambola.html/${data.roomId}`;
+      window.location.href = `https://my-4a9r.onrender.com/${data.roomId}`;
     }
-
-    if(data.type === "lobbyJoined"){
+    if(data.action === "lobbyJoined"){
       console.log("Lobby Joined:", data);
-      localStorage.setItem("roomId", data.roomId);
-      localStorage.setItem("playerId", data.playerId);
-      localStorage.setItem("wscode", data.wscode);
-      window.location.href = `https://multiplyer-game.onrender.com/tambola.html/${data.roomId}`;
+      window.location.href = `https://my-4a9r.onrender.com/${data.roomId}`;
     }
-
-    if(data.type === "noRoom"){
-      alert("❌ Room not found!");
-    }
-
   } catch(e){ console.error("WS parse error", e); }
 };
 
@@ -177,11 +164,11 @@ toggleBar.onclick = () => {
 for(let i=1;i<=5;i++){
   const row = document.createElement("div");
   row.className="lobby-row";
-  row.innerHTML=`<div>Lobby ${i}</div><div>${100+i}</div><div>${i}/8</div><img src="join.png" class="lobbyJoin">`;
+  row.innerHTML=`<div>Lobby ${i}</div><div>ID${100+i}</div><div>${i}/8</div><img src="join.png" class="lobbyJoin">`;
   publicLobbies.appendChild(row);
   row.querySelector(".lobbyJoin").onclick = () => {
     actionType = "join";
-    selectedRoomId = `${100+i}`;
+    selectedRoomId = `ID${100+i}`;
     console.log("Joining public lobby:", selectedRoomId);
     showAvatarPopup();
   };
