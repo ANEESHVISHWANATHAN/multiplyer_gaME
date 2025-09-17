@@ -1,4 +1,4 @@
-    const express = require("express");
+          const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
 const path = require("path");
@@ -7,23 +7,28 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-app.use(express.static(path.join(__dirname, "public"))); // HTML, CSS, images
+// ===== Routes =====
 
 // Serve entry.html as root
 app.get("/", (req, res) => {
+  console.log("🌐 GET / → index.html served");
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
 // Serve tambola.html with roomId param
 app.get("/tambola.html/:roomId", (req, res) => {
-  res.sendFile(path.join(__dirname,  "tambola.html"));
+  console.log(`🌐 GET /tambola.html/${req.params.roomId} → tambola.html served`);
+  res.sendFile(path.join(__dirname, "tambola.html"));
 });
 
-// Room stores
+// Serve static files (CSS, JS, images)
+app.use(express.static(path.join(__dirname, "public")));
+
+// ===== Room Stores =====
 let publicRooms = {};
 let privateRooms = {};
 
-// Helpers
+// ===== Helpers =====
 function randomRoomId() {
   return Math.floor(10000 + Math.random() * 90000).toString();
 }
@@ -31,7 +36,7 @@ function randomWsCode() {
   return Math.random().toString(36).substring(2, 10);
 }
 
-// Print all rooms for debugging
+// Debug: print all rooms
 function logRooms() {
   console.log("===== 📊 Current Rooms =====");
   console.log("Public Rooms:", JSON.stringify(publicRooms, null, 2));
@@ -39,14 +44,15 @@ function logRooms() {
   console.log("============================");
 }
 
-// Handle WS connections
-wss.on("connection", (ws) => {
-  console.log("✅ New client connected");
+// ===== WebSocket Handling =====
+wss.on("connection", (ws, req) => {
+  console.log(`✅ WS connected from ${req.socket.remoteAddress}`);
 
   ws.on("message", (msg) => {
+    console.log("⬇️ Raw WS msg:", msg.toString());
     try {
       const data = JSON.parse(msg);
-      console.log("📩 Received from client:", data);
+      console.log("📩 Parsed WS msg:", data);
 
       // CREATE LOBBY
       if (data.typeReq === "createLobby") {
@@ -77,11 +83,11 @@ wss.on("connection", (ws) => {
         const type = lobbyType;
         const rooms = (type === "pub") ? publicRooms : privateRooms;
 
-        console.log(`🔍 ${username} is trying to join room ${roomId} (${type})`);
+        console.log(`🔍 ${username} attempting to join room ${roomId} (${type})`);
 
         if (!rooms[roomId]) {
           ws.send(JSON.stringify({ type: "noRoom" }));
-          console.log("❌ No such room", roomId);
+          console.log(`❌ Join failed → No such room ${roomId}`);
           logRooms();
           return;
         }
@@ -96,7 +102,7 @@ wss.on("connection", (ws) => {
           type: "lobbyJoined",
           roomId, playerId, wscode
         }));
-        console.log(`👤 ${username} joined room ${roomId} (${type}) as player ${playerId}`);
+        console.log(`👤 ${username} joined room ${roomId} as player ${playerId}`);
         logRooms();
       }
 
@@ -104,17 +110,21 @@ wss.on("connection", (ws) => {
       else if (data.typeReq === "pageEntered") {
         const { roomId, playerId, wscode, username, icon } = data;
 
+        console.log(`📥 pageEntered: room=${roomId}, playerId=${playerId}, user=${username}`);
+
         const room = publicRooms[roomId] || privateRooms[roomId];
         if (!room || !room.players[playerId]) {
           console.log("❌ Invalid room/player on pageEntered");
           return;
         }
 
-        // Replace WS + update wscode
+        // Replace WS + update player info
         room.players[playerId].ws = ws;
         room.players[playerId].wscode = wscode;
         room.players[playerId].username = username;
         room.players[playerId].icon = icon;
+
+        console.log(`🔄 Updated WS + info for ${username} in room ${roomId}`);
 
         // Send all players list back to this client
         const playersList = Object.values(room.players).map(p => ({
@@ -123,16 +133,18 @@ wss.on("connection", (ws) => {
           icon: p.icon
         }));
         ws.send(JSON.stringify({ type: "ijoin", players: playersList }));
+        console.log(`📤 Sent ijoin (player list) to ${username}`);
 
-        // Notify others that this player entered
+        // Notify others this player entered
         const newPlayer = { playerId, username, icon };
         Object.values(room.players).forEach(p => {
           if (p.ws && p.ws.readyState === WebSocket.OPEN && p.playerId != playerId) {
             p.ws.send(JSON.stringify({ type: "hejoins", player: newPlayer }));
+            console.log(`📢 Notified ${p.username} that ${username} joined`);
           }
         });
 
-        console.log(`📢 pageEntered handled for ${username} in room ${roomId}`);
+        console.log(`✅ Finished pageEntered for ${username} in room ${roomId}`);
         logRooms();
       }
 
@@ -141,12 +153,12 @@ wss.on("connection", (ws) => {
         console.log("⚠️ Unknown request type:", data.typeReq);
       }
     } catch (e) {
-      console.error("⚠️ Error parsing msg:", e, msg.toString());
+      console.error("⚠️ JSON parse error:", e.message);
     }
   });
 
   ws.on("close", () => {
-    console.log("❎ Client disconnected");
+    console.log("❎ WS client disconnected");
   });
 });
 
