@@ -1,114 +1,99 @@
+ // server.js
 const express = require("express");
-const bodyParser = require("body-parser");
+const http = require("http");
+const WebSocket = require("ws");
 const path = require("path");
-const puppeteer = require("puppeteer");
 
 const app = express();
-app.use(bodyParser.json({ limit: "50mb" }));
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
 
-app.get("/", (req, res) => {
-  console.log("[GET] / - Sending index.html");
-  res.sendFile(path.join(__dirname, "index.html"));
-});
+app.use(express.static(path.join(__dirname, "public"))); // your HTML files
 
-app.post("/makepdf", async (req, res) => {
-  console.log("[POST] /makepdf - Request received");
-  try {
-    const { elements, width, height } = req.body;
-    console.log("[INFO] Elements received:", elements.length);
+// Room stores
+let publicRooms = {};
+let privateRooms = {};
 
-    const pageWidth = width || 595;   // A4 width in pt
-    const pageHeight = height || 842; // A4 height in pt
-    console.log(`[INFO] Page size set to ${pageWidth} x ${pageHeight}`);
+// Helpers
+function randomRoomId() {
+  return Math.floor(10000 + Math.random() * 90000).toString();
+}
+function randomWsCode() {
+  return Math.random().toString(36).substring(2, 10);
+}
 
-    // Build HTML dynamically
-    let html = `
-      <html>
-      <head>
-        <style>
-          body {
-            margin: 0;
-            padding: 0;
-            width: ${pageWidth}px;
-            height: ${pageHeight}px;
-            position: relative;
-          }
-          .el {
-            position: absolute;
-            white-space: pre-wrap;
-          }
-        </style>
-      </head>
-      <body>
-    `;
+// Handle WS connections
+wss.on("connection", (ws) => {
+  console.log("✅ New client connected");
 
-    for (let el of elements) {
-      if (el.type === "label") {
-        html += `<div class="el" 
-                    style="
-                      left:${el.left};
-                      top:${el.top};
-                      font-size:${el.fontSize || 12}px;
-                      font-family:'${el.fontFamily || "Arial"}';
-                      font-weight:${el.fontWeight || "normal"};
-                      font-style:${el.fontStyle || "normal"};
-                      color:${el.color || "#000"};
-                      text-decoration:${el.textDecoration || "none"};
-                    ">
-                    ${el.text}
-                 </div>`;
-      } else if (el.type === "img") {
-        html += `<img class="el"
-                    src="${el.src}"
-                    style="
-                      left:${el.left};
-                      top:${el.top};
-                      width:${el.width};
-                      height:${el.height};
-                      border:${el.border ? `2px solid ${el.borderColor || "#000"}` : "none"};
-                    " />`;
+  ws.on("message", (msg) => {
+    try {
+      const data = JSON.parse(msg);
+      console.log("📩 Received:", data);
+
+      // CREATE LOBBY
+      if (data.typeReq === "createLobby") {
+        const { username, icon, lobbyType } = data;
+        const roomId = randomRoomId();
+        const playerId = 0;
+        const wscode = randomWsCode();
+
+        const player = { username, icon, playerId, wscode };
+
+        if (lobbyType === "pub") {
+          publicRooms[roomId] = { players: [player] };
+        } else {
+          privateRooms[roomId] = { players: [player] };
+        }
+
+        ws.send(JSON.stringify({
+          type: "lobbyCreated",
+          roomId, playerId, wscode
+        }));
+        console.log(`🎉 Lobby created ${roomId} (${lobbyType}) by ${username}`);
+
       }
+
+      // JOIN LOBBY
+      else if (data.typeReq === "joinLobby") {
+        const { username, icon, lobbyType, roomId } = data;
+        const rooms = (lobbyType === "pub") ? publicRooms : privateRooms;
+
+        if (!rooms[roomId]) {
+          ws.send(JSON.stringify({ type: "noRoom" }));
+          console.log("❌ No such room", roomId);
+          return;
+        }
+
+        const playerId = rooms[roomId].players.length;
+        const wscode = randomWsCode();
+        const player = { username, icon, playerId, wscode };
+
+        rooms[roomId].players.push(player);
+
+        ws.send(JSON.stringify({
+          type: "lobbyJoined",
+          roomId, playerId, wscode
+        }));
+        console.log(`👤 ${username} joined room ${roomId} (${lobbyType})`);
+      }
+
+    } catch (e) {
+      console.error("⚠️ Error parsing msg", e);
     }
+  });
 
-    html += `</body></html>`;
-    console.log("[INFO] HTML content built");
-
-    // Launch Puppeteer
-    console.log("[INFO] Launching Puppeteer...");
-    const browser = await puppeteer.launch({
-  headless: true,
-  
-  args: ["--no-sandbox", "--disable-setuid-sandbox"],
-});
-    console.log("[INFO] Puppeteer launched");
-
-    const page = await browser.newPage();
-    console.log("[INFO] New page created");
-
-    await page.setContent(html, { waitUntil: "networkidle0" });
-    console.log("[INFO] Page content set, ready for PDF");
-
-    const pdfBuffer = await page.pdf({
-      printBackground: true,
-      width: `${pageWidth}px`,
-      height: `${pageHeight}px`
-    });
-    console.log("[INFO] PDF generated");
-
-    await browser.close();
-    console.log("[INFO] Puppeteer browser closed");
-
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", "attachment; filename=output.pdf");
-    res.send(pdfBuffer);
-    console.log("[INFO] PDF sent to client");
-
-  } catch (err) {
-    console.error("[ERROR] Puppeteer PDF generation failed:", err);
-    res.status(500).send("PDF generation failed");
-  }
+  ws.on("close", () => {
+    console.log("❎ Client disconnected");
+  });
 });
 
-app.listen(3000, () => {
-  console.log("Server running at http://localhost:3000");
+// Serve files
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "entry.html"));
 });
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});                 
