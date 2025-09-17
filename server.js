@@ -36,8 +36,9 @@ wss.on("connection", (ws) => {
       console.log("📩 Received:", data);
 
       // CREATE LOBBY
-      if (data.action === "createLobby") {
-        const { username, icon, type } = data;
+      if (data.typeReq === "createLobby") {
+        const { username, icon, lobbyType } = data;
+        const type = lobbyType; // "pub" or "pri"
         const roomId = randomRoomId();
         const playerId = 0;
         const wscode = randomWsCode();
@@ -50,19 +51,20 @@ wss.on("connection", (ws) => {
         }
 
         ws.send(JSON.stringify({
-          action: "lobbyCreated",
+          type: "lobbyCreated",
           roomId, playerId, wscode
         }));
         console.log(`🎉 Lobby created ${roomId} (${type}) by ${username}`);
       }
 
       // JOIN LOBBY
-      else if (data.action === "joinLobby") {
-        const { username, icon, type, roomId } = data;
+      else if (data.typeReq === "joinLobby") {
+        const { username, icon, lobbyType, roomId } = data;
+        const type = lobbyType;
         const rooms = (type === "pub") ? publicRooms : privateRooms;
 
         if (!rooms[roomId]) {
-          ws.send(JSON.stringify({ action: "noRoom" }));
+          ws.send(JSON.stringify({ type: "noRoom" }));
           console.log("❌ No such room", roomId);
           return;
         }
@@ -74,7 +76,7 @@ wss.on("connection", (ws) => {
         rooms[roomId].players.push(player);
 
         ws.send(JSON.stringify({
-          action: "lobbyJoined",
+          type: "lobbyJoined",
           roomId, playerId, wscode
         }));
         console.log(`👤 ${username} joined room ${roomId} (${type})`);
@@ -93,3 +95,5 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
+        
+        
