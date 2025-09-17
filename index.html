@@ -1,589 +1,225 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-RFZH2R5SK1"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-RFZH2R5SK1');
-</script>
-<meta charset="utf-8" />
-<!-- Google tag (gtag.js) -->
-
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
- <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Multiplayer Bingo Game | Online Bingo With Friends</title>
-
-  <meta name="description" content="Play multiplayer bingo online with friends and family. Create or join bingo rooms, experience interactive gameplay, enjoy real-time matches, and explore fun board game features with modern design.">
-  
-  <meta name="keywords" content="bingo game, online bingo, multiplayer bingo, free bingo, bingo with friends, real-time bingo, virtual board game, bingo rooms, play bingo online, web bingo, interactive bingo, modern bingo game, host bingo, join bingo, digital bingo, family board game online, multiplayer board game, bingo fun, live bingo, bingo web app">
-  
-  <meta name="author" content="Your Game Team">
-  <meta name="robots" content="index, follow">
-  <meta name="theme-color" content="#ffffff">
-  
-  <!-- Social preview -->
-  <meta property="og:title" content="Play Multiplayer Bingo Online">
-  <meta property="og:description" content="Join or host online bingo rooms with friends. Play live, interactive bingo in a fun web experience.">
-  <meta property="og:type" content="website">
-
-
-
-<link href="https://fonts.googleapis.com/css2?family=Roboto&family=Courier+Prime&family=Pacifico&display=swap" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>FUNTAMBOLA Entry</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
 <style>
-:root { --handle-size:14px; }
-
-body {
-  margin:0;
-  font-family:system-ui,sans-serif;
-  background:#f5f5f5;
-  display:flex;
-  flex-direction:column;
-  min-height:100vh;
-}
-
-/* ---------------- Canvas ---------------- */
-#canvas {
-  position:absolute;
-  top:10%;
-  left:5%;
-  width:90%;
-  height:auto;
-  aspect-ratio:1/1.414;
-  background:#fff;
-  border:2px solid #999;
-  margin:16px auto;
-  overflow:hidden;
-  touch-action:none;
-}
-
-/* ---------------- Image Box ---------------- */
-.img-box {
-  position:absolute;
-  left:10%; top:10%;
-  width:40%; height:40%;
-  user-select:none;
-}
-.img-box img {
-  position:absolute; inset:0;
-  width:100%; height:100%;
-  object-fit:fill;
-  pointer-events:none;
-}
-.img-box.selected { border:2px dotted #000; }
-.handle {
-  position:absolute;
-  width:var(--handle-size); height:var(--handle-size);
-  background:#fff; border:2px solid #333;
-  border-radius:50%; display:none;
-  align-items:center; justify-content:center;
-  box-shadow:0 1px 4px rgba(0,0,0,0.25);
-  z-index:50; font-size:10px;
-}
-.img-box.selected .handle { display:flex; }
-.handle.top { top:0; left:50%; transform:translate(-50%,-50%); cursor:n-resize; }
-.handle.bottom { bottom:0; left:50%; transform:translate(-50%,50%); cursor:s-resize; }
-.handle.left { left:0; top:50%; transform:translate(-50%,-50%); cursor:w-resize; }
-.handle.right { right:0; top:50%; transform:translate(50%,-50%); cursor:e-resize; }
-.handle.top::before { content:"↑"; }
-.handle.bottom::before { content:"↓"; }
-.handle.left::before { content:"←"; }
-.handle.right::before { content:"→"; }
-
-/* ---------------- Label Box ---------------- */
-.label-box {
-  position:absolute;
-  user-select:none;
-  cursor:move;
-  display:inline-block;
-}
-.label-box.selected { outline:2px dotted #000; }
-.label-text { pointer-events:auto; }
-.font-handle {
-  position:absolute; top:-8px; right:-8px;
-  width:var(--handle-size); height:var(--handle-size);
-  background:#fff; border:2px solid #333; border-radius:50%;
-  display:none; align-items:center; justify-content:center;
-  z-index:60; font-size:12px; cursor:nwse-resize;
-}
-.label-box.selected .font-handle { display:flex; }
-.font-handle::before { content:"A"; }
-
-/* ---------------- Control Buttons ---------------- */
-.control-btn {
-  position:absolute; width:20px; height:20px;
-  background:#fff; border-radius:50%;
-  display:none; align-items:center; justify-content:center;
-  box-shadow:0 1px 4px rgba(0,0,0,0.25);
-  cursor:pointer; z-index:70;
-}
-.selected .control-btn { display:flex; }
-.delete-btn { top:-10px; left:-10px; }
-
-/* ---------------- Bottom Bar ---------------- */
-#bottom-bar {
-  position:fixed; bottom:0; left:0; right:0;
-  height:15%; background:#fff; border-top:1px solid #ccc;
-  display:flex; align-items:center; justify-content:center;
-}
-.icon {
-  position:absolute; text-align:center;
-}
-.icon img { width:100%; height:auto; }
-.icon span { display:block; font-size:12px; }
-
-/* ----- Fonts Dropdown ----- */
-#fontDropdown {
-  position: absolute;
-  bottom: 20%;
-  left: 35%;
-  width: 30%;
-  height: 50%;
-  background: #f8f8f8;
-  border-radius: 8px;
-  border: 1px solid rgba(0,0,0,0.15);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-  overflow-y: auto;
-  display: none;
-  z-index: 20;
-  padding: 5px;
-}
-.font-item {
-  padding: 6px 8px;
-  cursor: pointer;
-  font-size: 12px;
-  border-radius: 4px;
-  margin-bottom: 4px;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
-}
-
-/* ----- Color Picker ----- */
-#colorPicker {
-  position: absolute;
-  bottom: 20%;
-  left: 10%;
-  width: 80%;
-  max-height: 200px;
-  background: #f8f8f8;
-  border-radius: 8px;
-  border: 1px solid rgba(0,0,0,0.15);
-  overflow-y: auto;
-  z-index: 25;
-  display: none;
-  grid-template-columns: repeat(5, 1fr);
-  grid-gap: 4px;
-  padding: 5px;
-  display:grid;
-}
-.color-swatch {
-  width: 100%;
-  padding-bottom: 100%;
-  border-radius: 4px;
-  cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-}
+/* --- styles unchanged from your code --- */
+* {margin:0; padding:0; box-sizing:border-box;}
+body {width:100%; min-height:100vh; font-family:'Orbitron', sans-serif;
+  background:linear-gradient(135deg,#0b0033,#26004d,#000);
+  color:white; overflow-x:hidden; position:relative;}
+.bg-image {position:absolute; pointer-events:none; user-select:none; opacity:0.12; z-index:-1;}
+.bg1 {top:2%; left:2%; width:35%; transform:rotate(-5deg);}
+.bg2 {top:10%; right:0; width:25%; transform:rotate(3deg);}
+.bg3 {top:20%; left:25%; width:40%; transform:rotate(-8deg);}
+.bg4 {bottom:10%; left:5%; width:30%; transform:rotate(5deg);}
+.bg5 {bottom:20%; right:10%; width:35%; transform:rotate(-2deg);}
+.bg6 {bottom:5%; left:40%; width:30%; transform:rotate(10deg);}
+.bg7 {top:35%; right:20%; width:25%; transform:rotate(-12deg);}
+.bg8 {top:50%; left:10%; width:30%; transform:rotate(7deg);}
+.heading {margin-top:20px;text-align:center;font-size:clamp(24px,6vw,48px);font-weight:bold;color:#00f2fe;
+  text-shadow:0 0 8px #00f2fe,0 0 16px #0072ff,0 0 30px #0072ff; z-index:1;}
+.description {margin:20px auto;max-width:600px;text-align:center;padding:0 15px;
+  font-size:clamp(14px,3vw,20px);line-height:1.5;color:#ddd;text-shadow:0 0 6px rgba(0,0,0,0.6);z-index:1;}
+.center {margin:30px auto;width:90%;max-width:500px;text-align:center;z-index:1;}
+.btn {width:100%; padding:16px; margin:14px 0; font-size:clamp(18px,5vw,28px);
+  border:none; border-radius:16px; color:#fff; cursor:pointer;
+  transition:transform 0.25s, box-shadow 0.25s; letter-spacing:1px;}
+.btn:hover {transform:scale(1.05); box-shadow:0 0 20px rgba(255,255,255,0.5);}
+#joinBtn {background:linear-gradient(90deg,#36d1dc,#5b86e5); box-shadow:0 0 15px rgba(91,134,229,0.7);}
+#createBtn {background:linear-gradient(90deg,#ff512f,#dd2476); box-shadow:0 0 15px rgba(221,36,118,0.7); transition:margin-top 0.4s;}
+#joinPanel {width:100%; margin-top:12px; background:rgba(0,0,0,0.6); border:2px solid #00f2fe;
+  border-radius:18px; box-shadow:0 0 25px #00f2fe; backdrop-filter:blur(8px);
+  max-height:0; overflow:hidden; opacity:0; transition:all 0.4s ease;}
+#joinPanel.active {max-height:400px; opacity:1; padding:12px;}
+.toggle-container {display:flex; position:relative; margin-bottom:10px; border-radius:12px; overflow:hidden;
+  background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); cursor:pointer;}
+.toggle-segment {flex:1; padding:10px; text-align:center; font-size:clamp(14px,4vw,20px); z-index:2;}
+.toggle-slider {position:absolute; top:0; left:0; width:50%; height:100%; background:linear-gradient(90deg,#00f2fe,#4facfe);
+  border-radius:12px; z-index:1; transition:left 0.3s;}
+.toggle-on .toggle-slider {left:50%; background:linear-gradient(90deg,#ff4b2b,#ff416c);}
+#publicLobbies {max-height:200px; overflow-y:auto; margin-bottom:10px;}
+.lobby-row {display:flex; justify-content:space-between; align-items:center; padding:10px; margin:6px 0;
+  border-radius:10px; background:rgba(255,255,255,0.1); font-size:clamp(14px,4vw,18px); border:2px solid #00f2fe;
+  box-shadow:0 4px 8px rgba(0,242,254,0.6);}
+.lobby-row img {width:28px; cursor:pointer;}
+#privateJoin {display:none;}
+#roomInput {width:100%; padding:10px; border-radius:10px; border:none; outline:none; font-size:clamp(14px,4vw,18px);
+  background:rgba(255,255,255,0.12); color:white; margin-bottom:8px; box-shadow:0 4px 6px rgba(255,255,255,0.3);}
+#privateJoinBtn {width:100%; padding:10px; border-radius:10px; border:none; font-size:clamp(14px,4vw,18px); font-weight:bold;
+  background:linear-gradient(90deg,#ff4b2b,#ff416c); color:white; cursor:pointer; box-shadow:0 4px 8px rgba(255,75,75,0.5);}
+#avatarPopup {position:fixed; top:0; left:0; width:100%; height:100%; backdrop-filter:blur(10px); background:rgba(0,0,0,0.6);
+  display:none; justify-content:center; align-items:center; z-index:999;}
+#avatarContent {position:relative; background:rgba(20,20,40,0.95); border-radius:20px; padding:20px; text-align:center;
+  max-width:400px; width:90%; box-shadow:0 0 25px #00f2fe;}
+#avatarClose {position:absolute; top:10px; right:15px; font-size:24px; color:#ff416c; cursor:pointer;}
+#avatarContent h2 {margin-bottom:12px; color:#00f2fe;}
+#carousel {display:flex; align-items:center; justify-content:center; gap:12px;}
+#carousel img {width:100px; border-radius:50%; border:2px solid #fff;}
+#carousel button {background:transparent; border:none; color:#00f2fe; font-size:28px; cursor:pointer;}
+#username {width:100%; padding:10px; margin:12px 0; border-radius:10px; border:none; outline:none;}
+#startGame {padding:10px 20px; border:none; border-radius:12px; background:linear-gradient(90deg,#36d1dc,#5b86e5);
+  color:white; font-weight:bold; cursor:pointer; box-shadow:0 0 15px rgba(91,134,229,0.7);}
+@media (orientation: landscape) {.heading{font-size:clamp(20px,4vw,32px);} .center{margin-top:50px;}
+  .btn{padding:12px; margin:10px 0; font-size:18px;}}
 </style>
 </head>
 <body>
-  <div id="canvas"></div>
-  <div id="bottom-bar"></div>
-  <div id="fontDropdown"></div>
-  <div id="colorPicker"></div>
-  <input id="pickImage" type="file" accept="image/*" style="display:none;" />
-<button id="downloadBtn" style="
-  position:absolute; 
-  top:2%; 
-  right:5%; 
-  z-index:100; 
-  padding:6px 12px; 
-  border:none; 
-  border-radius:6px; 
-  background:#007bff; 
-  color:#fff; 
-  font-size:14px;
-  cursor:pointer;
-">Download</button>
+<div class="heading">FUNTAMBOLA</div>
+<div class="description">Welcome to FUNTAMBOLA – the exciting online version of the classic Tambola game!  
+Join a public room or create your own private match with friends.  
+Pick your avatar, enter your lucky name, and get ready for fun, numbers, and thrilling wins!</div>
+
+<!-- Background images -->
+<img src="tam1.png" class="bg-image bg1"><img src="tam2.png" class="bg-image bg2"><img src="tam3.png" class="bg-image bg3">
+<img src="tam4.png" class="bg-image bg4"><img src="tam5.png" class="bg-image bg5"><img src="tam6.png" class="bg-image bg6">
+<img src="tam7.png" class="bg-image bg7"><img src="tam8.png" class="bg-image bg8">
+
+<div class="center">
+  <button id="joinBtn" class="btn">JOIN</button>
+  <div id="joinPanel">
+    <div id="toggleBar" class="toggle-container">
+      <div class="toggle-slider"></div>
+      <div class="toggle-segment">Public</div>
+      <div class="toggle-segment">Private</div>
+    </div>
+    <div id="publicLobbies"></div>
+    <div id="privateJoin">
+      <input id="roomInput" type="text" maxlength="5" placeholder="Enter Room ID">
+      <button id="privateJoinBtn">JOIN ➤</button>
+    </div>
+  </div>
+  <button id="createBtn" class="btn">CREATE</button>
+</div>
+
+<!-- Avatar Popup -->
+<div id="avatarPopup">
+  <div id="avatarContent">
+    <span id="avatarClose">❌</span>
+    <h2>Select Avatar & Name</h2>
+    <div id="carousel">
+      <button id="prev">&#60;</button>
+      <img id="avatarImg" src="avt1.jpg">
+      <button id="next">&#62;</button>
+    </div>
+    <input id="username" type="text" placeholder="Enter Username">
+    <button id="startGame">Start</button>
+  </div>
+</div>
+
 <script>
-(() => {
-  const canvas = document.getElementById('canvas');
-  const pickImage = document.getElementById('pickImage');
-  const bottomBar = document.getElementById('bottom-bar');
-  const fontDropdown = document.getElementById('fontDropdown');
-  const colorPicker = document.getElementById('colorPicker');
-// ----- Download Button -----
-  
-  let selected = null, action = null, side = null, start = {};
-  let texts = 0, imgs = 0;
-  window.selectedElement = null;
+const ws = new WebSocket("wss://my-4a9r.onrender.com");
+ws.onopen = () => console.log("WS connected");
+ws.onmessage = (msg) => {
+  console.log("WS message:", msg.data);
+  try {
+    const data = JSON.parse(msg.data);
 
-  const pxToPctX = px => px / canvas.clientWidth * 100;
-  const pxToPctY = px => px / canvas.clientHeight * 100;
-
-  function deselect() {
-    if(selected){ selected.classList.remove('selected'); selected = null; window.selectedElement=null; action=null; side=null; createDefaultIcons();}
-  }
-
-  function select(box) {
-    deselect();
-    selected = box;
-    selected.classList.add('selected');
-    window.selectedElement = box;
-    if(box.dataset.type==='label') showTextTools();
-    else if(box.dataset.type==='img') showImageTools();
-  }
-
-  function closeFontDropdown(){ fontDropdown.style.display='none'; }
-  function closeColorPicker(){ colorPicker.style.display='none'; }
-
-  function addControls(box) {
-    const del = document.createElement('div');
-    del.className = "control-btn delete-btn";
-    del.innerHTML = `<img src="images/delete.png" style="width:70%;height:70%">`;
-    del.onclick = e => { e.stopPropagation(); box.remove(); deselect(); };
-    box.appendChild(del);
-
-    if(box.dataset.type === "label"){
-      const text = box.querySelector('.label-text');
-      text.contentEditable = "true"; text.spellcheck = false;
-      text.addEventListener("pointerdown", () => select(box));
+    if(data.type === "lobbyCreated"){
+      console.log("Lobby Created:", data);
+      localStorage.setItem("roomId", data.roomId);
+      localStorage.setItem("playerId", data.playerId);
+      localStorage.setItem("wscode", data.wscode);
+      window.location.href = `https://multiplyer-game.onrender.com/tambola.html/${data.roomId}`;
     }
-  }
-document.getElementById("downloadBtn").onclick = async () => {
-const elements = [];
-const boxes = canvas.querySelectorAll(".label-box, .img-box");
 
-// Use a Promise.all to handle asynchronous operations  
-const promises = Array.from(boxes).map(async box => {  
-  if (box.dataset.type === "label") {  
-    const lbl = box.querySelector(".label-text");  
-    return {  
-      id: box.id,  
-      type: "label",  
-      text: lbl.innerText,  
-      fontSize: lbl.style.fontSize,  
-      fontFamily: lbl.style.fontFamily,  
-      color: lbl.style.color,  
-      fontWeight: lbl.style.fontWeight,  
-      fontStyle: lbl.style.fontStyle,  
-      textDecoration: lbl.style.textDecoration,  
-      left: box.style.left,  
-      top: box.style.top,  
-      width: box.style.width,  
-      height: box.style.height  
-    };  
-  } else if (box.dataset.type === "img") {  
-    const img = box.querySelector("img");  
+    if(data.type === "lobbyJoined"){
+      console.log("Lobby Joined:", data);
+      localStorage.setItem("roomId", data.roomId);
+      localStorage.setItem("playerId", data.playerId);
+      localStorage.setItem("wscode", data.wscode);
+      window.location.href = `https://multiplyer-game.onrender.com/tambola.html/${data.roomId}`;
+    }
 
-    // Check if the image source is a blob URL  
-    if (img.src.startsWith("blob:")) {  
-        // Asynchronously fetch the blob and convert it to Base64  
-        const response = await fetch(img.src);  
-        const blob = await response.blob();  
+    if(data.type === "noRoom"){
+      alert("❌ Room not found!");
+    }
 
-        return new Promise((resolve, reject) => {  
-            const reader = new FileReader();  
-            reader.onloadend = () => {  
-                resolve({  
-                    id: box.id,  
-                    type: "img",  
-                    src: reader.result, // This will be the Base64 string  
-                    left: box.style.left,  
-                    top: box.style.top,  
-                    width: box.style.width,  
-                    height: box.style.height,  
-                    border: img.style.border,  
-                    borderColor: box.style.borderColor  
-                });  
-            };  
-            reader.onerror = reject;  
-            reader.readAsDataURL(blob);  
-        });  
-    }  
+  } catch(e){ console.error("WS parse error", e); }
+};
 
-    // Return existing image data (e.g., from an external URL or static asset)  
-    return {  
-      id: box.id,  
-      type: "img",  
-      src: img.src,  
-      left: box.style.left,  
-      top: box.style.top,  
-      width: box.style.width,  
-      height: box.style.height,  
-      border: img.style.border,  
-      borderColor: box.style.borderColor  
-    };  
-  }  
-});  
+const joinBtn = document.getElementById("joinBtn");
+const joinPanel = document.getElementById("joinPanel");
+const createBtn = document.getElementById("createBtn");
+const toggleBar = document.getElementById("toggleBar");
+const publicLobbies = document.getElementById("publicLobbies");
+const privateJoin = document.getElementById("privateJoin");
+const avatarPopup = document.getElementById("avatarPopup");
+const avatarClose = document.getElementById("avatarClose");
+const avatarImg = document.getElementById("avatarImg");
+const prevBtn = document.getElementById("prev");
+const nextBtn = document.getElementById("next");
+const startBtn = document.getElementById("startGame");
+let avatarIndex = 0;
+const avatars = ["avt1.jpg","avt2.jpg","avt3.jpg","avt4.jpg","avt5.jpg","avt6.jpg","avt7.jpg","avt8.jpg"];
+let isPrivate = false;
+let actionType = null; 
+let selectedRoomId = null;
 
-// Wait for all image conversions to complete  
-const updatedElements = await Promise.all(promises);  
+// Join panel toggle
+joinBtn.onclick = () => {
+  joinPanel.classList.toggle("active");
+  createBtn.style.marginTop = joinPanel.classList.contains("active") ? "16px" : "0";
+};
 
-console.log("Exporting:", updatedElements);  
+// Toggle pub/pri
+toggleBar.onclick = () => {
+  isPrivate = !isPrivate;
+  toggleBar.classList.toggle("toggle-on", isPrivate);
+  publicLobbies.style.display = isPrivate ? "none" : "block";
+  privateJoin.style.display = isPrivate ? "block" : "none";
+};
 
-const res = await fetch("/makepdf", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    elements: updatedElements,
-    width: canvas.offsetWidth,
-    height: canvas.offsetHeight
-  })
-}); 
-
-if (res.ok) {  
-  const blob = await res.blob();  
-  const url = URL.createObjectURL(blob);  
-  const a = document.createElement("a");  
-  a.href = url;  
-  a.download = "output.pdf";  
-  a.click();  
-  URL.revokeObjectURL(url);  
-} else {  
-  alert("PDF generation failed");  
+// Demo lobbies
+for(let i=1;i<=5;i++){
+  const row = document.createElement("div");
+  row.className="lobby-row";
+  row.innerHTML=`<div>Lobby ${i}</div><div>${100+i}</div><div>${i}/8</div><img src="join.png" class="lobbyJoin">`;
+  publicLobbies.appendChild(row);
+  row.querySelector(".lobbyJoin").onclick = () => {
+    actionType = "join";
+    selectedRoomId = `${100+i}`;
+    console.log("Joining public lobby:", selectedRoomId);
+    showAvatarPopup();
+  };
 }
 
+// Avatar popup
+function showAvatarPopup(){
+  avatarPopup.style.display="flex"; 
+  avatarIndex=0; 
+  avatarImg.src=avatars[avatarIndex];
+}
+createBtn.onclick = () => {actionType="create"; showAvatarPopup();}
+document.getElementById("privateJoinBtn").onclick = () => {
+  actionType="join";
+  selectedRoomId=document.getElementById("roomInput").value.trim();
+  console.log("Joining private lobby:", selectedRoomId);
+  showAvatarPopup();
 };
-  function createImgBox(url) {
-    const box = document.createElement('div'); box.className = "img-box"; box.dataset.type = "img"; box.id = "i" + (++imgs);
-    const img = document.createElement('img'); img.src = url; box.appendChild(img);
-    addControls(box);
+avatarClose.onclick = () => { avatarPopup.style.display="none"; }
 
-    ['top','right','bottom','left'].forEach(pos => {
-      const h = document.createElement('div'); h.className = `handle ${pos}`;
-      h.onpointerdown = e => { e.preventDefault(); e.stopPropagation(); select(box); action='resize'; side=pos;
-        const r=box.getBoundingClientRect(), c=canvas.getBoundingClientRect();
-        start={x:e.clientX,y:e.clientY,left:r.left-c.left,top:r.top-c.top,width:r.width,height:r.height};
-        h.setPointerCapture?.(e.pointerId);
-      };
-      h.onpointerup = e => { h.releasePointerCapture?.(e.pointerId); action=null; };
-      box.appendChild(h);
-    });
+// Carousel
+prevBtn.onclick = () => { avatarIndex=(avatarIndex-1+avatars.length)%avatars.length; avatarImg.src=avatars[avatarIndex]; }
+nextBtn.onclick = () => { avatarIndex=(avatarIndex+1)%avatars.length; avatarImg.src=avatars[avatarIndex]; }
 
-    box.onpointerdown = e => {
-      if(e.target.classList.contains('control-btn')||e.target.classList.contains('handle')) return;
-      e.stopPropagation(); select(box); action='drag';
-      const r=box.getBoundingClientRect(), c=canvas.getBoundingClientRect();
-      start={x:e.clientX,y:e.clientY,left:r.left-c.left,top:r.top-c.top,width:r.width,height:r.height};
-      box.setPointerCapture?.(e.pointerId);
-    };
-
-    img.onload = ()=>{
-      const cw=canvas.clientWidth, ch=canvas.clientHeight;
-      const ratio=img.naturalWidth/img.naturalHeight||1;
-      let w=cw*0.3, h=w/ratio;
-      box.style.width=pxToPctX(w)+"%"; box.style.height=pxToPctY(h)+"%";
-      box.style.left=pxToPctX((cw-w)/2)+"%"; box.style.top=pxToPctY((ch-h)/2)+"%";
-      select(box);
-    };
-
-    canvas.appendChild(box);
+// Start
+startBtn.onclick = () => {
+  const uname = document.getElementById("username").value.trim();
+  if(!uname){ alert("Enter username"); return; }
+  const payload = {username:uname, icon:avatars[avatarIndex], type:isPrivate?"pri":"pub"};
+  if(actionType==="create"){
+    ws.send(JSON.stringify({action:"createLobby", ...payload}));
+    console.log("Sent createLobby:", payload);
+  } else if(actionType==="join"){
+    ws.send(JSON.stringify({action:"joinLobby", ...payload, roomId:selectedRoomId}));
+    console.log("Sent joinLobby:", payload, "roomId:", selectedRoomId);
   }
-
-  function createLabel(text,size){
-    const box=document.createElement('div'); box.className="label-box"; box.dataset.type="label"; box.id="l"+(++texts);
-    const lbl=document.createElement('div'); lbl.className="label-text"; lbl.innerText=text; lbl.style.fontSize=size+"px";
-    box.appendChild(lbl);
-    const h=document.createElement('div'); h.className="font-handle";
-    h.onpointerdown=e=>{e.preventDefault(); e.stopPropagation(); select(box); action='font-resize'; start={x:e.clientX,fs:parseInt(lbl.style.fontSize)}; h.setPointerCapture?.(e.pointerId);};
-    h.onpointerup=e=>{h.releasePointerCapture?.(e.pointerId); action=null;};
-    box.appendChild(h);
-
-    box.style.left="20%"; box.style.top="20%";
-    box.onpointerdown=e=>{ if(e.target.classList.contains('font-handle')||e.target.classList.contains('control-btn'))return;
-      e.stopPropagation(); select(box); action='drag-label';
-      const r=box.getBoundingClientRect(), c=canvas.getBoundingClientRect();
-      start={x:e.clientX,y:e.clientY,left:r.left-c.left,top:r.top-c.top}; box.setPointerCapture?.(e.pointerId);
-    };
-    addControls(box); canvas.appendChild(box); select(box);
-  }
-
-  document.onpointermove = e=>{
-    if(!selected||!action)return;
-    const dx=e.clientX-start.x, dy=e.clientY-start.y;
-    const c=canvas.getBoundingClientRect();
-    const minW=30,minH=20;
-
-    if(action==='drag'){
-      let l=start.left+dx,t=start.top+dy;
-      l=Math.max(0,Math.min(l,c.width-start.width)); t=Math.max(0,Math.min(t,c.height-start.height));
-      selected.style.left=(l/c.width*100)+'%'; selected.style.top=(t/c.height*100)+'%';
-    } else if(action==='drag-label'){
-      let l=start.left+dx,t=start.top+dy;
-      l=Math.max(0,Math.min(l,c.width-10)); t=Math.max(0,Math.min(t,c.height-10));
-      selected.style.left=(l/c.width*100)+'%'; selected.style.top=(t/c.height*100)+'%';
-    } else if(action==='resize'){
-      let nl=start.left,nt=start.top,nw=start.width,nh=start.height;
-      if(side==='right'){nw=Math.max(minW,Math.min(start.width+dx,c.width-start.left));}
-      if(side==='left'){let tl=start.left+dx, tw=start.width-dx; if(tl<0){tw+=tl;tl=0;} if(tw<minW){tl=start.left+(start.width-minW);tw=minW;} nl=tl; nw=tw;}
-      if(side==='bottom'){nh=Math.max(minH,Math.min(start.height+dy,c.height-start.top));}
-      if(side==='top'){let tt=start.top+dy, th=start.height-dy; if(tt<0){th+=tt;tt=0;} if(th<minH){tt=start.top+(start.height-minH);th=minH;} nt=tt; nh=th;}
-      if(nl+nw>c.width)nw=c.width-nl; if(nt+nh>c.height)nh=c.height-nt;
-      selected.style.left=(nl/c.width*100)+'%'; selected.style.top=(nt/c.height*100)+'%';
-      selected.style.width=(nw/c.width*100)+'%'; selected.style.height=(nh/c.height*100)+'%';
-    } else if(action==='font-resize'){
-      const lbl=selected.querySelector('.label-text'); let ns=Math.max(8,start.fs+dx/3); lbl.style.fontSize=ns+'px';
-    }
-  };
-  document.onpointerup=()=>{action=null; side=null;};
-  canvas.onpointerdown=e=>{if(e.target===canvas)deselect();};
-
-  // ----- Bottom Bar -----
-  function clearBottomBar(){ while(bottomBar.firstChild) bottomBar.removeChild(bottomBar.firstChild); }
-
-  function createDefaultIcons(){
-    clearBottomBar();
-    const textIcon = document.createElement('div'); textIcon.className='icon'; textIcon.id='textIcon'; textIcon.style.top='10%'; textIcon.style.left='20%'; textIcon.style.width='10%';
-    textIcon.innerHTML = '<img src="images/addtext.png"><span>TEXT</span>';
-    bottomBar.appendChild(textIcon);
-
-    const imageIcon = document.createElement('div'); imageIcon.className='icon'; imageIcon.id='imageIcon'; imageIcon.style.top='10%'; imageIcon.style.left='70%'; imageIcon.style.width='10%';
-    imageIcon.innerHTML = '<img src="images/image.png"><span>IMAGE</span>';
-    bottomBar.appendChild(imageIcon);
-
-    textIcon.onclick = ()=>{ showHeadingSubheading(); };
-    imageIcon.onclick = ()=>{ pickImage.click(); };
-  }
-
-  function showHeadingSubheading(){
-    const positions = ['28%','46%','64%'];
-    const iconsData = [
-      {id:'headingIcon', src:'images/heading.png', label:'Heading'},
-{id:'subHeadingIcon', src:'images/subheading.png', label:'Sub-Heading'},
-{id:'descIcon', src:'images/descIcon.png', label:'Description'}
-    ];
-    iconsData.forEach((ic, idx)=>{
-      if(!document.getElementById(ic.id)){
-        let el=document.createElement('div'); el.className='icon'; el.id=ic.id; el.style.top='10%'; el.style.left=positions[idx]; el.style.width='6%';
-        el.innerHTML=`<img src="${ic.src}"><span>${ic.label}</span>`;
-        bottomBar.appendChild(el);
-        if(ic.id==='headingIcon') el.onclick=()=>createLabel('Heading',32);
-        if(ic.id==='subHeadingIcon') el.onclick=()=>createLabel('Sub-Heading',24);
-        if(ic.id==='descIcon') el.onclick=()=>createLabel('Description',16);
-      }
-    });
-    document.getElementById('textIcon').style.left='10%'; document.getElementById('textIcon').style.width='6%';
-    document.getElementById('imageIcon').style.left='82%'; document.getElementById('imageIcon').style.width='6%';
-  }
-
-  // ----- Fonts + Color Logic -----
-  const fonts = ['Arial','Helvetica','Verdana','Tahoma','Trebuchet MS','Times New Roman','Georgia','Garamond','Palatino','Courier New','Comic Sans MS','Brush Script MT','Impact','Papyrus','Copperplate'];
-  function applyTextFormat({font=null,color=null,bold=null,italic=null,underline=null}){
-    if(!window.selectedElement||window.selectedElement.dataset.type!=='label')return;
-    const lbl = window.selectedElement.querySelector('.label-text');
-    if(font) lbl.style.fontFamily = `'${font}', sans-serif`;
-    if(color) lbl.style.color = color;
-    if(bold!==null) lbl.style.fontWeight = bold?'bold':'normal';
-    if(italic!==null) lbl.style.fontStyle = italic?'italic':'normal';
-    if(underline!==null) lbl.style.textDecoration = underline?'underline':'none';
-  }
-  fonts.forEach(f=>{
-    const item=document.createElement('div'); item.className='font-item'; item.style.fontFamily=`'${f}', sans-serif`; 
-      item.innerText=f; 
-      item.onclick=()=>{ applyTextFormat({font:f}); closeFontDropdown(); }; 
-      fontDropdown.appendChild(item);
-  });
-  const colors = ['#000000','#FFFFFF','#FF0000','#00FF00','#0000FF','#FFFF00','#FF00FF','#00FFFF','#FFA500','#800080','#008000','#FFC0CB'];
-  colors.forEach(c=>{
-    const sw = document.createElement('div'); 
-    sw.className='color-swatch'; 
-    sw.style.background=c; 
-    sw.onclick=()=>{ applyTextFormat({color:c}); closeColorPicker(); }; 
-    colorPicker.appendChild(sw);
-  });
-
-  // ----- Image input -----
-  pickImage.onchange = e=>{
-    if(e.target.files && e.target.files[0]){
-      const url=URL.createObjectURL(e.target.files[0]);
-      createImgBox(url);
-    }
-  };
-
-  // ----- Show Text/Image Tools on Selection -----
-  function showTextTools() {
-    clearBottomBar();
-    closeFontDropdown();
-    colorPicker.style.display = 'none';
-
-    const tools = [
-  {id:'color', src:'images/fontcolor.png', label:'Color', left:'18%'},
-  {id:'style', src:'images/fontstyle.png', label:'Style', left:'34%'},
-  {id:'bold', src:'images/bold.png', label:'Bold', left:'50%'},
-  {id:'italic', src:'images/italic.png', label:'Italic', left:'66%'},
-  {id:'underline', src:'images/underline.png', label:'Underline', left:'82%'}
-];
-
-
-    tools.forEach(t=>{
-      let el = document.createElement('div');
-      el.className='icon';
-      el.id=t.id;
-      el.style.top='10%';
-      el.style.left=t.left;
-      el.style.height = '30%';
-      el.style.width='12%';
-      el.innerHTML=`<img src="${t.src}"><span>${t.label}</span>`;
-      bottomBar.appendChild(el);
-
-      if(t.id==='color') el.onclick=()=>{ colorPicker.style.display='grid'; closeFontDropdown(); };
-      if(t.id==='style') el.onclick=()=>{ fontDropdown.style.display='grid'; colorPicker.style.display='none'; };
-      if(t.id==='bold') el.onclick=()=>{ toggleStyle('bold'); };
-      if(t.id==='italic') el.onclick=()=>{ toggleStyle('italic'); };
-      if(t.id==='underline') el.onclick=()=>{ toggleStyle('underline'); };
-    });
-  }
-
-  function showImageTools() {
-    clearBottomBar();
-    closeFontDropdown();
-    colorPicker.style.display = 'none';
-
-    const tools = [
-  {id:'border', src:'images/border.png', label:'Border', left:'22%'},
-  {id:'borderColor', src:'images/bordercolor.png', label:'Border Color', left:'39%'}
-];
-
-    tools.forEach(t => {
-      let el = document.createElement('div');
-      el.className = 'icon';
-      el.id = t.id;
-      el.style.top = '10%';
-      el.style.left = t.left;
-      el.style.height = "50%";
-      el.style.width = '12%';
-      el.innerHTML = `<img src="${t.src}"><span>${t.label}</span>`;
-      bottomBar.appendChild(el);
-
-      if(t.id === 'border') el.onclick = () => { toggleImageBorder(); };
-      if(t.id === 'borderColor') el.onclick = () => {
-        if(!selected || selected.dataset.type !== 'img') return;
-        selected.style.borderColor = selected.style.borderColor === 'red' ? '#000' : 'red';
-      };
-    });
-  }
-
-  function toggleStyle(prop){
-    if(!window.selectedElement||window.selectedElement.dataset.type!=='label')return;
-    const lbl = window.selectedElement.querySelector('.label-text');
-    if(prop==='bold') lbl.style.fontWeight = (lbl.style.fontWeight==='bold')?'normal':'bold';
-    if(prop==='italic') lbl.style.fontStyle = (lbl.style.fontStyle==='italic')?'normal':'italic';
-    if(prop==='underline') lbl.style.textDecoration = (lbl.style.textDecoration==='underline')?'none':'underline';
-  }
-
-  function toggleImageBorder(){
-    if(!window.selectedElement||window.selectedElement.dataset.type!=='img')return;
-    const img = window.selectedElement.querySelector('img');
-    if(img.style.border) img.style.border=''; else img.style.border='2px solid #000';
-  }
-
-  // ----- Initial Setup -----
-  createDefaultIcons();
-
-})();
+  avatarPopup.style.display="none";
+};
 </script>
 </body>
 </html>
