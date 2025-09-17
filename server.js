@@ -14,6 +14,11 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
+// Serve tambola.html with roomId param
+app.get("/tambola.html/:roomId", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "tambola.html"));
+});
+
 // Room stores
 let publicRooms = {};
 let privateRooms = {};
@@ -51,11 +56,11 @@ wss.on("connection", (ws) => {
         const playerId = 0;
         const wscode = randomWsCode();
 
-        const player = { username, icon, playerId, wscode, ts: Date.now() };
+        const player = { username, icon, playerId, wscode, ws, ts: Date.now() };
         if (type === "pub") {
-          publicRooms[roomId] = { players: [player] };
+          publicRooms[roomId] = { players: { [playerId]: player } };
         } else {
-          privateRooms[roomId] = { players: [player] };
+          privateRooms[roomId] = { players: { [playerId]: player } };
         }
 
         ws.send(JSON.stringify({
@@ -81,17 +86,53 @@ wss.on("connection", (ws) => {
           return;
         }
 
-        const playerId = rooms[roomId].players.length;
+        const playerId = Object.keys(rooms[roomId].players).length;
         const wscode = randomWsCode();
-        const player = { username, icon, playerId, wscode, ts: Date.now() };
+        const player = { username, icon, playerId, wscode, ws, ts: Date.now() };
 
-        rooms[roomId].players.push(player);
+        rooms[roomId].players[playerId] = player;
 
         ws.send(JSON.stringify({
           type: "lobbyJoined",
           roomId, playerId, wscode
         }));
         console.log(`👤 ${username} joined room ${roomId} (${type}) as player ${playerId}`);
+        logRooms();
+      }
+
+      // PAGE ENTERED (Tambola)
+      else if (data.typeReq === "pageEntered") {
+        const { roomId, playerId, wscode, username, icon } = data;
+
+        const room = publicRooms[roomId] || privateRooms[roomId];
+        if (!room || !room.players[playerId]) {
+          console.log("❌ Invalid room/player on pageEntered");
+          return;
+        }
+
+        // Replace WS + update wscode
+        room.players[playerId].ws = ws;
+        room.players[playerId].wscode = wscode;
+        room.players[playerId].username = username;
+        room.players[playerId].icon = icon;
+
+        // Send all players list back to this client
+        const playersList = Object.values(room.players).map(p => ({
+          playerId: p.playerId,
+          username: p.username,
+          icon: p.icon
+        }));
+        ws.send(JSON.stringify({ type: "ijoin", players: playersList }));
+
+        // Notify others that this player entered
+        const newPlayer = { playerId, username, icon };
+        Object.values(room.players).forEach(p => {
+          if (p.ws && p.ws.readyState === WebSocket.OPEN && p.playerId != playerId) {
+            p.ws.send(JSON.stringify({ type: "hejoins", player: newPlayer }));
+          }
+        });
+
+        console.log(`📢 pageEntered handled for ${username} in room ${roomId}`);
         logRooms();
       }
 
@@ -112,4 +153,4 @@ wss.on("connection", (ws) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
-});      
+});
