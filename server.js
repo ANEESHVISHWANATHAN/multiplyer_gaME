@@ -9,7 +9,9 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 app.use(express.static(path.join(__dirname, "public"))); // your HTML files
-
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/index.html');
+});
 // Room stores
 let publicRooms = {};
 let privateRooms = {};
