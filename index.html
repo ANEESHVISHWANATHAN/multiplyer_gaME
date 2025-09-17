@@ -124,11 +124,17 @@ ws.onmessage = (msg) => {
     const data = JSON.parse(msg.data);
     if(data.type === "lobbyCreated"){
       console.log("🎉 Lobby Created:", data);
-      // redirect or store data
+      localStorage.setItem("roomId", data.roomId);
+      localStorage.setItem("playerId", data.playerId);
+      localStorage.setItem("wscode", data.wscode);
+      window.location.href = `https://multiplyer-game.onrender.com/tambola.html/${data.roomId}`;
     }
     if(data.type === "lobbyJoined"){
       console.log("👥 Lobby Joined:", data);
-      // redirect or store data
+      localStorage.setItem("roomId", data.roomId);
+      localStorage.setItem("playerId", data.playerId);
+      localStorage.setItem("wscode", data.wscode);
+      window.location.href = `https://multiplyer-game.onrender.com/tambola.html/${data.roomId}`;
     }
     if(data.type === "noRoom"){
       alert("❌ No such room!");
