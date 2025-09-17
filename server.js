@@ -16,7 +16,7 @@ app.get("/", (req, res) => {
 
 // Serve tambola.html with roomId param
 app.get("/tambola.html/:roomId", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "tambola.html"));
+  res.sendFile(path.join(__dirname,  "tambola.html"));
 });
 
 // Room stores
