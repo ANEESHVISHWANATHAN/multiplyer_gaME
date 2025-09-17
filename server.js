@@ -11,7 +11,7 @@ app.use(express.static(path.join(__dirname, "public"))); // HTML, CSS, images
 
 // Serve entry.html as root
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "entry.html"));
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 // Room stores
