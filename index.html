@@ -101,7 +101,7 @@ ws.onmessage = (msg) => {
       localStorage.setItem("playerId",data.playerId);
       localStorage.setItem("wscode",data.wscode);
       localStorage.setItem("ishost",data.ishost);
-      localStorage.setItem("lobbyType",data.lobbyType);
+      localStorage.setItem("lobbyType",data.gameType);
       window.location.href=`https://multiplyer-game.onrender.com/tambola.html/${data.roomId}`;
     }
     if(data.type==="lobbyJoined"){
@@ -109,7 +109,7 @@ ws.onmessage = (msg) => {
       localStorage.setItem("playerId",data.playerId);
       localStorage.setItem("wscode",data.wscode);
       localStorage.setItem("ishost",data.ishost);
-      localStorage.setItem("lobbyType",data.lobbyType);
+      localStorage.setItem("lobbyType",data.gameType);
       window.location.href=`https://multiplyer-game.onrender.com/tambola.html/${data.roomId}`;
     }
     if(data.type==="noRoom"){ alert("❌ No such room!"); }
