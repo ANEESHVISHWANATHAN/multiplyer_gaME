@@ -137,74 +137,74 @@ wss.on("connection", (ws, req) => {
       }
 
       // ===== PAGE ENTERED (Tambola) =====
-      else if (data.typeReq === "pageEntered") {
-        const { roomId, playerId, wscode } = data;
-        const room = publicRooms[roomId] || privateRooms[roomId];
-        if (!room || !room.players[playerId]) {
-          console.log(`❌ Invalid pageEntered for ${roomId}`);
-          return;
-        }
+      // ===== PAGE ENTERED (Tambola) =====
+else if (data.typeReq === "pageEntered") {
+  const { roomId, playerId, wscode } = data;
+  const room = publicRooms[roomId] || privateRooms[roomId];
+  if (!room || !room.players[playerId]) {
+    console.log(`❌ Invalid pageEntered for ${roomId}`);
+    return;
+  }
 
-        const me = room.players[playerId];
+  const me = room.players[playerId];
 
-        // validate wscode
-        if (me.wscode !== wscode) {
-          console.log(`❌ Wscode mismatch for ${me.username}`);
-          return;
-        }
+  // validate wscode
+  if (me.wscode !== wscode) {
+    console.log(`❌ Wscode mismatch for ${me.username}`);
+    return;
+  }
 
-        // cancel pending disconnect timer if any (reconnect)
-        const key = `${roomId}_${playerId}`;
-        if (disconnectTimers[key]) {
-          clearTimeout(disconnectTimers[key]);
-          delete disconnectTimers[key];
-          console.log(`⏱️ Cancelled disconnect-timer for ${me.username} (${key})`);
-        }
+  // cancel pending disconnect timer if any (reconnect)
+  const key = `${roomId}_${playerId}`;
+  if (disconnectTimers[key]) {
+    clearTimeout(disconnectTimers[key]);
+    delete disconnectTimers[key];
+    console.log(`⏱️ Cancelled disconnect-timer for ${me.username} (${key})`);
+  }
 
-        // attach new WS (tambola page)
-        me.ws = ws;
-        me.wsIndex = 1;
-        ws.isIndex = false;
+  // attach new WS (tambola page)
+  me.ws = ws;
+  me.wsIndex = 1;
+  ws.isIndex = false;
 
-        console.log(`🔄 Reattached ${me.username} in ${roomId} (wsIndex=1)`);
+  console.log(`🔄 Reattached ${me.username} in ${roomId} (wsIndex=1)`);
 
-        // Send full player list to this tambola client
-        const playersList = buildPlayersSummary(room);
-        ws.send(JSON.stringify({ type: "ijoin", players: playersList }));
+  // Send full player list to this reconnecting client
+  const playersList = buildPlayersSummary(room);
+  ws.send(JSON.stringify({ type: "ijoin", players: playersList }));
 
-        // Notify other in-room tambola clients that this player joined/connected
-        const newPlayer = { playerId: me.playerId, username: me.username, icon: me.icon };
-        Object.values(room.players).forEach(p => {
-          if (p.ws && p.ws.readyState === WebSocket.OPEN && p.playerId !== me.playerId) {
-            p.ws.send(JSON.stringify({ type: "hejoins", player: newPlayer }));
-          }
-        });
+  // Notify all other players about everyone (resend full state)
+  Object.values(room.players).forEach(p => {
+    if (p.ws && p.ws.readyState === WebSocket.OPEN && p.playerId !== me.playerId) {
+      // first, notify about the rejoining player
+      p.ws.send(JSON.stringify({ type: "hejoins", player: { playerId: me.playerId, username: me.username, icon: me.icon } }));
+      // then, also send the full updated list in case of host rejoin
+      p.ws.send(JSON.stringify({ type: "playersReshuffled", players: playersList }));
+    }
+  });
 
-        // Now notify index clients depending on public/private and host flag
-        if (room.type === "public") {
-          if (me.isHost) {
-            // Host actually entered — tell indexes there's a new lobby (send lobby object)
-            const lobby = {
-              roomId,
-              name: me.username,
-              players: Object.keys(room.players).length
-            };
-            broadcastToIndexes({ type: "newLobby", lobby });
-            console.log(`📤 newLobby broadcast for ${roomId}`);
-          } else {
-            // Non-host has entered — increase in players visible on index
-            broadcastToIndexes({
-              type: "playerChange",
-              roomId,
-              players: Object.keys(room.players).length
-            });
-            console.log(`📤 playerChange broadcast for ${roomId} (count=${Object.keys(room.players).length})`);
-          }
-        }
+  // Notify index clients depending on public/private and host flag
+  if (room.type === "public") {
+    if (me.isHost) {
+      const lobby = {
+        roomId,
+        name: me.username,
+        players: Object.keys(room.players).length
+      };
+      broadcastToIndexes({ type: "newLobby", lobby });
+      console.log(`📤 newLobby broadcast for ${roomId}`);
+    } else {
+      broadcastToIndexes({
+        type: "playerChange",
+        roomId,
+        players: Object.keys(room.players).length
+      });
+      console.log(`📤 playerChange broadcast for ${roomId} (count=${Object.keys(room.players).length})`);
+    }
+  }
 
-        logRooms();
-      }
-
+  logRooms();
+}
       // ===== INDEX ACTIVE =====
       else if (data.typeReq === "iactive" || data.typeReq === "iActive") {
         ws.isIndex = true;
