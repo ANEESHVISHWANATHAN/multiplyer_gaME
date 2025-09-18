@@ -1,4 +1,4 @@
-        const express = require("express");
+const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
 const path = require("path");
@@ -9,12 +9,12 @@ const wss = new WebSocket.Server({ server });
 
 // ===== Routes =====
 app.get("/", (req, res) => {
-  console.log("🌐 Route hit: GET / → index.html served");
+  console.log("🌐 GET / → index.html");
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
 app.get("/tambola.html/:roomId", (req, res) => {
-  console.log(`🌐 Route hit: GET /tambola.html/${req.params.roomId} → tambola.html served`);
+  console.log(`🌐 GET /tambola.html/${req.params.roomId}`);
   res.sendFile(path.join(__dirname, "tambola.html"));
 });
 
@@ -39,22 +39,20 @@ function broadcastToIndexes(msg) {
   });
 }
 function logRooms() {
-  console.log("===== 📊 Current Rooms =====");
-  console.log("Public:", JSON.stringify(publicRooms, null, 2));
-  console.log("Private:", JSON.stringify(privateRooms, null, 2));
-  console.log("============================");
+  console.log("===== 📊 Rooms =====");
+  console.log("Public:", Object.keys(publicRooms).length);
+  console.log("Private:", Object.keys(privateRooms).length);
+  console.log("====================");
 }
 
 // ===== WebSocket Handling =====
 wss.on("connection", (ws, req) => {
-  console.log(`✅ WS connected from ${req.socket.remoteAddress}`);
+  console.log(`✅ WS connected ${req.socket.remoteAddress}`);
   ws.isIndex = false;
 
   ws.on("message", (msg) => {
-    console.log("⬇️ Raw WS msg:", msg.toString());
     try {
       const data = JSON.parse(msg);
-      console.log("📩 Parsed:", data);
 
       // ===== CREATE LOBBY =====
       if (data.typeReq === "createLobby") {
@@ -71,7 +69,7 @@ wss.on("connection", (ws, req) => {
           privateRooms[roomId] = { type: "private", players: { [playerId]: player } };
         }
 
-        ws.isIndex = true; // mark as index socket
+        ws.isIndex = true;
         ws.send(JSON.stringify({
           type: "lobbyCreated",
           roomId, playerId, wscode,
@@ -79,7 +77,7 @@ wss.on("connection", (ws, req) => {
           lobbyType: type === "pub" ? "public" : "private"
         }));
 
-        console.log(`🎉 Lobby created [${roomId}] (${type}) by ${username}`);
+        console.log(`🎉 Lobby ${roomId} (${type}) created by ${username}`);
         logRooms();
       }
 
@@ -89,10 +87,9 @@ wss.on("connection", (ws, req) => {
         const type = lobbyType;
         const rooms = (type === "pub") ? publicRooms : privateRooms;
 
-        console.log(`🔍 ${username} attempting to join room ${roomId} (${type})`);
         if (!rooms[roomId]) {
           ws.send(JSON.stringify({ type: "noRoom" }));
-          console.log(`❌ No room ${roomId}`);
+          console.log(`❌ No room ${roomId} for ${username}`);
           return;
         }
 
@@ -110,7 +107,7 @@ wss.on("connection", (ws, req) => {
           lobbyType: type === "pub" ? "public" : "private"
         }));
 
-        console.log(`👤 ${username} joined ${roomId} as P${playerId}`);
+        console.log(`👤 ${username} joined room ${roomId} as P${playerId}`);
         logRooms();
       }
 
@@ -119,13 +116,13 @@ wss.on("connection", (ws, req) => {
         const { roomId, playerId, wscode } = data;
         const room = publicRooms[roomId] || privateRooms[roomId];
         if (!room || !room.players[playerId]) {
-          console.log("❌ Invalid pageEntered");
+          console.log(`❌ Invalid pageEntered for ${roomId}`);
           return;
         }
 
         const me = room.players[playerId];
         if (me.wscode !== wscode) {
-          console.log("❌ Wscode mismatch");
+          console.log(`❌ Wscode mismatch for ${me.username}`);
           return;
         }
 
@@ -133,7 +130,7 @@ wss.on("connection", (ws, req) => {
         me.wsIndex = 1;
         ws.isIndex = false;
 
-        console.log(`🔄 Reattached ${me.username} [${roomId}] wsIndex=1`);
+        console.log(`🔄 Reattached ${me.username} in ${roomId} (wsIndex=1)`);
 
         // Send full player list to me
         const playersList = Object.values(room.players).map(p => ({
@@ -142,7 +139,6 @@ wss.on("connection", (ws, req) => {
           icon: p.icon
         }));
         ws.send(JSON.stringify({ type: "ijoin", players: playersList }));
-        console.log(`📤 Sent ijoin list to ${me.username}`);
 
         // Notify others
         const newPlayer = { playerId: me.playerId, username: me.username, icon: me.icon };
@@ -155,7 +151,6 @@ wss.on("connection", (ws, req) => {
         // Index broadcasts
         if (room.type === "public") {
           if (me.isHost) {
-            console.log("📢 Broadcasting newLobby to indexes");
             broadcastToIndexes({
               type: "newLobby",
               roomId,
@@ -163,7 +158,6 @@ wss.on("connection", (ws, req) => {
               players: Object.keys(room.players).length
             });
           } else {
-            console.log("📢 Broadcasting playerChange to indexes");
             broadcastToIndexes({
               type: "playerChange",
               roomId,
@@ -178,7 +172,6 @@ wss.on("connection", (ws, req) => {
       // ===== INDEX ACTIVE =====
       else if (data.typeReq === "iActive") {
         ws.isIndex = true;
-        console.log("⚙️ Handling iActive from index");
         const lobbies = Object.entries(publicRooms).map(([id, room]) => {
           const host = room.players[0];
           return {
@@ -188,7 +181,7 @@ wss.on("connection", (ws, req) => {
           };
         });
         ws.send(JSON.stringify({ type: "existingLobbies", lobbies }));
-        console.log("📤 Sent existingLobbies");
+        console.log("📤 Sent existingLobbies to index");
       }
 
       else {
@@ -206,5 +199,5 @@ wss.on("connection", (ws, req) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+  console.log(`🚀 Server running on ${PORT}`);
+});                
