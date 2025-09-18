@@ -1,4 +1,5 @@
-  const express = require("express");
+// server.js
+const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
 const path = require("path");
@@ -23,7 +24,7 @@ app.use(express.static(path.join(__dirname, "public")));
 // ===== Room Stores =====
 let publicRooms = {};
 let privateRooms = {};
-let disconnectTimers = {}; // Track disconnect timers for players
+let disconnectTimers = {}; // key: `${roomId}_${playerId}` -> timeout id
 
 // ===== Helpers =====
 function randomRoomId() {
@@ -45,11 +46,31 @@ function logRooms() {
   console.log("Private:", Object.keys(privateRooms).length);
   console.log("====================");
 }
+function buildPlayersSummary(room) {
+  return Object.values(room.players).map(p => ({
+    playerId: p.playerId,
+    username: p.username,
+    icon: p.icon
+  }));
+}
+
+// Rebuild players mapping sequentially and update playerId values
+function rebuildPlayersMap(room) {
+  const remaining = Object.values(room.players)
+    .sort((a, b) => a.playerId - b.playerId);
+  const newPlayers = {};
+  remaining.forEach((p, idx) => {
+    p.playerId = idx;
+    newPlayers[idx] = p;
+  });
+  room.players = newPlayers;
+  return buildPlayersSummary(room);
+}
 
 // ===== WebSocket Handling =====
 wss.on("connection", (ws, req) => {
   console.log(`✅ WS connected ${req.socket.remoteAddress}`);
-  ws.isIndex = false;
+  ws.isIndex = false; // will be set true for index socket connections
 
   ws.on("message", (msg) => {
     try {
@@ -70,6 +91,7 @@ wss.on("connection", (ws, req) => {
           privateRooms[roomId] = { type: "private", players: { [playerId]: player } };
         }
 
+        // mark this socket as index (the index page connection that created the lobby)
         ws.isIndex = true;
         ws.send(JSON.stringify({
           type: "lobbyCreated",
@@ -99,6 +121,8 @@ wss.on("connection", (ws, req) => {
         const player = { username, icon, playerId, wscode, ws, wsIndex: 0, isHost: false };
 
         rooms[roomId].players[playerId] = player;
+
+        // mark this socket as index (the index page connection that requested join)
         ws.isIndex = true;
 
         ws.send(JSON.stringify({
@@ -122,56 +146,59 @@ wss.on("connection", (ws, req) => {
         }
 
         const me = room.players[playerId];
+
+        // validate wscode
         if (me.wscode !== wscode) {
           console.log(`❌ Wscode mismatch for ${me.username}`);
           return;
         }
 
-        // Cancel any disconnect timer if reconnecting
+        // cancel pending disconnect timer if any (reconnect)
         const key = `${roomId}_${playerId}`;
         if (disconnectTimers[key]) {
           clearTimeout(disconnectTimers[key]);
           delete disconnectTimers[key];
-          console.log(`⏱️ Canceled disconnect timer for ${me.username}`);
+          console.log(`⏱️ Cancelled disconnect-timer for ${me.username} (${key})`);
         }
 
+        // attach new WS (tambola page)
         me.ws = ws;
         me.wsIndex = 1;
         ws.isIndex = false;
 
         console.log(`🔄 Reattached ${me.username} in ${roomId} (wsIndex=1)`);
 
-        // Send full player list to me
-        const playersList = Object.values(room.players).map(p => ({
-          playerId: p.playerId,
-          username: p.username,
-          icon: p.icon
-        }));
+        // Send full player list to this tambola client
+        const playersList = buildPlayersSummary(room);
         ws.send(JSON.stringify({ type: "ijoin", players: playersList }));
 
-        // Notify others
+        // Notify other in-room tambola clients that this player joined/connected
         const newPlayer = { playerId: me.playerId, username: me.username, icon: me.icon };
         Object.values(room.players).forEach(p => {
-          if (p.ws && p.ws.readyState === WebSocket.OPEN && p.playerId != playerId) {
+          if (p.ws && p.ws.readyState === WebSocket.OPEN && p.playerId !== me.playerId) {
             p.ws.send(JSON.stringify({ type: "hejoins", player: newPlayer }));
           }
         });
 
-        // Index broadcasts
+        // Now notify index clients depending on public/private and host flag
         if (room.type === "public") {
           if (me.isHost) {
-            broadcastToIndexes({
-              type: "newLobby",
+            // Host actually entered — tell indexes there's a new lobby (send lobby object)
+            const lobby = {
               roomId,
               name: me.username,
               players: Object.keys(room.players).length
-            });
+            };
+            broadcastToIndexes({ type: "newLobby", lobby });
+            console.log(`📤 newLobby broadcast for ${roomId}`);
           } else {
+            // Non-host has entered — increase in players visible on index
             broadcastToIndexes({
               type: "playerChange",
               roomId,
               players: Object.keys(room.players).length
             });
+            console.log(`📤 playerChange broadcast for ${roomId} (count=${Object.keys(room.players).length})`);
           }
         }
 
@@ -179,7 +206,7 @@ wss.on("connection", (ws, req) => {
       }
 
       // ===== INDEX ACTIVE =====
-      else if (data.typeReq === "iactive") {
+      else if (data.typeReq === "iactive" || data.typeReq === "iActive") {
         ws.isIndex = true;
         const lobbies = Object.entries(publicRooms).map(([id, room]) => {
           const host = room.players[0];
@@ -204,62 +231,143 @@ wss.on("connection", (ws, req) => {
   ws.on("close", () => {
     console.log("❎ WS disconnected");
 
-    // Find room and player
+    // Find the room + player that used this ws
     let roomFound = null;
     let leavingPlayer = null;
-    let roomId = null;
+    let foundRoomId = null;
 
-    for (const [rId, rooms] of Object.entries({ ...publicRooms, ...privateRooms })) {
-      for (const pid in rooms.players) {
-        const p = rooms.players[pid];
+    for (const [rId, r] of Object.entries(publicRooms)) {
+      for (const pid in r.players) {
+        const p = r.players[pid];
         if (p.ws === ws) {
-          roomFound = rooms;
+          roomFound = r;
           leavingPlayer = p;
-          roomId = rId;
+          foundRoomId = rId;
           break;
         }
       }
       if (leavingPlayer) break;
     }
+    if (!leavingPlayer) {
+      for (const [rId, r] of Object.entries(privateRooms)) {
+        for (const pid in r.players) {
+          const p = r.players[pid];
+          if (p.ws === ws) {
+            roomFound = r;
+            leavingPlayer = p;
+            foundRoomId = rId;
+            break;
+          }
+        }
+        if (leavingPlayer) break;
+      }
+    }
 
     if (!leavingPlayer) {
-      console.log("⚠️ WS not found in any room");
+      // Not a player connection we know about (maybe an index socket)
       return;
     }
 
-    const key = `${roomId}_${leavingPlayer.playerId}`;
+    const roomId = foundRoomId;
+    const playerId = leavingPlayer.playerId;
 
-    // Start a 10-second timer before removing player
-    disconnectTimers[key] = setTimeout(() => {
-      console.log(`⏱️ 10s passed, removing ${leavingPlayer.username}`);
+    // Immediate removal if player was in-game (wsIndex === 1)
+    if (leavingPlayer.wsIndex === 1) {
+      console.log(`🔔 Player ${leavingPlayer.username} (P${playerId}) left room ${roomId} (immediate)`);
 
-      // Notify other players
+      // Notify remaining in-room clients
       Object.values(roomFound.players).forEach(p => {
-        if (p.ws && p.ws.readyState === WebSocket.OPEN && p.playerId != leavingPlayer.playerId) {
-          p.ws.send(JSON.stringify({ type: "heleft", playerId: leavingPlayer.playerId }));
+        if (p.ws && p.ws.readyState === WebSocket.OPEN && p.playerId !== playerId) {
+          p.ws.send(JSON.stringify({ type: "heleft", playerId }));
         }
       });
 
-      delete roomFound.players[leavingPlayer.playerId];
+      // Remove player and rebuild mapping
+      delete roomFound.players[playerId];
+      const summary = rebuildPlayersMap(roomFound);
 
-      // Delete room if empty
-      if (Object.keys(roomFound.players).length === 0) {
-        if (roomFound.type === "public") {
+      // Notify remaining in-room clients about reshuffled playerIds
+      Object.values(roomFound.players).forEach(p => {
+        if (p.ws && p.ws.readyState === WebSocket.OPEN) {
+          p.ws.send(JSON.stringify({ type: "playersReshuffled", players: summary }));
+        }
+      });
+
+      // Notify index (public) with updated count or delete if empty
+      if (roomFound.type === "public") {
+        const count = Object.keys(roomFound.players).length;
+        if (count === 0) {
           delete publicRooms[roomId];
           broadcastToIndexes({ type: "deleteLobby", roomId });
+          console.log(`🗑 Room ${roomId} deleted (empty)`);
         } else {
-          delete privateRooms[roomId];
+          broadcastToIndexes({ type: "playerChange", roomId, players: count });
         }
-        console.log(`🗑 Room ${roomId} deleted (empty)`);
+      } else if (roomFound.type === "private") {
+        if (Object.keys(roomFound.players).length === 0) {
+          delete privateRooms[roomId];
+          console.log(`🗑 Private room ${roomId} deleted (empty)`);
+        }
       }
 
       logRooms();
+      return;
+    }
+
+    // Otherwise wsIndex === 0 (index socket / pre-game). Start a 10s timer to wait for reconnect.
+    const key = `${roomId}_${playerId}`;
+    if (disconnectTimers[key]) {
+      // If a timer already exists, clear & reset it
+      clearTimeout(disconnectTimers[key]);
+    }
+
+    console.log(`⏱️ Started 10s disconnect timer for ${leavingPlayer.username} (P${playerId}) in ${roomId}`);
+
+    disconnectTimers[key] = setTimeout(() => {
+      console.log(`⏱️ Timer expired — removing ${leavingPlayer.username} (P${playerId}) from ${roomId}`);
+
+      // Notify remaining in-room clients
+      Object.values(roomFound.players).forEach(p => {
+        if (p.ws && p.ws.readyState === WebSocket.OPEN && p.playerId !== playerId) {
+          p.ws.send(JSON.stringify({ type: "heleft", playerId }));
+        }
+      });
+
+      // Delete the player and reshuffle
+      delete roomFound.players[playerId];
+      const summary = rebuildPlayersMap(roomFound);
+
+      // Notify remaining players about reshuffle
+      Object.values(roomFound.players).forEach(p => {
+        if (p.ws && p.ws.readyState === WebSocket.OPEN) {
+          p.ws.send(JSON.stringify({ type: "playersReshuffled", players: summary }));
+        }
+      });
+
+      // Notify index or delete room if empty
+      if (roomFound.type === "public") {
+        const count = Object.keys(roomFound.players).length;
+        if (count === 0) {
+          delete publicRooms[roomId];
+          broadcastToIndexes({ type: "deleteLobby", roomId });
+          console.log(`🗑 Room ${roomId} deleted (empty)`);
+        } else {
+          broadcastToIndexes({ type: "playerChange", roomId, players: count });
+        }
+      } else {
+        if (Object.keys(roomFound.players).length === 0) {
+          delete privateRooms[roomId];
+          console.log(`🗑 Private room ${roomId} deleted (empty)`);
+        }
+      }
+
       delete disconnectTimers[key];
-    }, 10000); // 10 seconds
+      logRooms();
+    }, 10000); // wait 10s before removing
   });
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on ${PORT}`);
-});        
+});          
