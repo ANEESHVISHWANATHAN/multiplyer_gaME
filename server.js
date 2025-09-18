@@ -193,8 +193,93 @@ wss.on("connection", (ws, req) => {
   });
 
   ws.on("close", () => {
-    console.log("❎ WS disconnected");
-  });
+  console.log("❎ WS disconnected");
+
+  // Find room and player
+  let roomFound = null;
+  let leavingPlayer = null;
+
+  // Check public rooms
+  for (let [roomId, room] of Object.entries(publicRooms)) {
+    for (let playerId in room.players) {
+      const p = room.players[playerId];
+      if (p.ws === ws) {
+        roomFound = room;
+        leavingPlayer = p;
+        break;
+      }
+    }
+    if (leavingPlayer) break;
+  }
+
+  // Check private rooms if not found
+  if (!leavingPlayer) {
+    for (let [roomId, room] of Object.entries(privateRooms)) {
+      for (let playerId in room.players) {
+        const p = room.players[playerId];
+        if (p.ws === ws) {
+          roomFound = room;
+          leavingPlayer = p;
+          break;
+        }
+      }
+      if (leavingPlayer) break;
+    }
+  }
+
+  if (!leavingPlayer) {
+    console.log("⚠️ WS not found in any room");
+    return;
+  }
+
+  const roomId = Object.keys(roomFound.players).find(pid => roomFound.players[pid] === leavingPlayer);
+
+  // If wsIndex 1 → in-game
+  if (leavingPlayer.wsIndex === 1) {
+    // Notify all other players
+    Object.values(roomFound.players).forEach(p => {
+      if (p.ws && p.ws.readyState === WebSocket.OPEN && p.playerId != leavingPlayer.playerId) {
+        p.ws.send(JSON.stringify({ type: "heleft", playerId: leavingPlayer.playerId }));
+      }
+    });
+
+    // Reshuffle player IDs
+    const sortedPlayers = Object.values(roomFound.players)
+      .filter(p => p.playerId != leavingPlayer.playerId)
+      .sort((a, b) => a.playerId - b.playerId);
+
+    sortedPlayers.forEach((p, idx) => {
+      if (p.playerId > leavingPlayer.playerId) {
+        p.playerId = p.playerId - 1;
+      }
+    });
+
+    // Notify index if public
+    if (roomFound.type === "public") {
+      broadcastToIndexes({
+        type: "playerChange",
+        roomId,
+        players: Object.keys(roomFound.players).length - 1
+      });
+    }
+  }
+
+  // Remove player from room
+  delete roomFound.players[leavingPlayer.playerId];
+
+  // Check if room empty
+  if (Object.keys(roomFound.players).length === 0) {
+    if (roomFound.type === "public") {
+      delete publicRooms[roomId];
+      broadcastToIndexes({ type: "deleteLobby", roomId });
+    } else {
+      delete privateRooms[roomId];
+    }
+    console.log(`🗑 Room ${roomId} deleted (empty)`);
+  }
+
+  logRooms();
+});
 });
 
 const PORT = process.env.PORT || 3000;
