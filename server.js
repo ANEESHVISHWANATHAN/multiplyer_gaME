@@ -170,7 +170,7 @@ wss.on("connection", (ws, req) => {
       }
 
       // ===== INDEX ACTIVE =====
-      else if (data.typeReq === "iActive") {
+      else if (data.typeReq === "iactive") {
         ws.isIndex = true;
         const lobbies = Object.entries(publicRooms).map(([id, room]) => {
           const host = room.players[0];
