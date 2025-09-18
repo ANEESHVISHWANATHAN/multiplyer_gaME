@@ -25,9 +25,12 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);  
       width: 100%;  
       scrollbar-width: none;  
+      z-index: 10;  
+      position: sticky;  
+      top: 0;  
     }  
     .top-bar::-webkit-scrollbar { display: none; }  
-    .player { flex-shrink: 0; margin: 0 12px; text-align: center; }  
+    .player { flex-shrink: 0; margin: 0 12px; text-align: center; cursor: pointer; }  
     .player img { width: 56px; height: 56px; border-radius: 50%; border: 2px solid #ccc; object-fit: cover; }  
     .player span { font-size: 14px; display: block; margin-top: 5px; }  
 
@@ -237,7 +240,6 @@
   </div>  
 
   <script>  
-    /* ---------------- Ticket setup ---------------- */  
     const ticketEl = document.getElementById("ticket");  
     const numbers = [  
       [1,"",12,"",35,"",67,"",89],  
@@ -251,7 +253,6 @@
       ticketEl.appendChild(cell);  
     });  
 
-    /* ---------------- Number caller ---------------- */  
     const numberShower=document.getElementById("numberShower");  
     let calledNumbers = new Set();  
     function showLotteryNumber(finalNum){  
@@ -268,7 +269,6 @@
     }  
     setInterval(()=>showLotteryNumber(Math.floor(Math.random()*90)+1),4000);  
 
-    /* ---------------- Leaderboard ---------------- */  
     let playersLocal = [  
       {name:"Alice", score:45, icon:"https://via.placeholder.com/32"},  
       {name:"Bob", score:39, icon:"https://via.placeholder.com/32"},  
@@ -293,15 +293,9 @@
       });  
     }  
 
-    function openLeaderboard(){  
-      renderLeaderboard();  
-      document.getElementById("leaderboard").classList.add("active");  
-    }  
-    function closeLeaderboard(){  
-      document.getElementById("leaderboard").classList.remove("active");  
-    }  
+    function openLeaderboard(){ renderLeaderboard(); document.getElementById("leaderboard").classList.add("active"); }  
+    function closeLeaderboard(){ document.getElementById("leaderboard").classList.remove("active"); }  
 
-    /* ---------------- Numbers chart ---------------- */  
     function createNumbersGrid(){  
       const grid=document.getElementById("numbersGrid");  
       for(let i=1;i<=90;i++){  
@@ -319,15 +313,9 @@
     }  
     createNumbersGrid();  
 
-    function openNumbers(){  
-      updateNumbersGrid();  
-      document.getElementById("numbersChart").classList.add("active");  
-    }  
-    function closeNumbers(){  
-      document.getElementById("numbersChart").classList.remove("active");  
-    }  
+    function openNumbers(){ updateNumbersGrid(); document.getElementById("numbersChart").classList.add("active"); }  
+    function closeNumbers(){ document.getElementById("numbersChart").classList.remove("active"); }  
 
-    /* ---------------- Multiplayer top bar ---------------- */  
     const topBar=document.getElementById("topBar");  
     let players={};  
 
@@ -341,7 +329,6 @@
       });  
     }  
 
-    // LocalStorage values from previous page  
     const roomId=localStorage.getItem("roomId");  
     const playerId=localStorage.getItem("playerId");  
     const wscode=localStorage.getItem("wscode");  
@@ -379,7 +366,7 @@
       }  
 
       if(data.type==="heleft"){  
-        delete players[data.playerId];  
+        if(players[data.playerId]) delete players[data.playerId];  
         renderTopBar();  
       }  
     };  
