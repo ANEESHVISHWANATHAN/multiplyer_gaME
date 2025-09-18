@@ -6,83 +6,53 @@
 <title>FUNTAMBOLA Entry</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
 <style>
-* {margin:0; padding:0; box-sizing:border-box;}
-body {
-  width:100%; min-height:100vh; font-family:'Orbitron', sans-serif;
-  background:linear-gradient(135deg,#0b0033,#26004d,#000);
-  color:white; overflow-x:hidden; position:relative;
-}
-.bg-image {position:absolute; pointer-events:none; user-select:none; opacity:0.12; z-index:-1;}
-.bg1 {top:2%; left:2%; width:35%;}
-.bg2 {top:10%; right:0; width:25%;}
-.bg3 {top:20%; left:25%; width:40%;}
-.bg4 {bottom:10%; left:5%; width:30%;}
-.bg5 {bottom:20%; right:10%; width:35%;}
-.bg6 {bottom:5%; left:40%; width:30%;}
-.bg7 {top:35%; right:20%; width:25%;}
-.bg8 {top:50%; left:10%; width:30%;}
-.heading {
-  margin-top:20px; text-align:center; font-size:clamp(24px,6vw,48px);
-  font-weight:bold; color:#00f2fe;
-  text-shadow:0 0 8px #00f2fe,0 0 16px #0072ff,0 0 30px #0072ff;
-  z-index:1;
-}
-.center {margin:30px auto; width:90%; max-width:500px; text-align:center; z-index:1;}
-.btn {
-  width:100%; padding:16px; margin:14px 0; font-size:clamp(18px,5vw,28px);
-  border:none; border-radius:16px; color:#fff; cursor:pointer;
-  transition:transform 0.25s, box-shadow 0.25s; letter-spacing:1px;
-}
-.btn:hover {transform:scale(1.05); box-shadow:0 0 20px rgba(255,255,255,0.5);}
-#joinBtn {background:linear-gradient(90deg,#36d1dc,#5b86e5);}
-#createBtn {background:linear-gradient(90deg,#ff512f,#dd2476);}
-#joinPanel {
-  width:100%; margin-top:12px; background:rgba(0,0,0,0.6); border:2px solid #00f2fe;
-  border-radius:18px; box-shadow:0 0 25px #00f2fe; backdrop-filter:blur(8px);
-  max-height:0; overflow:hidden; opacity:0; transition:all 0.4s ease;
-}
-#joinPanel.active {max-height:400px; opacity:1; padding:12px;}
-.toggle-container {display:flex; position:relative; margin-bottom:10px; border-radius:12px; overflow:hidden;
-  background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); cursor:pointer;}
-.toggle-segment {flex:1; padding:10px; text-align:center; font-size:clamp(14px,4vw,20px); z-index:2;}
-.toggle-slider {position:absolute; top:0; left:0; width:50%; height:100%; background:linear-gradient(90deg,#00f2fe,#4facfe);
-  border-radius:12px; z-index:1; transition:left 0.3s;}
-.toggle-on .toggle-slider {left:50%; background:linear-gradient(90deg,#ff4b2b,#ff416c);}
-#publicLobbies {max-height:200px; overflow-y:auto; margin-bottom:10px;}
-.lobby-row {display:flex; justify-content:space-between; align-items:center; padding:10px; margin:6px 0;
-  border-radius:10px; background:rgba(255,255,255,0.1); border:2px solid #00f2fe;}
-.lobby-row img {width:28px; cursor:pointer;}
-#privateJoin {display:none;}
-#roomInput {width:100%; padding:10px; border-radius:10px; border:none; outline:none; margin-bottom:8px;
-  background:rgba(255,255,255,0.12); color:white;}
-#privateJoinBtn {width:100%; padding:10px; border-radius:10px; border:none; font-weight:bold;
-  background:linear-gradient(90deg,#ff4b2b,#ff416c); color:white; cursor:pointer;}
-#avatarPopup {position:fixed; top:0; left:0; width:100%; height:100%; backdrop-filter:blur(10px); background:rgba(0,0,0,0.6);
-  display:none; justify-content:center; align-items:center; z-index:999;}
-#avatarContent {position:relative; background:rgba(20,20,40,0.95); border-radius:20px; padding:20px; text-align:center;
-  max-width:400px; width:90%;}
-#avatarClose {position:absolute; top:10px; right:15px; font-size:24px; color:#ff416c; cursor:pointer;}
-#carousel {display:flex; align-items:center; justify-content:center; gap:12px;}
-#carousel img {width:100px; border-radius:50%; border:2px solid #fff;}
-#carousel button {background:transparent; border:none; color:#00f2fe; font-size:28px; cursor:pointer;}
-#username {width:100%; padding:10px; margin:12px 0; border-radius:10px; border:none; outline:none;}
-#startGame {padding:10px 20px; border:none; border-radius:12px;
-  background:linear-gradient(90deg,#36d1dc,#5b86e5); color:white; font-weight:bold; cursor:pointer;}
-@media (orientation: landscape) {
-  .heading{font-size:clamp(20px,4vw,32px);} 
-  .center{margin-top:50px;}
-  .btn{padding:12px; margin:10px 0; font-size:18px;}
-}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{width:100%;min-height:100vh;font-family:'Orbitron',sans-serif;
+  background:linear-gradient(135deg,#0b0033,#26004d,#000);color:white;overflow-x:hidden;position:relative;}
+.bg-image{position:absolute;pointer-events:none;user-select:none;opacity:0.12;z-index:-1;}
+.heading{margin-top:20px;text-align:center;font-size:clamp(24px,6vw,48px);
+  font-weight:bold;color:#00f2fe;text-shadow:0 0 8px #00f2fe,0 0 16px #0072ff,0 0 30px #0072ff;}
+.center{margin:30px auto;width:90%;max-width:500px;text-align:center;}
+.btn{width:100%;padding:16px;margin:14px 0;font-size:clamp(18px,5vw,28px);
+  border:none;border-radius:16px;color:#fff;cursor:pointer;
+  transition:transform .25s,box-shadow .25s;letter-spacing:1px;}
+.btn:hover{transform:scale(1.05);box-shadow:0 0 20px rgba(255,255,255,.5);}
+#joinBtn{background:linear-gradient(90deg,#36d1dc,#5b86e5);}
+#createBtn{background:linear-gradient(90deg,#ff512f,#dd2476);}
+#joinPanel{width:100%;margin-top:12px;background:rgba(0,0,0,.6);border:2px solid #00f2fe;
+  border-radius:18px;box-shadow:0 0 25px #00f2fe;backdrop-filter:blur(8px);
+  max-height:0;overflow:hidden;opacity:0;transition:all .4s ease;}
+#joinPanel.active{max-height:400px;opacity:1;padding:12px;}
+.toggle-container{display:flex;position:relative;margin-bottom:10px;border-radius:12px;overflow:hidden;
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);cursor:pointer;}
+.toggle-segment{flex:1;padding:10px;text-align:center;font-size:clamp(14px,4vw,20px);}
+.toggle-slider{position:absolute;top:0;left:0;width:50%;height:100%;background:linear-gradient(90deg,#00f2fe,#4facfe);
+  border-radius:12px;z-index:1;transition:left .3s;}
+.toggle-on .toggle-slider{left:50%;background:linear-gradient(90deg,#ff4b2b,#ff416c);}
+#publicLobbies{max-height:200px;overflow-y:auto;margin-bottom:10px;}
+.lobby-row{display:flex;justify-content:space-between;align-items:center;padding:10px;margin:6px 0;
+  border-radius:10px;background:rgba(255,255,255,.1);border:2px solid #00f2fe;}
+.lobby-row img{width:28px;cursor:pointer;}
+#privateJoin{display:none;}
+#roomInput{width:100%;padding:10px;border-radius:10px;border:none;outline:none;margin-bottom:8px;
+  background:rgba(255,255,255,.12);color:white;}
+#privateJoinBtn{width:100%;padding:10px;border-radius:10px;border:none;font-weight:bold;
+  background:linear-gradient(90deg,#ff4b2b,#ff416c);color:white;cursor:pointer;}
+#avatarPopup{position:fixed;top:0;left:0;width:100%;height:100%;backdrop-filter:blur(10px);background:rgba(0,0,0,.6);
+  display:none;justify-content:center;align-items:center;z-index:999;}
+#avatarContent{position:relative;background:rgba(20,20,40,.95);border-radius:20px;padding:20px;text-align:center;
+  max-width:400px;width:90%;}
+#avatarClose{position:absolute;top:10px;right:15px;font-size:24px;color:#ff416c;cursor:pointer;}
+#carousel{display:flex;align-items:center;justify-content:center;gap:12px;}
+#carousel img{width:100px;border-radius:50%;border:2px solid #fff;}
+#carousel button{background:transparent;border:none;color:#00f2fe;font-size:28px;cursor:pointer;}
+#username{width:100%;padding:10px;margin:12px 0;border-radius:10px;border:none;outline:none;}
+#startGame{padding:10px 20px;border:none;border-radius:12px;
+  background:linear-gradient(90deg,#36d1dc,#5b86e5);color:white;font-weight:bold;cursor:pointer;}
 </style>
 </head>
 <body>
 <div class="heading">FUNTAMBOLA</div>
-
-<!-- Background images -->
-<img src="tam1.png" class="bg-image bg1"><img src="tam2.png" class="bg-image bg2"><img src="tam3.png" class="bg-image bg3">
-<img src="tam4.png" class="bg-image bg4"><img src="tam5.png" class="bg-image bg5"><img src="tam6.png" class="bg-image bg6">
-<img src="tam7.png" class="bg-image bg7"><img src="tam8.png" class="bg-image bg8">
-
 <div class="center">
   <button id="joinBtn" class="btn">JOIN</button>
   <div id="joinPanel">
@@ -117,105 +87,112 @@ body {
 
 <script>
 const ws = new WebSocket("wss://multiplyer-game.onrender.com");
-ws.onopen = () => console.log("✅ WS connected");
+ws.onopen = () => {
+  console.log("✅ WS connected");
+  ws.send(JSON.stringify({typeReq:"iactive"}));
+};
 ws.onmessage = (msg) => {
   console.log("📩 WS message:", msg.data);
   try {
     const data = JSON.parse(msg.data);
-    if(data.type === "lobbyCreated"){
-      console.log("🎉 Lobby Created:", data);
-      localStorage.setItem("roomId", data.roomId);
-      localStorage.setItem("playerId", data.playerId);
-      localStorage.setItem("wscode", data.wscode);
-      window.location.href = `https://multiplyer-game.onrender.com/tambola.html/${data.roomId}`;
+
+    if(data.type==="lobbyCreated"){
+      localStorage.setItem("roomId",data.roomId);
+      localStorage.setItem("playerId",data.playerId);
+      localStorage.setItem("wscode",data.wscode);
+      window.location.href=`https://multiplyer-game.onrender.com/tambola.html/${data.roomId}`;
     }
-    if(data.type === "lobbyJoined"){
-      console.log("👥 Lobby Joined:", data);
-      localStorage.setItem("roomId", data.roomId);
-      localStorage.setItem("playerId", data.playerId);
-      localStorage.setItem("wscode", data.wscode);
-      window.location.href = `https://multiplyer-game.onrender.com/tambola.html/${data.roomId}`;
+    if(data.type==="lobbyJoined"){
+      localStorage.setItem("roomId",data.roomId);
+      localStorage.setItem("playerId",data.playerId);
+      localStorage.setItem("wscode",data.wscode);
+      window.location.href=`https://multiplyer-game.onrender.com/tambola.html/${data.roomId}`;
     }
-    if(data.type === "noRoom"){
-      alert("❌ No such room!");
+    if(data.type==="noRoom"){ alert("❌ No such room!"); }
+
+    if(data.type==="existingLobbies"){
+      publicLobbies.innerHTML="";
+      data.lobbies.forEach(addLobbyRow);
     }
-  } catch(e){ console.error("WS parse error", e); }
+    if(data.type==="newLobby"){ addLobbyRow(data.lobby); }
+    if(data.type==="playerChange"){ updateLobbyCount(data.roomId,data.players); }
+
+  }catch(e){console.error("WS parse error",e);}
 };
 
-const joinBtn = document.getElementById("joinBtn");
-const joinPanel = document.getElementById("joinPanel");
-const createBtn = document.getElementById("createBtn");
-const toggleBar = document.getElementById("toggleBar");
-const publicLobbies = document.getElementById("publicLobbies");
-const privateJoin = document.getElementById("privateJoin");
-const avatarPopup = document.getElementById("avatarPopup");
-const avatarClose = document.getElementById("avatarClose");
-const avatarImg = document.getElementById("avatarImg");
-const prevBtn = document.getElementById("prev");
-const nextBtn = document.getElementById("next");
-const startBtn = document.getElementById("startGame");
-let avatarIndex = 0;
-const avatars = ["avt1.jpg","avt2.jpg","avt3.jpg","avt4.jpg","avt5.jpg","avt6.jpg","avt7.jpg","avt8.jpg"];
-let isPrivate = false;
-let actionType = null; 
-let selectedRoomId = null;
-
-// Join panel toggle
-joinBtn.onclick = () => joinPanel.classList.toggle("active");
-
-// Toggle pub/pri
-toggleBar.onclick = () => {
-  isPrivate = !isPrivate;
-  toggleBar.classList.toggle("toggle-on", isPrivate);
-  publicLobbies.style.display = isPrivate ? "none" : "block";
-  privateJoin.style.display = isPrivate ? "block" : "none";
-};
-
-// Dummy lobbies (replace with server-fed list later)
-for(let i=1;i<=5;i++){
-  const row = document.createElement("div");
+function addLobbyRow(lobby){
+  const row=document.createElement("div");
   row.className="lobby-row";
-  row.innerHTML=`<div>Lobby ${i}</div><div>ID${100+i}</div><div>${i}/8</div><img src="join.png" class="lobbyJoin">`;
+  row.dataset.roomId=lobby.roomId;
+  row.innerHTML=`<div>${lobby.name}</div><div>${lobby.roomId}</div><div class="count">${lobby.players}/8</div><img src="join.png" class="lobbyJoin">`;
   publicLobbies.appendChild(row);
-  row.querySelector(".lobbyJoin").onclick = () => {
-    actionType = "join";
-    selectedRoomId = `ID${100+i}`;
-    console.log("Joining public lobby:", selectedRoomId);
+  row.querySelector(".lobbyJoin").onclick=()=>{
+    actionType="join";
+    selectedRoomId=lobby.roomId;
     showAvatarPopup();
   };
 }
+function updateLobbyCount(roomId,count){
+  const row=[...document.querySelectorAll(".lobby-row")].find(r=>r.dataset.roomId==roomId);
+  if(row) row.querySelector(".count").textContent=`${count}/8`;
+}
+
+// DOM Elements
+const joinBtn=document.getElementById("joinBtn");
+const joinPanel=document.getElementById("joinPanel");
+const createBtn=document.getElementById("createBtn");
+const toggleBar=document.getElementById("toggleBar");
+const publicLobbies=document.getElementById("publicLobbies");
+const privateJoin=document.getElementById("privateJoin");
+const avatarPopup=document.getElementById("avatarPopup");
+const avatarClose=document.getElementById("avatarClose");
+const avatarImg=document.getElementById("avatarImg");
+const prevBtn=document.getElementById("prev");
+const nextBtn=document.getElementById("next");
+const startBtn=document.getElementById("startGame");
+let avatarIndex=0;
+const avatars=["avt1.jpg","avt2.jpg","avt3.jpg","avt4.jpg","avt5.jpg","avt6.jpg","avt7.jpg","avt8.jpg"];
+let isPrivate=false;
+let actionType=null;
+let selectedRoomId=null;
+
+// Join panel toggle
+joinBtn.onclick=()=>joinPanel.classList.toggle("active");
+// Toggle pub/pri
+toggleBar.onclick=()=>{
+  isPrivate=!isPrivate;
+  toggleBar.classList.toggle("toggle-on",isPrivate);
+  publicLobbies.style.display=isPrivate?"none":"block";
+  privateJoin.style.display=isPrivate?"block":"none";
+};
 
 // Avatar popup
 function showAvatarPopup(){
   avatarPopup.style.display="flex"; 
-  avatarIndex=0; 
-  avatarImg.src=avatars[avatarIndex];
+  avatarIndex=0; avatarImg.src=avatars[avatarIndex];
 }
-createBtn.onclick = () => {actionType="create"; showAvatarPopup();}
-document.getElementById("privateJoinBtn").onclick = () => {
+createBtn.onclick=()=>{actionType="create";showAvatarPopup();}
+document.getElementById("privateJoinBtn").onclick=()=>{
   actionType="join";
   selectedRoomId=document.getElementById("roomInput").value.trim();
-  console.log("Joining private lobby:", selectedRoomId);
   showAvatarPopup();
 };
-avatarClose.onclick = () => { avatarPopup.style.display="none"; }
+avatarClose.onclick=()=>{avatarPopup.style.display="none";}
 
 // Carousel
-prevBtn.onclick = () => { avatarIndex=(avatarIndex-1+avatars.length)%avatars.length; avatarImg.src=avatars[avatarIndex]; }
-nextBtn.onclick = () => { avatarIndex=(avatarIndex+1)%avatars.length; avatarImg.src=avatars[avatarIndex]; }
+prevBtn.onclick=()=>{avatarIndex=(avatarIndex-1+avatars.length)%avatars.length;avatarImg.src=avatars[avatarIndex];}
+nextBtn.onclick=()=>{avatarIndex=(avatarIndex+1)%avatars.length;avatarImg.src=avatars[avatarIndex];}
 
 // Start
-startBtn.onclick = () => {
-  const uname = document.getElementById("username").value.trim();
-  if(!uname){ alert("Enter username"); return; }
-  const payload = {username:uname, icon:avatars[avatarIndex], lobbyType:isPrivate?"pri":"pub"};
+startBtn.onclick=()=>{
+  const uname=document.getElementById("username").value.trim();
+  if(!uname){alert("Enter username");return;}
+  const payload={username:uname,icon:avatars[avatarIndex],lobbyType:isPrivate?"pri":"pub"};
 
   if(actionType==="create"){
-    ws.send(JSON.stringify({typeReq:"createLobby", ...payload}));
-    console.log("📤 Sent createLobby:", payload);
-  } else if(actionType==="join"){
-    ws.send(JSON.stringify({typeReq:"joinLobby", ...payload, roomId:selectedRoomId}));
-    console.log("📤 Sent joinLobby:", payload, "roomId:", selectedRoomId);
+    ws.send(JSON.stringify({typeReq:"createLobby",...payload}));
+  }else if(actionType==="join"){
+    ws.send(JSON.stringify({typeReq:"joinLobby",...payload,roomId:selectedRoomId}));
   }
   avatarPopup.style.display="none";
 };
