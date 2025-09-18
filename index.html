@@ -100,12 +100,16 @@ ws.onmessage = (msg) => {
       localStorage.setItem("roomId",data.roomId);
       localStorage.setItem("playerId",data.playerId);
       localStorage.setItem("wscode",data.wscode);
+      localStorage.setItem("ishost",data.ishost);
+      localStorage.setItem("lobbyType",data.lobbyType);
       window.location.href=`https://multiplyer-game.onrender.com/tambola.html/${data.roomId}`;
     }
     if(data.type==="lobbyJoined"){
       localStorage.setItem("roomId",data.roomId);
       localStorage.setItem("playerId",data.playerId);
       localStorage.setItem("wscode",data.wscode);
+      localStorage.setItem("ishost",data.ishost);
+      localStorage.setItem("lobbyType",data.lobbyType);
       window.location.href=`https://multiplyer-game.onrender.com/tambola.html/${data.roomId}`;
     }
     if(data.type==="noRoom"){ alert("❌ No such room!"); }
@@ -198,4 +202,4 @@ startBtn.onclick=()=>{
 };
 </script>
 </body>
-</html>
+</html>      
