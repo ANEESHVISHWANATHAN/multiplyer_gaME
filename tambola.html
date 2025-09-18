@@ -377,8 +377,12 @@
         players[data.player.playerId]=data.player;  
         renderTopBar();  
       }  
+
+      if(data.type==="heleft"){  
+        delete players[data.playerId];  
+        renderTopBar();  
+      }  
     };  
   </script>  
 </body>  
-</html>
-  
+</html>                    
