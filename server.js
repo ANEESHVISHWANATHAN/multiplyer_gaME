@@ -109,48 +109,45 @@ wss.on("connection", (ws, req) => {
       }
 
       // PAGE ENTERED (Tambola)
-      else if (data.typeReq === "pageEntered") {
-        console.log("⚙️ Handling pageEntered");
-        const { roomId, playerId, wscode, username, icon } = data;
+      // PAGE ENTERED (Tambola)
+else if (data.typeReq === "pageEntered") {
+  console.log("⚙️ Handling pageEntered");
+  const { roomId, playerId, wscode } = data;
 
-        console.log(`📥 pageEntered: room=${roomId}, playerId=${playerId}, user=${username}`);
+  const room = publicRooms[roomId] || privateRooms[roomId];
+  if (!room || !room.players[playerId]) {
+    console.log("❌ Invalid room/player on pageEntered");
+    return;
+  }
 
-        const room = publicRooms[roomId] || privateRooms[roomId];
-        if (!room || !room.players[playerId]) {
-          console.log("❌ Invalid room/player on pageEntered");
-          return;
-        }
+  // Replace WS + wscode only
+  room.players[playerId].ws = ws;
+  room.players[playerId].wscode = wscode;
 
-        // Replace WS + update player info
-        room.players[playerId].ws = ws;
-        room.players[playerId].wscode = wscode;
-        room.players[playerId].username = username;
-        room.players[playerId].icon = icon;
+  const me = room.players[playerId];
+  console.log(`🔄 Reattached WS for ${me.username} in room ${roomId}`);
 
-        console.log(`🔄 Updated WS + info for ${username} in room ${roomId}`);
+  // Send full player list back to me
+  const playersList = Object.values(room.players).map(p => ({
+    playerId: p.playerId,
+    username: p.username,
+    icon: p.icon
+  }));
+  ws.send(JSON.stringify({ type: "ijoin", players: playersList }));
+  console.log(`📤 Sent ijoin (player list) to ${me.username}`);
 
-        // Send all players list back to this client
-        const playersList = Object.values(room.players).map(p => ({
-          playerId: p.playerId,
-          username: p.username,
-          icon: p.icon
-        }));
-        ws.send(JSON.stringify({ type: "ijoin", players: playersList }));
-        console.log(`📤 Sent ijoin (player list) to ${username}`);
+  // Notify others about me
+  const newPlayer = { playerId: me.playerId, username: me.username, icon: me.icon };
+  Object.values(room.players).forEach(p => {
+    if (p.ws && p.ws.readyState === WebSocket.OPEN && p.playerId != playerId) {
+      p.ws.send(JSON.stringify({ type: "hejoins", player: newPlayer }));
+      console.log(`📢 Notified ${p.username} that ${me.username} joined`);
+    }
+  });
 
-        // Notify others this player entered
-        const newPlayer = { playerId, username, icon };
-        Object.values(room.players).forEach(p => {
-          if (p.ws && p.ws.readyState === WebSocket.OPEN && p.playerId != playerId) {
-            p.ws.send(JSON.stringify({ type: "hejoins", player: newPlayer }));
-            console.log(`📢 Notified ${p.username} that ${username} joined`);
-          }
-        });
-
-        console.log(`✅ Finished pageEntered for ${username} in room ${roomId}`);
-        logRooms();
-      }
-
+  console.log(`✅ Finished pageEntered for ${me.username} in room ${roomId}`);
+  logRooms();
+}
       // Unknown request
       else {
         console.log("⚠️ Unknown request type:", data.typeReq);
