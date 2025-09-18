@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -87,44 +87,46 @@ body{width:100%;min-height:100vh;font-family:'Orbitron',sans-serif;
 
 <script>
 const ws = new WebSocket("wss://multiplyer-game.onrender.com");
+
 ws.onopen = () => {
   console.log("✅ WS connected");
   ws.send(JSON.stringify({typeReq:"iactive"}));
 };
+
 ws.onmessage = (msg) => {
   console.log("📩 WS message:", msg.data);
   try {
     const data = JSON.parse(msg.data);
 
-    if(data.type==="lobbyCreated"){
+    if(data.type==="lobbyCreated" || data.type==="lobbyJoined"){
       localStorage.setItem("roomId",data.roomId);
       localStorage.setItem("playerId",data.playerId);
       localStorage.setItem("wscode",data.wscode);
-      localStorage.setItem("ishost",data.ishost);
-      localStorage.setItem("lobbyType",data.gameType);
+      localStorage.setItem("ishost",data.isHost);
+      localStorage.setItem("lobbyType",data.lobbyType);
       window.location.href=`https://multiplyer-game.onrender.com/tambola.html/${data.roomId}`;
     }
-    if(data.type==="lobbyJoined"){
-      localStorage.setItem("roomId",data.roomId);
-      localStorage.setItem("playerId",data.playerId);
-      localStorage.setItem("wscode",data.wscode);
-      localStorage.setItem("ishost",data.ishost);
-      localStorage.setItem("lobbyType",data.gameType);
-      window.location.href=`https://multiplyer-game.onrender.com/tambola.html/${data.roomId}`;
-    }
+
     if(data.type==="noRoom"){ alert("❌ No such room!"); }
 
     if(data.type==="existingLobbies"){
       publicLobbies.innerHTML="";
       data.lobbies.forEach(addLobbyRow);
+      reshuffleLobbies();
     }
-    if(data.type==="newLobby"){ addLobbyRow(data.lobby); }
+
+    if(data.type==="newLobby"){ addLobbyRow(data.lobby); reshuffleLobbies(); }
+
     if(data.type==="playerChange"){ updateLobbyCount(data.roomId,data.players); }
+
+    if(data.type==="deleteLobby"){ removeLobby(data.roomId); }
 
   }catch(e){console.error("WS parse error",e);}
 };
 
+// ===== Lobby Helpers =====
 function addLobbyRow(lobby){
+  if(document.querySelector(`.lobby-row[data-room-id="${lobby.roomId}"]`)) return; // avoid duplicates
   const row=document.createElement("div");
   row.className="lobby-row";
   row.dataset.roomId=lobby.roomId;
@@ -135,13 +137,27 @@ function addLobbyRow(lobby){
     selectedRoomId=lobby.roomId;
     showAvatarPopup();
   };
+  reshuffleLobbies();
 }
+
 function updateLobbyCount(roomId,count){
-  const row=[...document.querySelectorAll(".lobby-row")].find(r=>r.dataset.roomId==roomId);
+  const row=document.querySelector(`.lobby-row[data-room-id="${roomId}"]`);
   if(row) row.querySelector(".count").textContent=`${count}/8`;
 }
 
-// DOM Elements
+function removeLobby(roomId){
+  const row=document.querySelector(`.lobby-row[data-room-id="${roomId}"]`);
+  if(row) row.remove();
+  reshuffleLobbies();
+}
+
+function reshuffleLobbies(){
+  const rows=[...publicLobbies.querySelectorAll(".lobby-row")];
+  rows.sort((a,b)=>a.dataset.roomId.localeCompare(b.dataset.roomId));
+  rows.forEach(r=>publicLobbies.appendChild(r));
+}
+
+// ===== DOM Elements =====
 const joinBtn=document.getElementById("joinBtn");
 const joinPanel=document.getElementById("joinPanel");
 const createBtn=document.getElementById("createBtn");
@@ -202,4 +218,4 @@ startBtn.onclick=()=>{
 };
 </script>
 </body>
-</html>      
+</html>     
