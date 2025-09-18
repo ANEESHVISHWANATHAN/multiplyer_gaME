@@ -350,13 +350,15 @@
 
     const ws=new WebSocket("wss://multiplyer-game.onrender.com");  
 
-    ws.onopen=()=>{  
-      console.log("✅ Connected to WS");  
-      ws.send(JSON.stringify({  
-        typeReq:"pageEntered",  
-        roomId, playerId, wscode, username, icon  
-      }));  
-    };  
+    ws.onopen = () => {
+  console.log("✅ Connected to WS");
+  ws.send(JSON.stringify({
+    typeReq: "pageEntered",
+    roomId,
+    playerId,
+    wscode
+  }));
+};
 
     ws.onmessage=(msg)=>{  
       const data=JSON.parse(msg.data);  
