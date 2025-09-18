@@ -347,18 +347,22 @@
     const wscode=localStorage.getItem("wscode");  
     const username=localStorage.getItem("username");  
     const icon=localStorage.getItem("icon");  
+    const isHost=localStorage.getItem("isHost")==="true";  
+    const gameType=localStorage.getItem("gameType") || "public";  
 
     const ws=new WebSocket("wss://multiplyer-game.onrender.com");  
 
     ws.onopen = () => {
-  console.log("✅ Connected to WS");
-  ws.send(JSON.stringify({
-    typeReq: "pageEntered",
-    roomId,
-    playerId,
-    wscode
-  }));
-};
+      console.log("✅ Connected to WS");
+      ws.send(JSON.stringify({
+        typeReq: "pageEntered",
+        roomId,
+        playerId,
+        wscode,
+        isHost,
+        gameType
+      }));
+    };
 
     ws.onmessage=(msg)=>{  
       const data=JSON.parse(msg.data);  
@@ -377,3 +381,4 @@
   </script>  
 </body>  
 </html>
+  
