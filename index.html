@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -88,9 +88,10 @@ body{width:100%;min-height:100vh;font-family:'Orbitron',sans-serif;
 <script>
 const ws = new WebSocket("wss://multiplyer-game.onrender.com");
 
+// on connect → request active lobbies
 ws.onopen = () => {
   console.log("✅ WS connected");
-  ws.send(JSON.stringify({typeReq:"iactive"}));
+  ws.send(JSON.stringify({ typeReq:"iactive" }));
 };
 
 ws.onmessage = (msg) => {
@@ -99,12 +100,14 @@ ws.onmessage = (msg) => {
     const data = JSON.parse(msg.data);
 
     if(data.type==="lobbyCreated" || data.type==="lobbyJoined"){
+      // Save details for tambola.html
       localStorage.setItem("roomId",data.roomId);
       localStorage.setItem("playerId",data.playerId);
       localStorage.setItem("wscode",data.wscode);
       localStorage.setItem("ishost",data.isHost);
       localStorage.setItem("lobbyType",data.lobbyType);
-      window.location.href=`https://multiplyer-game.onrender.com/tambola.html/${data.roomId}`;
+      // redirect to tambola page
+      window.location.href=`/tambola.html/${data.roomId}`;
     }
 
     if(data.type==="noRoom"){ alert("❌ No such room!"); }
@@ -121,12 +124,12 @@ ws.onmessage = (msg) => {
 
     if(data.type==="deleteLobby"){ removeLobby(data.roomId); }
 
-  }catch(e){console.error("WS parse error",e);}
+  }catch(e){ console.error("WS parse error",e); }
 };
 
 // ===== Lobby Helpers =====
 function addLobbyRow(lobby){
-  if(document.querySelector(`.lobby-row[data-room-id="${lobby.roomId}"]`)) return; // avoid duplicates
+  if(document.querySelector(`.lobby-row[data-room-id="${lobby.roomId}"]`)) return;
   const row=document.createElement("div");
   row.className="lobby-row";
   row.dataset.roomId=lobby.roomId;
@@ -178,7 +181,8 @@ let selectedRoomId=null;
 
 // Join panel toggle
 joinBtn.onclick=()=>joinPanel.classList.toggle("active");
-// Toggle pub/pri
+
+// Toggle public/private
 toggleBar.onclick=()=>{
   isPrivate=!isPrivate;
   toggleBar.classList.toggle("toggle-on",isPrivate);
@@ -188,8 +192,9 @@ toggleBar.onclick=()=>{
 
 // Avatar popup
 function showAvatarPopup(){
-  avatarPopup.style.display="flex"; 
-  avatarIndex=0; avatarImg.src=avatars[avatarIndex];
+  avatarPopup.style.display="flex";
+  avatarIndex=0;
+  avatarImg.src=avatars[avatarIndex];
 }
 createBtn.onclick=()=>{actionType="create";showAvatarPopup();}
 document.getElementById("privateJoinBtn").onclick=()=>{
@@ -218,4 +223,4 @@ startBtn.onclick=()=>{
 };
 </script>
 </body>
-</html>     
+</html>
