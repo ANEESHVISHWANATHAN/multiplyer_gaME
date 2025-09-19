@@ -100,48 +100,60 @@ wss.on("connection", (ws, req) => {
 
       // ===== CREATE LOBBY =====
       if (data.typeReq === "createLobby") {
-        const { username, icon, lobbyType } = data;
-        const type = lobbyType;
-        const roomId = randomRoomId();
-        const playerId = 0;
-        const wscode = randomWsCode();
+  const { username, icon, lobbyType } = data;
+  const type = lobbyType;
+  const roomId = randomRoomId();
+  const playerId = 0;
+  const wscode = randomWsCode();
 
-        const player = {
-          username,
-          icon,
-          playerId,
-          wscode,
-          wsIndexConn: ws,
-          wsGameConn: null,
-          wsIndexFlag: 0,
-          isHost: true
-        };
+  const player = {
+    username,
+    icon,
+    playerId,
+    wscode,
+    wsIndexConn: ws,
+    wsGameConn: null,
+    wsIndexFlag: 0,
+    isHost: true
+  };
 
-        const roomObj = {
-          type: type === "pub" ? "public" : "private",
-          players: { [playerId]: player },
-          gameStarted: false,
-          numbersLeft: [],
-          interval: null
-        };
+  const roomObj = {
+    type: type === "pub" ? "public" : "private",
+    players: { [playerId]: player },
+    gameStarted: false,
+    numbersLeft: [],
+    interval: null
+  };
 
-        if (type === "pub") {
-          publicRooms[roomId] = roomObj;
-        } else {
-          privateRooms[roomId] = roomObj;
-        }
+  if (type === "pub") {
+    publicRooms[roomId] = roomObj;
+  } else {
+    privateRooms[roomId] = roomObj;
+  }
 
-        ws.isIndex = true;
-        ws.send(JSON.stringify({
-          type: "lobbyCreated",
-          roomId, playerId, wscode,
-          isHost: true,
-          lobbyType: roomObj.type
-        }));
+  ws.isIndex = true;
+  ws.send(JSON.stringify({
+    type: "lobbyCreated",
+    roomId, playerId, wscode,
+    isHost: true,
+    lobbyType: roomObj.type
+  }));
 
-        console.log(`🎉 Lobby ${roomId} (${type}) created by ${username}`);
-        logRooms();
-      }
+  // 🔔 Broadcast new lobby to all index clients
+  if (roomObj.type === "public") {
+    broadcastToIndexes({
+      type: "newLobby",
+      roomId,
+      name: username,
+      players: 1
+    });
+    console.log(`📣 New lobby broadcast for ${roomId}`);
+  }
+
+  console.log(`🎉 Lobby ${roomId} (${type}) created by ${username}`);
+  logRooms();
+}
+      
 
       // ===== JOIN LOBBY =====
       else if (data.typeReq === "joinLobby") {
@@ -187,44 +199,48 @@ wss.on("connection", (ws, req) => {
       }
 
       // ===== PAGE ENTERED =====
-      else if (data.typeReq === "pageEntered") {
-        const { roomId, playerId, wscode } = data;
-        const room = publicRooms[roomId] || privateRooms[roomId];
-        if (!room || room.players[playerId] == null) {
-          console.log(`❌ Invalid pageEntered for ${roomId} (player ${playerId})`);
-          ws.send(JSON.stringify({ type: "noRoomOrPlayer" }));
-          return;
-        }
-        const me = room.players[playerId];
+      // ===== PAGE ENTERED =====
+else if (data.typeReq === "pageEntered") {
+    const { roomId, playerId, wscode } = data;
+    const room = publicRooms[roomId] || privateRooms[roomId];
+    if (!room || room.players[playerId] == null) {
+        console.log(`❌ Invalid pageEntered for ${roomId} (player ${playerId})`);
+        ws.send(JSON.stringify({ type: "noRoomOrPlayer" }));
+        return;
+    }
+    const me = room.players[playerId];
 
-        if (me.wscode !== wscode) {
-          console.log(`❌ Wscode mismatch for ${me.username}`);
-          ws.send(JSON.stringify({ type: "wscodeMismatch" }));
-          return;
-        }
+    if (me.wscode !== wscode) {
+        console.log(`❌ Wscode mismatch for ${me.username}`);
+        ws.send(JSON.stringify({ type: "wscodeMismatch" }));
+        return;
+    }
 
-        const key = `${roomId}_${playerId}`;
-        if (disconnectTimers[key]) {
-          clearTimeout(disconnectTimers[key]);
-          delete disconnectTimers[key];
-          console.log(`⏱️ Cancelled disconnect timer for ${me.username} (${key})`);
-        }
+    // ---- FIX: restore host flag ----
+    if (playerId === 0) me.isHost = true;
 
-        me.wsGameConn = ws;
-        me.wsIndexFlag = 1;
-        ws.isIndex = false;
+    const key = `${roomId}_${playerId}`;
+    if (disconnectTimers[key]) {
+        clearTimeout(disconnectTimers[key]);
+        delete disconnectTimers[key];
+        console.log(`⏱️ Cancelled disconnect timer for ${me.username} (${key})`);
+    }
 
-        console.log(`🔄 ${me.username} connected game socket in ${roomId} (P${playerId})`);
+    me.wsGameConn = ws;
+    me.wsIndexFlag = 1;
+    ws.isIndex = false;
 
-        const playersList = buildPlayersSummary(room);
-        Object.values(room.players).forEach(p => {
-          if (p.wsGameConn && p.wsGameConn.readyState === WebSocket.OPEN) {
+    console.log(`🔄 ${me.username} connected game socket in ${roomId} (P${playerId})`);
+
+    const playersList = buildPlayersSummary(room);
+    Object.values(room.players).forEach(p => {
+        if (p.wsGameConn && p.wsGameConn.readyState === WebSocket.OPEN) {
             p.wsGameConn.send(JSON.stringify({ type: "ijoin", players: playersList }));
-          }
-        });
+        }
+    });
 
-        logRooms();
-      }
+    logRooms();
+}
 
       // ===== START GAME =====
       else if (data.typeReq === "startGame") {
