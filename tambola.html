@@ -113,10 +113,14 @@
     ws = new WebSocket((location.protocol==="https:"?"wss://":"ws://")+location.host);
 
     ws.addEventListener("open", ()=> {
-      console.log("WS open");
-      ws.send(JSON.stringify({ typeReq:"pageEntered", roomId, playerId, wscode, isHost }));
-      if(isHost) startBtn.classList.remove("hidden");
-    });
+  console.log("WS open");
+  ws.send(JSON.stringify({ typeReq:"pageEntered", roomId, playerId, wscode, isHost, gameType }));
+
+  if (isHost) {
+    show(gameControls);       // show the container
+    startBtn.classList.remove("hidden"); // show the start button
+  }
+});
 
     startBtn.addEventListener("click", ()=> {
       ws.send(JSON.stringify({ typeReq:"startGame", roomId, playerId, isHost }));
