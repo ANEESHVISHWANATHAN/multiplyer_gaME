@@ -33,10 +33,23 @@ function randomWsCode() {
   return Math.random().toString(36).substring(2, 10);
 }
 function randomTicket() {
-  // Simple 3x9 style ticket with 15 random numbers
-  const numbers = Array.from({ length: 90 }, (_, i) => i + 1);
-  numbers.sort(() => Math.random() - 0.5);
-  return numbers.slice(0, 15).sort((a, b) => a - b);
+  // Create empty 3x9
+  let ticket = Array.from({ length: 3 }, () => Array(9).fill(null));
+
+  // Generate 15 random numbers (1–90)
+  let nums = Array.from({ length: 90 }, (_, i) => i + 1);
+  nums.sort(() => Math.random() - 0.5);
+  nums = nums.slice(0, 15);
+
+  // Distribute into 3 rows, 5 numbers per row
+  for (let r = 0; r < 3; r++) {
+    let rowNums = nums.slice(r * 5, (r + 1) * 5).sort((a, b) => a - b);
+    let cols = [...Array(9).keys()].sort(() => Math.random() - 0.5).slice(0, 5);
+    cols.sort((a, b) => a - b);
+    cols.forEach((c, i) => { ticket[r][c] = rowNums[i]; });
+  }
+
+  return ticket;
 }
 function broadcastToIndexes(msg) {
   wss.clients.forEach(client => {
