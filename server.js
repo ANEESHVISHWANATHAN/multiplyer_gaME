@@ -1,4 +1,4 @@
-const express = require("express");
+    const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
 const path = require("path");
@@ -31,6 +31,12 @@ function randomRoomId() {
 }
 function randomWsCode() {
   return Math.random().toString(36).substring(2, 10);
+}
+function randomTicket() {
+  // Simple 3x9 style ticket with 15 random numbers
+  const numbers = Array.from({ length: 90 }, (_, i) => i + 1);
+  numbers.sort(() => Math.random() - 0.5);
+  return numbers.slice(0, 15).sort((a, b) => a - b);
 }
 function broadcastToIndexes(msg) {
   wss.clients.forEach(client => {
@@ -111,10 +117,18 @@ wss.on("connection", (ws, req) => {
           isHost: true
         };
 
+        const roomObj = {
+          type: type === "pub" ? "public" : "private",
+          players: { [playerId]: player },
+          gameStarted: false,
+          numbersLeft: [],
+          interval: null
+        };
+
         if (type === "pub") {
-          publicRooms[roomId] = { type: "public", players: { [playerId]: player } };
+          publicRooms[roomId] = roomObj;
         } else {
-          privateRooms[roomId] = { type: "private", players: { [playerId]: player } };
+          privateRooms[roomId] = roomObj;
         }
 
         ws.isIndex = true;
@@ -122,7 +136,7 @@ wss.on("connection", (ws, req) => {
           type: "lobbyCreated",
           roomId, playerId, wscode,
           isHost: true,
-          lobbyType: type === "pub" ? "public" : "private"
+          lobbyType: roomObj.type
         }));
 
         console.log(`🎉 Lobby ${roomId} (${type}) created by ${username}`);
@@ -209,18 +223,57 @@ wss.on("connection", (ws, req) => {
           }
         });
 
-        if (room.type === "public") {
-          if (me.isHost) {
-            const lobbyObj = { roomId, name: me.username, players: Object.keys(room.players).length };
-            broadcastToIndexes({ type: "newLobby", lobby: lobbyObj });
-            console.log(`📤 newLobby broadcast for ${roomId}`);
-          } else {
-            broadcastToIndexes({ type: "playerChange", roomId, players: Object.keys(room.players).length });
-            console.log(`📤 playerChange broadcast for ${roomId}`);
-          }
+        logRooms();
+      }
+
+      // ===== START GAME =====
+      else if (data.typeReq === "startGame") {
+        const { roomId, playerId } = data;
+        const room = publicRooms[roomId] || privateRooms[roomId];
+        if (!room) {
+          console.log(`❌ startGame for invalid room ${roomId}`);
+          return;
+        }
+        if (!room.players[playerId] || !room.players[playerId].isHost) {
+          console.log(`❌ Non-host tried to start game in ${roomId}`);
+          return;
+        }
+        if (room.gameStarted) {
+          console.log(`⚠️ Game already started in ${roomId}`);
+          return;
         }
 
-        logRooms();
+        room.gameStarted = true;
+        room.numbersLeft = Array.from({ length: 100 }, (_, i) => i + 1);
+        room.numbersLeft.sort(() => Math.random() - 0.5);
+
+        console.log(`🎮 Game started in room ${roomId}`);
+
+        // Notify all players
+        Object.values(room.players).forEach(p => {
+          if (p.wsGameConn && p.wsGameConn.readyState === WebSocket.OPEN) {
+            p.wsGameConn.send(JSON.stringify({ type: "gameStarts" }));
+            const ticket = randomTicket();
+            p.wsGameConn.send(JSON.stringify({ type: "sendTicket", ticket }));
+            console.log(`🎟 Ticket sent to ${p.username}`);
+          }
+        });
+
+        // Start sending numbers every 7s
+        room.interval = setInterval(() => {
+          if (room.numbersLeft.length === 0) {
+            clearInterval(room.interval);
+            console.log(`✅ All numbers sent for ${roomId}`);
+            return;
+          }
+          const num = room.numbersLeft.pop();
+          console.log(`🔢 Sending number ${num} in ${roomId}`);
+          Object.values(room.players).forEach(p => {
+            if (p.wsGameConn && p.wsGameConn.readyState === WebSocket.OPEN) {
+              p.wsGameConn.send(JSON.stringify({ type: "sendNumber", number: num }));
+            }
+          });
+        }, 7000);
       }
 
       // ===== INDEX ACTIVE =====
@@ -247,101 +300,102 @@ wss.on("connection", (ws, req) => {
   });
 
   ws.on("close", () => {
-    console.log("❎ WS disconnected");
+console.log("❎ WS disconnected");
 
-    const found = findBySocket(ws);
-    if (!found) {
-      console.log("⚠️ disconnected socket not tracked");
-      return;
-    }
+const found = findBySocket(ws);  
+if (!found) {  
+  console.log("⚠️ disconnected socket not tracked");  
+  return;  
+}  
 
-    const { room, roomId, player } = found;
-    const playerId = player.playerId;
-    const closedIsGame = (player.wsGameConn === ws);
-    const closedIsIndex = (player.wsIndexConn === ws);
+const { room, roomId, player } = found;  
+const playerId = player.playerId;  
+const closedIsGame = (player.wsGameConn === ws);  
+const closedIsIndex = (player.wsIndexConn === ws);  
 
-    console.log(`ℹ️ Closed socket for ${player.username} (P${playerId}) in ${roomId}. game=${closedIsGame} index=${closedIsIndex}`);
+console.log(`ℹ️ Closed socket for ${player.username} (P${playerId}) in ${roomId}. game=${closedIsGame} index=${closedIsIndex}`);  
 
-    if (closedIsGame) {
-      console.log(`🔔 Player ${player.username} (P${playerId}) game socket left ${roomId}`);
-      Object.values(room.players).forEach(p => {
-        if (p.wsGameConn && p.wsGameConn.readyState === WebSocket.OPEN && p.playerId !== playerId) {
-          p.wsGameConn.send(JSON.stringify({ type: "heleft", playerId }));
-        }
-      });
-      delete room.players[playerId];
-      const summary = rebuildPlayersMap(room);
-      Object.values(room.players).forEach(p => {
-        if (p.wsGameConn && p.wsGameConn.readyState === WebSocket.OPEN) {
-          p.wsGameConn.send(JSON.stringify({ type: "playersReshuffled", players: summary }));
-        }
-      });
-      if (room.type === "public") {
-        const count = Object.keys(room.players).length;
-        if (count === 0) {
-          delete publicRooms[roomId];
-          broadcastToIndexes({ type: "deleteLobby", roomId });
-          console.log(`🗑 Room ${roomId} deleted (empty)`);
-        } else {
-          broadcastToIndexes({ type: "playerChange", roomId, players: count });
-        }
-      } else {
-        if (Object.keys(room.players).length === 0) {
-          delete privateRooms[roomId];
-          console.log(`🗑 Private room ${roomId} deleted (empty)`);
-        }
-      }
-      logRooms();
-      return;
-    }
+if (closedIsGame) {  
+  console.log(`🔔 Player ${player.username} (P${playerId}) game socket left ${roomId}`);  
+  Object.values(room.players).forEach(p => {  
+    if (p.wsGameConn && p.wsGameConn.readyState === WebSocket.OPEN && p.playerId !== playerId) {  
+      p.wsGameConn.send(JSON.stringify({ type: "heleft", playerId }));  
+    }  
+  });  
+  delete room.players[playerId];  
+  const summary = rebuildPlayersMap(room);  
+  Object.values(room.players).forEach(p => {  
+    if (p.wsGameConn && p.wsGameConn.readyState === WebSocket.OPEN) {  
+      p.wsGameConn.send(JSON.stringify({ type: "playersReshuffled", players: summary }));  
+    }  
+  });  
+  if (room.type === "public") {  
+    const count = Object.keys(room.players).length;  
+    if (count === 0) {  
+      delete publicRooms[roomId];  
+      broadcastToIndexes({ type: "deleteLobby", roomId });  
+      console.log(`🗑 Room ${roomId} deleted (empty)`);  
+    } else {  
+      broadcastToIndexes({ type: "playerChange", roomId, players: count });  
+    }  
+  } else {  
+    if (Object.keys(room.players).length === 0) {  
+      delete privateRooms[roomId];  
+      console.log(`🗑 Private room ${roomId} deleted (empty)`);  
+    }  
+  }  
+  logRooms();  
+  return;  
+}  
 
-    if (closedIsIndex) {
-      const key = `${roomId}_${playerId}`;
-      if (disconnectTimers[key]) {
-        clearTimeout(disconnectTimers[key]);
-      }
+if (closedIsIndex) {  
+  const key = `${roomId}_${playerId}`;  
+  if (disconnectTimers[key]) {  
+    clearTimeout(disconnectTimers[key]);  
+  }  
 
-      console.log(`⏱️ Index socket disconnected for ${player.username} (P${playerId}). waiting 10s for reconnect...`);
+  console.log(`⏱️ Index socket disconnected for ${player.username} (P${playerId}). waiting 10s for reconnect...`);  
 
-      disconnectTimers[key] = setTimeout(() => {
-        console.log(`⏱️ Timer expired — removing ${player.username} (P${playerId}) from ${roomId}`);
-        Object.values(room.players).forEach(p => {
-          if (p.wsGameConn && p.wsGameConn.readyState === WebSocket.OPEN && p.playerId !== playerId) {
-            p.wsGameConn.send(JSON.stringify({ type: "heleft", playerId }));
-          }
-        });
-        delete room.players[playerId];
-        const summary = rebuildPlayersMap(room);
-        Object.values(room.players).forEach(p => {
-          if (p.wsGameConn && p.wsGameConn.readyState === WebSocket.OPEN) {
-            p.wsGameConn.send(JSON.stringify({ type: "playersReshuffled", players: summary }));
-          }
-        });
-        if (room.type === "public") {
-          const count = Object.keys(room.players).length;
-          if (count === 0) {
-            delete publicRooms[roomId];
-            broadcastToIndexes({ type: "deleteLobby", roomId });
-            console.log(`🗑 Room ${roomId} deleted (empty)`);
-          } else {
-            broadcastToIndexes({ type: "playerChange", roomId, players: count });
-          }
-        } else {
-          if (Object.keys(room.players).length === 0) {
-            delete privateRooms[roomId];
-            console.log(`🗑 Private room ${roomId} deleted (empty)`);
-          }
-        }
-        delete disconnectTimers[key];
-        logRooms();
-      }, 10000);
+  disconnectTimers[key] = setTimeout(() => {  
+    console.log(`⏱️ Timer expired — removing ${player.username} (P${playerId}) from ${roomId}`);  
+    Object.values(room.players).forEach(p => {  
+      if (p.wsGameConn && p.wsGameConn.readyState === WebSocket.OPEN && p.playerId !== playerId) {  
+        p.wsGameConn.send(JSON.stringify({ type: "heleft", playerId }));  
+      }  
+    });  
+    delete room.players[playerId];  
+    const summary = rebuildPlayersMap(room);  
+    Object.values(room.players).forEach(p => {  
+      if (p.wsGameConn && p.wsGameConn.readyState === WebSocket.OPEN) {  
+        p.wsGameConn.send(JSON.stringify({ type: "playersReshuffled", players: summary }));  
+      }  
+    });  
+    if (room.type === "public") {  
+      const count = Object.keys(room.players).length;  
+      if (count === 0) {  
+        delete publicRooms[roomId];  
+        broadcastToIndexes({ type: "deleteLobby", roomId });  
+        console.log(`🗑 Room ${roomId} deleted (empty)`);  
+      } else {  
+        broadcastToIndexes({ type: "playerChange", roomId, players: count });  
+      }  
+    } else {  
+      if (Object.keys(room.players).length === 0) {  
+        delete privateRooms[roomId];  
+        console.log(`🗑 Private room ${roomId} deleted (empty)`);  
+      }  
+    }  
+    delete disconnectTimers[key];  
+    logRooms();  
+  }, 10000);  
 
-      player.wsIndexConn = null;
-      return;
-    }
+  player.wsIndexConn = null;  
+  return;  
+}  
 
-    console.log("⚠️ close: unexpected socket state");
-  });
+console.log("⚠️ close: unexpected socket state");
+
+});
 });
 
 const PORT = process.env.PORT || 3000;
