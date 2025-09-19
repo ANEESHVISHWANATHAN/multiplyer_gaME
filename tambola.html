@@ -5,7 +5,11 @@
   <title>Tambola</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <style>
-    /* --- CSS kept mostly as you provided with small visual fixes --- */
+    /* --- theme & layout (kept & improved) --- */
+    :root{
+      --accent1:#ff416c; --accent2:#ff4b2b; --card:#fff8f0;
+      --muted:rgba(0,0,0,0.06);
+    }
     body{margin:0;font-family:"Segoe UI",sans-serif;background:linear-gradient(135deg,#ffecd2,#fcb69f);color:#333;min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow-x:hidden}
     .top-bar{display:flex;overflow-x:auto;padding:12px 16px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,0.1);width:100%;scrollbar-width:none;z-index:10;position:sticky;top:0}
     .top-bar::-webkit-scrollbar{display:none}
@@ -14,17 +18,17 @@
     .player .arc { position:absolute; left:0; top:0; width:56px; height:56px; pointer-events:none }
     .player .label { position:absolute; top:-22px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.75); color:#fff; padding:4px 8px; border-radius:12px; font-size:12px; display:none; white-space:nowrap }
     .player span{font-size:14px;display:block;margin-top:6px}
-    .number-shower{margin:20px 0;font-size:clamp(22px,5vw,42px);font-weight:bold;color:#fff;background:linear-gradient(135deg,#ff416c,#ff4b2b);padding:16px 38px;border-radius:20px;box-shadow:0 6px 20px rgba(0,0,0,0.25);min-width:120px;text-align:center;letter-spacing:1px}
-    .ticket{display:grid;grid-template-columns:repeat(9,1fr);border:4px solid #ff4b2b;border-radius:14px;box-shadow:0 10px 28px rgba(0,0,0,0.3);background:#fff8f0;width:94%;margin:22px auto;overflow:hidden;padding:8px;gap:6px}
-    .cell{aspect-ratio:0.85/1;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:clamp(12px,1.6vw,18px);border:1px solid #ddd;background:#fff;transition:background .3s ease,transform .2s;border-radius:8px}
-    .cell:hover{background:#ffe0d0;transform:scale(1.03)}
-    .cell.empty{background:transparent;border:1px dashed rgba(0,0,0,0.06);color:rgba(0,0,0,0.12);font-weight:600}
+    .number-shower{margin:20px 0;font-size:clamp(22px,5vw,42px);font-weight:bold;color:#fff;background:linear-gradient(135deg,var(--accent1),var(--accent2));padding:16px 38px;border-radius:20px;box-shadow:0 6px 20px rgba(0,0,0,0.25);min-width:120px;text-align:center;letter-spacing:1px}
+    .ticket{display:grid;grid-template-columns:repeat(9,1fr);border:4px solid var(--accent2);border-radius:14px;box-shadow:0 10px 28px rgba(0,0,0,0.3);background:var(--card);width:94%;margin:22px auto;overflow:hidden;padding:8px;gap:6px}
+    .cell{aspect-ratio:0.85/1;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:clamp(12px,1.6vw,18px);border:1px solid #ddd;background:#fff;transition:background .25s ease,transform .15s;border-radius:8px}
+    .cell:hover{background:#ffe0d0;transform:scale(1.02)}
+    .cell.empty{background:transparent;border:1px dashed var(--muted);color:rgba(0,0,0,0.12);font-weight:600}
     .cell.highlight{background:linear-gradient(90deg,#ffe082,#ffd54f)!important;color:#111}
     .cell.matched{background:linear-gradient(90deg,#a5d6a7,#66bb6a);color:#fff}
     .overlay{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;justify-content:center;align-items:center;z-index:1000;backdrop-filter:blur(8px);visibility:hidden;opacity:0;transition:opacity .18s ease}
     .overlay.active{visibility:visible;opacity:1}
     .overlay-box{position:relative;width:90%;max-width:900px;max-height:75%;margin:15% auto;border:14px solid #ff2d55;border-radius:20px;background:rgba(15,15,30,.95);box-shadow:0 0 20px rgba(255,45,85,.6),inset 0 0 12px rgba(255,255,255,.1);overflow-y:auto;padding:30px 20px;transform:translateY(0);transition:transform .3s ease-in-out}
-    .achievement-fullscreen { position:fixed; left:0; top:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; z-index:2000; background:linear-gradient(120deg, rgba(0,0,0,0.55), rgba(255,255,255,0.02)); visibility:hidden; opacity:0; transition:opacity .25s ease; }
+    .achievement-fullscreen { position:fixed; left:0; top:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; z-index:2000; background:linear-gradient(120deg, rgba(0,0,0,0.55), rgba(255,255,255,0.02)); visibility:hidden; opacity:0; transition:opacity .18s ease; }
     .achievement-fullscreen.show{ visibility:visible; opacity:1 }
     .achievement-card{ background: #fff; padding:28px 36px; border-radius:18px; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.35); max-width:90%; transform:scale(.98); transition:transform .25s ease }
     .achievement-card h1{ font-size:40px; margin:0 0 10px }
@@ -38,6 +42,13 @@
     .numbers-grid{display:grid;gap:6px;justify-items:center}
     .num-cell{width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:14px;font-weight:bold;color:#fff;background:#b22222}
     .num-cell.called{background:#228b22}
+    .hidden{display:none !important}
+    /* strike line for row achievement */
+    .strike {
+      position:absolute;
+      left:0; right:0; height:4px; background:linear-gradient(90deg,#ffd54f,#ff7043);
+      transform-origin:center; opacity:0; transition:opacity .2s, transform .35s;
+    }
     @media(min-width:992px){.ticket{width:55%;max-width:650px}.cell{aspect-ratio:1.6/1}.overlay-box{margin:15% auto;width:70%}.numbers-grid{grid-template-columns:repeat(10,1fr)}.num-cell{width:40px;height:40px;font-size:15px}}
     @media(max-width:576px) and (orientation:portrait){.ticket{width:96%}.cell{aspect-ratio:.7/1}.overlay-box{margin:10% auto;width:90%}.numbers-grid{grid-template-columns:repeat(8,1fr)}.num-cell{width:32px;height:32px;font-size:13px}}
     @media(max-width:992px) and (orientation:landscape){.ticket{width:80%}.cell{aspect-ratio:1.4/1}.overlay-box{margin:10% auto;width:75%;max-height:65%}.numbers-grid{grid-template-columns:repeat(10,1fr)}}
@@ -46,14 +57,14 @@
 <body>
   <div class="top-bar" id="topBar"></div>
 
-  <div id="numberShower" class="number-shower">--</div>
+  <div id="numberShower" class="number-shower hidden">--</div>
 
-  <div class="ticket" id="ticket"></div>
+  <div class="ticket hidden" id="ticket"></div>
 
-  <div class="btns">
-    <button class="stats-btn" onclick="openLeaderboard()">Leaderboard</button>
-    <button class="stats-btn" onclick="openNumbers()">Numbers</button>
-    <button id="startBtn" class="stats-btn" style="display:none;">Start Game</button>
+  <div class="btns hidden" id="gameControls">
+    <button class="stats-btn" id="lbBtn">Leaderboard</button>
+    <button class="stats-btn" id="numBtn">Numbers</button>
+    <button id="startBtn" class="stats-btn hidden">Start Game</button>
   </div>
 
   <div class="overlay" id="leaderboard">
@@ -76,26 +87,44 @@
   </div>
 
   <script>
+    /* ---------- state ---------- */
     const ticketEl = document.getElementById("ticket");
     const numberShower = document.getElementById("numberShower");
-    let calledNumbers = new Set();
     const topBar = document.getElementById("topBar");
+    const gameControls = document.getElementById("gameControls");
+    const lbBtn = document.getElementById("lbBtn");
+    const numBtn = document.getElementById("numBtn");
+    const startBtn = document.getElementById("startBtn");
+    const achievementFS = document.getElementById("achievementFS");
+    const achTitle = document.getElementById("achTitle");
+    const achDesc = document.getElementById("achDesc");
+
     let players = {};
+    let myTicket = null; // matrix 3x9 with nulls
+    let calledNumbers = new Set();
+    let matchedCells = new Set(); // "r-c" strings for matched
+    let achievementClaimed = new Set(); // local to avoid repeat sending
+    let ws;
+
+    /* ---------- helpers ---------- */
+    function show(el){ el.classList.remove("hidden"); }
+    function hide(el){ el.classList.add("hidden"); }
 
     function renderTopBar(){
       topBar.innerHTML = "";
       Object.values(players).forEach(p=>{
         const div = document.createElement("div");
         div.className = "player";
+        div.dataset.pid = p.playerId;
         div.innerHTML = `
           <div class="label" id="label-${p.playerId}"></div>
-          <img src="${p.icon}" id="icon-${p.playerId}">
+          <img src="${p.icon||'https://via.placeholder.com/56'}" id="icon-${p.playerId}">
           <svg class="arc" id="arc-${p.playerId}" viewBox="0 0 56 56">
             <defs><linearGradient id="g${p.playerId}" x1="0" x2="1"><stop offset="0%" stop-color="#ffd54f"/><stop offset="100%" stop-color="#ff7043"/></linearGradient></defs>
             <circle cx="28" cy="28" r="26" fill="none" stroke="rgba(0,0,0,0.06)" stroke-width="4"></circle>
             <path d="" stroke="url(#g${p.playerId})" stroke-width="4" fill="none" stroke-linecap="round" id="arcpath-${p.playerId}"></path>
           </svg>
-          <span>${p.username}</span>
+          <span>${p.username||'Player'}</span>
         `;
         topBar.appendChild(div);
       });
@@ -106,7 +135,7 @@
       if (!lbl) return;
       lbl.textContent = text;
       lbl.style.display = "block";
-      setTimeout(()=> { lbl.style.display = "none"; }, 7000);
+      setTimeout(()=> { lbl.style.display = "none"; }, 6000);
     }
 
     function highlightArc(playerId) {
@@ -135,60 +164,202 @@
       document.querySelectorAll(".num-cell").forEach(cell=>{
         const val=parseInt(cell.textContent);
         if(calledNumbers.has(val)) cell.classList.add("called");
+        else cell.classList.remove("called");
       });
     }
 
     function showNumber(num) {
-      if (!num && num !== 0) return;
+      if (typeof num !== "number") return;
       numberShower.textContent = num;
       calledNumbers.add(num);
       updateNumbersGrid();
-      document.querySelectorAll(".cell").forEach(c => {
-        const n = parseInt(c.textContent);
-        if (!isNaN(n) && n === num) c.classList.add("matched");
-      });
+      // mark matched on my ticket if present
+      if (myTicket) {
+        for (let r=0;r<3;r++){
+          for (let c=0;c<9;c++){
+            const v = myTicket[r][c];
+            if (v !== null && v === num) {
+              matchedCells.add(`${r}-${c}`);
+              const idx = r*9 + c;
+              const cell = ticketEl.children[idx];
+              if (cell) cell.classList.add("matched");
+            }
+          }
+        }
+        // after update, check achievements
+        detectAchievements();
+      }
     }
 
-    // renderTicket expects a 3x9 array with nulls
+    // renderTicket expects a 3x9 matrix with nulls
     function renderTicket(ticket) {
+      myTicket = ticket;
       ticketEl.innerHTML = "";
-      let matrix = ticket;
-      // Normalize: server sends 3x9 array with nulls. If it sends flat array, we fallback.
+      // safety: ensure matrix form
       if (!Array.isArray(ticket) || !Array.isArray(ticket[0])) {
+        // fallback: convert flat 15 list into 3x9
         const arr = Array.isArray(ticket) ? ticket.slice(0,15) : [];
-        matrix = Array.from({length:3},()=>Array(9).fill(null));
+        const m = Array.from({length:3},()=>Array(9).fill(null));
         let idx=0;
         for (let r=0;r<3;r++){
           for (let c=0;c<9 && idx<arr.length;c++){
-            matrix[r][c] = arr[idx++] || null;
+            m[r][c] = arr[idx++] || null;
           }
         }
+        myTicket = m;
       }
-      matrix.forEach(row => {
-        row.forEach(cellVal => {
+      // populate
+      for (let r=0;r<3;r++){
+        for (let c=0;c<9;c++){
+          const val = myTicket[r][c];
           const d = document.createElement("div");
           d.classList.add("cell");
-          if (cellVal === null || cellVal === "" || typeof cellVal === 'undefined') {
+          if (val === null || val === "" || typeof val === 'undefined') {
             d.classList.add("empty");
             d.textContent = "";
           } else {
-            d.textContent = cellVal;
+            d.textContent = val;
+            if (calledNumbers.has(val)) {
+              d.classList.add("matched");
+              matchedCells.add(`${r}-${c}`);
+            }
           }
           ticketEl.appendChild(d);
-        });
+        }
+      }
+    }
+
+    /* ---------- achievements detection & visualizing ---------- */
+    function detectAchievements() {
+      if (!myTicket) return;
+      // compute matched counts
+      const counts = { total:0, rows:[0,0,0] };
+      const rowSizes = [0,0,0];
+      for (let r=0;r<3;r++){
+        for (let c=0;c<9;c++){
+          const v = myTicket[r][c];
+          if (v !== null && typeof v !== "undefined") {
+            rowSizes[r]++;
+            if (matchedCells.has(`${r}-${c}`)) {
+              counts.rows[r]++;
+              counts.total++;
+            }
+          }
+        }
+      }
+
+      // Achievements names we will use:
+      // "First Five","First Seven","Row 1","Row 2","Row 3","Full Game"
+      if (counts.total >= 5 && !achievementClaimed.has("First Five")) {
+        claimAchievementLocal("First Five");
+      }
+      if (counts.total >= 7 && !achievementClaimed.has("First Seven")) {
+        claimAchievementLocal("First Seven");
+      }
+      // rows
+      for (let r=0;r<3;r++){
+        if (rowSizes[r] > 0 && counts.rows[r] === rowSizes[r]) {
+          const name = r===0 ? "First Row" : (r===1 ? "Second Row" : "Third Row");
+          if (!achievementClaimed.has(name)) {
+            // highlight row and send
+            flashRow(r);
+            claimAchievementLocal(name);
+          }
+        }
+      }
+      // full game
+      const totalNumbers = rowSizes.reduce((a,b)=>a+b,0);
+      if (totalNumbers>0 && counts.total === totalNumbers && !achievementClaimed.has("Full Game")) {
+        claimAchievementLocal("Full Game");
+        flashFullGame();
+      }
+    }
+
+    function claimAchievementLocal(name) {
+      achievementClaimed.add(name);
+      // highlight relevant cells briefly
+      if (name === "First Five" || name === "First Seven") {
+        // highlight first N matched cells
+        const N = (name === "First Five") ? 5 : 7;
+        const matchedList = Array.from(matchedCells).slice(0,N);
+        highlightCellsTemp(matchedList, 3000);
+      } else if (name.endsWith("Row")) {
+        // flashRow handled where discovered
+      } else if (name === "Full Game") {
+        // highlight all matched
+        const all = Array.from(matchedCells);
+        highlightCellsTemp(all, 3000);
+      }
+      // show big fullscreen message
+      showAchievementFullscreen(name, `You claimed ${name}!`);
+      setTimeout(hideAchievement, 3000);
+      // send to server
+      ws && ws.send(JSON.stringify({
+        typeReq: "iachieve",
+        roomId,
+        playerId,
+        achievement: name
+      }));
+    }
+
+    function highlightCellsTemp(cells, ms=2500) {
+      // cells = ["r-c", ...]
+      const added = [];
+      cells.forEach(rc=>{
+        const [r,c] = rc.split("-").map(Number);
+        const idx = r*9 + c;
+        const el = ticketEl.children[idx];
+        if (el) {
+          el.classList.add("highlight");
+          added.push(el);
+        }
       });
+      setTimeout(()=>{ added.forEach(el=>el.classList.remove("highlight")); }, ms);
     }
 
+    function flashRow(rowIndex) {
+      // strike across the rendered row for 2.4s
+      // compute row top coordinate from ticketEl children
+      const firstCell = ticketEl.children[rowIndex*9];
+      if (!firstCell) return;
+      const rect = ticketEl.getBoundingClientRect();
+      // create strike element positioned inside ticketEl
+      const strike = document.createElement("div");
+      strike.className = "strike";
+      // position it at row
+      // compute approximate top position of row by querying cell's offsetTop
+      const cell = firstCell;
+      strike.style.top = `${cell.offsetTop + cell.offsetHeight/2}px`;
+      strike.style.left = `${cell.offsetLeft}px`;
+      strike.style.width = `${ticketEl.clientWidth}px`;
+      strike.style.opacity = "0";
+      ticketEl.appendChild(strike);
+      // animate
+      requestAnimationFrame(()=>{ strike.style.opacity = "1"; strike.style.transform = "scaleX(1)"; });
+      setTimeout(()=>{ strike.style.opacity = "0"; strike.remove(); }, 2400);
+    }
+
+    function flashFullGame() {
+      // brief confetti-ish effect: highlight all cells
+      const els = Array.from(ticketEl.children);
+      els.forEach(e => e.classList.add("highlight"));
+      setTimeout(()=>els.forEach(e => e.classList.remove("highlight")), 2800);
+    }
+
+    /* ---------- UI helpers ---------- */
     function showAchievementFullscreen(title, desc) {
-      document.getElementById("achTitle").textContent = title;
-      document.getElementById("achDesc").textContent = desc || "";
-      const fs = document.getElementById("achievementFS");
-      fs.classList.add("show");
+      achTitle.textContent = title;
+      achDesc.textContent = desc || "";
+      achievementFS.classList.add("show");
     }
-    function hideAchievement(){
-      document.getElementById("achievementFS").classList.remove("show");
-    }
+    function hideAchievement(){ achievementFS.classList.remove("show"); }
 
+    function openLeaderboard(){ document.getElementById("leaderboard").classList.add("active"); }
+    function closeLeaderboard(){ document.getElementById("leaderboard").classList.remove("active"); }
+    function openNumbers(){ updateNumbersGrid(); document.getElementById("numbersChart").classList.add("active"); }
+    function closeNumbers(){ document.getElementById("numbersChart").classList.remove("active"); }
+
+    /* ---------- startup & WS ---------- */
     const roomId = localStorage.getItem("roomId");
     const playerId = Number(localStorage.getItem("playerId"));
     const wscode = localStorage.getItem("wscode");
@@ -197,82 +368,82 @@
     const isHost = (localStorage.getItem("ishost")==="true");
     const gameType = localStorage.getItem("gameType")||"public";
 
-    // adapt URL to your server
-    const ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host);
+    // connect to same host as page (use ws or wss)
+    ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host);
 
-    ws.onopen = () => {
-      console.log("✅ Connected to WS");
-      ws.send(JSON.stringify({
-        typeReq:"pageEntered", roomId, playerId, wscode, isHost, gameType
-      }));
-      if(isHost){ document.getElementById("startBtn").style.display="block"; }
-    };
+    ws.addEventListener("open", ()=> {
+      console.log("WS open");
+      ws.send(JSON.stringify({ typeReq:"pageEntered", roomId, playerId, wscode, isHost, gameType }));
+      // if host, show start button (but not other controls yet)
+      if (isHost) {
+        startBtn.classList.remove("hidden");
+      }
+    });
 
-    ws.onmessage = (msg) => {
-      try {
-        const data = JSON.parse(msg.data);
-        console.log("📩",data);
+    ws.addEventListener("message", ev => {
+      let data;
+      try { data = JSON.parse(ev.data); } catch(e){ return; }
+      console.log("WS:", data);
 
-        if(data.type==="ijoin"){
-          data.players.forEach(p=>{ players[p.playerId] = p; });
-          renderTopBar();
-        }
-        if(data.type==="hejoins"){
-          players[data.player.playerId] = data.player;
-          renderTopBar();
-        }
-        if(data.type==="heleft"){
-          delete players[data.playerId];
-          renderTopBar();
-        }
-        if(data.type==="gameStarts"){
-          showAchievementFullscreen("Game Started", "Good luck!");
-          setTimeout(hideAchievement, 1400);
-        }
-        if(data.type==="sendTicket"){
-          renderTicket(data.ticket);
-        }
-        if(data.type==="sendNumber"){
-          showNumber(data.number);
-        }
-        if(data.type==="heachieve"){
-          const { achievement, playerId: pid, username } = data;
-          setPlayerAchievementLabel(pid, `${username} claimed ${achievement}`);
-          highlightArc(pid);
-        }
-      } catch(e){
-        console.warn("ws parse error", e);
+      if (data.type === "ijoin") {
+        // initial players list
+        data.players.forEach(p => players[p.playerId] = p);
+        renderTopBar();
+      } else if (data.type === "hejoins") {
+        players[data.player.playerId] = data.player;
+        renderTopBar();
+      } else if (data.type === "heleft") {
+        delete players[data.playerId];
+        renderTopBar();
+      } else if (data.type === "gameStarts" || data.type === "gameStartsAck") {
+        // show numberShower, controls, ticket area (ticket itself will be populated by sendTicket)
+        show(numberShower);
+        show(gameControls);
+        // show leaderboard and numbers buttons (but not ticket until sendTicket arrives)
+        lbBtn.addEventListener("click", openLeaderboard);
+        numBtn.addEventListener("click", openNumbers);
+        // hide start button for everyone (game started)
+        startBtn.classList.add("hidden");
+        showAchievementFullscreen("Game Started","Good luck!");
+        setTimeout(hideAchievement,1400);
+      } else if (data.type === "sendTicket") {
+        // server should send 3x9 matrix with nulls
+        renderTicket(data.ticket);
+        // show ticket only after ticket received
+        show(ticketEl);
+      } else if (data.type === "sendNumber") {
+        showNumber(data.number);
+      } else if (data.type === "heachieve") {
+        // { achievement, playerId, username }
+        const pid = data.playerId;
+        const name = data.username || ("P"+pid);
+        setPlayerAchievementLabel(pid, `${name} claimed ${data.achievement}`);
+        highlightArc(pid);
+      } else if (data.type === "lobbyCreated") {
+        // not used here
+      } else if (data.type === "playerChange") {
+        // optional: update topbar counts (not implemented)
+      }
+    });
+
+    // start button -> ask server to start
+    startBtn.addEventListener("click", ()=>{
+      ws.send(JSON.stringify({ typeReq:"startGame", roomId, playerId, isHost }));
+    });
+
+    // game overlay buttons
+    lbBtn.addEventListener("click", openLeaderboard);
+    numBtn.addEventListener("click", openNumbers);
+
+    // expose for detection code if you integrate auto-checker elsewhere
+    window.claimAchievement = function(name) {
+      // manual trigger (if you want)
+      if (!achievementClaimed.has(name)) {
+        claimAchievementLocal(name);
       }
     };
-
-    // send achievement to server
-    function claimAchievement(achievementType) {
-      ws.send(JSON.stringify({
-        typeReq: "iachieve",
-        roomId,
-        playerId,
-        achievement: achievementType
-      }));
-      showAchievementFullscreen(achievementType, "You claimed " + achievementType + "!");
-      setTimeout(hideAchievement, 4000);
-    }
-
-    document.getElementById("startBtn").onclick = () => {
-      ws.send(JSON.stringify({
-        typeReq: "startGame",
-        roomId,
-        playerId,
-        isHost   // client flag sent so server can cross-check
-      }));
-    };
-
-    function openLeaderboard(){ document.getElementById("leaderboard").classList.add("active"); }
-    function closeLeaderboard(){ document.getElementById("leaderboard").classList.remove("active"); }
-    function openNumbers(){ updateNumbersGrid(); document.getElementById("numbersChart").classList.add("active"); }
-    function closeNumbers(){ document.getElementById("numbersChart").classList.remove("active"); }
-
-    // Expose claimAchievement for your internal detection code.
-    window.claimAchievement = claimAchievement;
   </script>
 </body>
-</html>            
+</html>
+  
+          
