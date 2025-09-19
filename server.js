@@ -191,94 +191,80 @@ wss.on("connection", (ws, req) => {
       }
 
       // ===== INDEX ACTIVE =====
-      else if (data.typeReq === "iactive" || data.typeReq === "iActive") {
-        ws.isIndex = true;
-        const lobbies = Object.entries(publicRooms).map(([id, room]) => {
-          const host = room.players[0];
-          return { roomId: id, name: host ? host.username : "Unknown", players: Object.keys(room.players).length };
-        });
-        ws.send(JSON.stringify({ type: "existingLobbies", lobbies }));
-        console.log("📤 Sent existingLobbies to index");
-      }
+      // ===== PAGE ENTERED (Tambola) =====
+else if (data.typeReq === "pageEntered") {
+  const { roomId, playerId, wscode } = data;
+  const room = publicRooms[roomId] || privateRooms[roomId];
+  if (!room || !room.players[playerId]) {
+    console.log(`❌ Invalid pageEntered for ${roomId}`);
+    return;
+  }
 
-      else {
-        console.log("⚠️ Unknown typeReq:", data.typeReq);
-      }
-    } catch (e) {
-      console.error("⚠️ JSON parse error:", e.message);
+  const me = room.players[playerId];
+
+  // validate wscode
+  if (me.wscode !== wscode) {
+    console.log(`❌ Wscode mismatch for ${me.username}`);
+    return;
+  }
+
+  // cancel pending disconnect timer
+  const key = `${roomId}_${playerId}`;
+  if (disconnectTimers[key]) {
+    clearTimeout(disconnectTimers[key]);
+    delete disconnectTimers[key];
+    console.log(`⏱️ Cancelled disconnect-timer for ${me.username}`);
+  }
+
+  // attach new WS
+  me.ws = ws;
+  me.wsIndex = 1;
+  ws.isIndex = false;
+
+  console.log(`🔄 ${me.username} re-entered ${roomId}`);
+
+  // build full list
+  const playersList = buildPlayersSummary(room);
+
+  // send full list to ALL players in the room
+  Object.values(room.players).forEach(p => {
+    if (p.ws && p.ws.readyState === WebSocket.OPEN) {
+      p.ws.send(JSON.stringify({ type: "ijoin", players: playersList }));
     }
   });
 
-  ws.on("close", () => {
-    console.log("❎ WS disconnected");
-
-    let roomFound = null;
-    let leavingPlayer = null;
-    let foundRoomId = null;
-
-    for (const [rId, r] of Object.entries(publicRooms)) {
-      for (const pid in r.players) {
-        if (r.players[pid].ws === ws) {
-          roomFound = r;
-          leavingPlayer = r.players[pid];
-          foundRoomId = rId;
-          break;
-        }
-      }
-      if (leavingPlayer) break;
+  // still send "hejoins" for quick detection
+  const joined = { playerId: me.playerId, username: me.username, icon: me.icon };
+  Object.values(room.players).forEach(p => {
+    if (p.ws && p.ws.readyState === WebSocket.OPEN && p.playerId !== me.playerId) {
+      p.ws.send(JSON.stringify({ type: "hejoins", player: joined }));
     }
-    if (!leavingPlayer) {
-      for (const [rId, r] of Object.entries(privateRooms)) {
-        for (const pid in r.players) {
-          if (r.players[pid].ws === ws) {
-            roomFound = r;
-            leavingPlayer = r.players[pid];
-            foundRoomId = rId;
-            break;
-          }
-        }
-        if (leavingPlayer) break;
-      }
-    }
-    if (!leavingPlayer) return;
+  });
 
-    const roomId = foundRoomId;
-    const playerId = leavingPlayer.playerId;
-
-    if (leavingPlayer.wsIndex === 1) {
-      console.log(`🔔 ${leavingPlayer.username} (P${playerId}) left ${roomId}`);
-
-      Object.values(roomFound.players).forEach(p => {
-        if (p.ws && p.ws.readyState === WebSocket.OPEN && p.playerId !== playerId) {
-          p.ws.send(JSON.stringify({ type: "heleft", playerId }));
+  // notify index lobby list
+  if (room.type === "public") {
+    if (me.isHost) {
+      broadcastToIndexes({
+        type: "newLobby",
+        lobby: {
+          roomId,
+          name: me.username,
+          players: Object.keys(room.players).length
         }
       });
-
-      delete roomFound.players[playerId];
-      const summary = rebuildPlayersMap(roomFound);
-
-      Object.values(roomFound.players).forEach(p => {
-        if (p.ws && p.ws.readyState === WebSocket.OPEN) {
-          p.ws.send(JSON.stringify({ type: "playersReshuffled", players: summary }));
-        }
+      console.log(`📤 newLobby (host entered) for ${roomId}`);
+    } else {
+      broadcastToIndexes({
+        type: "playerChange",
+        roomId,
+        players: Object.keys(room.players).length
       });
-
-      if (roomFound.type === "public") {
-        const count = Object.keys(roomFound.players).length;
-        if (count === 0) {
-          delete publicRooms[roomId];
-          broadcastToIndexes({ type: "deleteLobby", roomId });
-        } else {
-          broadcastToIndexes({ type: "playerChange", roomId, players: count });
-        }
-      } else if (roomFound.type === "private" && Object.keys(roomFound.players).length === 0) {
-        delete privateRooms[roomId];
-      }
-
-      logRooms();
-      return;
+      console.log(`📤 playerChange for ${roomId}`);
     }
+  }
 
+  logRooms();
+}
     const key = `${roomId}_${playerId}`;
     if (disconnectTimers[key]) clearTimeout(disconnectTimers[key]);
 
