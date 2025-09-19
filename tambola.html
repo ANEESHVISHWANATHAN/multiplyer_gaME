@@ -95,15 +95,15 @@
       });  
     }  
 
-    function showNumber(num){  
-      numberShower.textContent=num;  
-      calledNumbers.add(num);  
-      updateNumbersGrid();  
-      document.querySelectorAll(".cell").forEach(c=>{  
-        if(c.textContent==num) c.classList.add("highlight");  
-      });  
-    }  
-
+    function showNumber(num) {
+  if (!num) return;
+  numberShower.textContent = num;
+  calledNumbers.add(num);
+  updateNumbersGrid();
+  document.querySelectorAll(".cell").forEach(c => {
+    if (parseInt(c.textContent) === num) c.classList.add("highlight");
+  });
+    }
     const roomId=localStorage.getItem("roomId");  
     const playerId=localStorage.getItem("playerId");  
     const wscode=localStorage.getItem("wscode");  
