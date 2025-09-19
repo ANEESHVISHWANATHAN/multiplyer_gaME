@@ -244,52 +244,61 @@ else if (data.typeReq === "pageEntered") {
 
       // ===== START GAME =====
       else if (data.typeReq === "startGame") {
-        const { roomId, playerId } = data;
-        const room = publicRooms[roomId] || privateRooms[roomId];
-        if (!room) {
-          console.log(`❌ startGame for invalid room ${roomId}`);
-          return;
-        }
-        if (!room.players[playerId] || !room.players[playerId].isHost) {
-          console.log(`❌ Non-host tried to start game in ${roomId}`);
-          return;
-        }
-        if (room.gameStarted) {
-          console.log(`⚠️ Game already started in ${roomId}`);
-          return;
-        }
+  const { roomId, playerId } = data;
+  const room = publicRooms[roomId] || privateRooms[roomId];
+  if (!room) {
+    console.log(`❌ startGame for invalid room ${roomId}`);
+    return;
+  }
 
-        room.gameStarted = true;
-        room.numbersLeft = Array.from({ length: 100 }, (_, i) => i + 1);
-        room.numbersLeft.sort(() => Math.random() - 0.5);
+  const me = room.players[playerId];
+  if (!me) {
+    console.log(`❌ startGame from unknown player ${playerId} in ${roomId}`);
+    return;
+  }
 
-        console.log(`🎮 Game started in room ${roomId}`);
+  // ✅ Triple-check: must be host + must match this WS
+  if (!me.isHost || me.wsGameConn !== ws) {
+    console.log(`❌ Non-host or invalid socket tried to start game in ${roomId}`);
+    return;
+  }
 
-        // Notify all players
-        Object.values(room.players).forEach(p => {
-          if (p.wsGameConn && p.wsGameConn.readyState === WebSocket.OPEN) {
-            p.wsGameConn.send(JSON.stringify({ type: "gameStarts" }));
-            const ticket = randomTicket();
-            p.wsGameConn.send(JSON.stringify({ type: "sendTicket", ticket }));
-            console.log(`🎟 Ticket sent to ${p.username}`);
-          }
-        });
+  if (room.gameStarted) {
+    console.log(`⚠️ Game already started in ${roomId}`);
+    return;
+  }
 
-        // Start sending numbers every 7s
-        room.interval = setInterval(() => {
-          if (room.numbersLeft.length === 0) {
-            clearInterval(room.interval);
-            console.log(`✅ All numbers sent for ${roomId}`);
-            return;
-          }
-          const num = room.numbersLeft.pop();
-          console.log(`🔢 Sending number ${num} in ${roomId}`);
-          Object.values(room.players).forEach(p => {
-            if (p.wsGameConn && p.wsGameConn.readyState === WebSocket.OPEN) {
-              p.wsGameConn.send(JSON.stringify({ type: "sendNumber", number: num }));
-            }
-          });
-        }, 7000);
+  room.gameStarted = true;
+  room.numbersLeft = Array.from({ length: 100 }, (_, i) => i + 1);
+  room.numbersLeft.sort(() => Math.random() - 0.5);
+
+  console.log(`🎮 Game started in room ${roomId} by ${me.username}`);
+
+  // notify all players...
+  Object.values(room.players).forEach(p => {
+    if (p.wsGameConn && p.wsGameConn.readyState === WebSocket.OPEN) {
+      p.wsGameConn.send(JSON.stringify({ type: "gameStarts" }));
+      const ticket = randomTicket();
+      p.wsGameConn.send(JSON.stringify({ type: "sendTicket", ticket }));
+      console.log(`🎟 Ticket sent to ${p.username}`);
+    }
+  });
+
+  // send numbers every 7s...
+  room.interval = setInterval(() => {
+    if (room.numbersLeft.length === 0) {
+      clearInterval(room.interval);
+      console.log(`✅ All numbers sent for ${roomId}`);
+      return;
+    }
+    const num = room.numbersLeft.pop();
+    console.log(`🔢 Sending number ${num} in ${roomId}`);
+    Object.values(room.players).forEach(p => {
+      if (p.wsGameConn && p.wsGameConn.readyState === WebSocket.OPEN) {
+        p.wsGameConn.send(JSON.stringify({ type: "sendNumber", number: num }));
+      }
+    });
+  }, 7000);
       }
 
       // ===== INDEX ACTIVE =====
