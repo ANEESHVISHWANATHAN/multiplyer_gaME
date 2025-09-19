@@ -1,4 +1,3 @@
-// server.js
 const express = require("express");
 const http = require("http");
 const WebSocket = require("ws");
@@ -47,14 +46,12 @@ function logRooms() {
   console.log("====================");
 }
 function buildPlayersSummary(room) {
-  // return serializable player list for clients
   return Object.values(room.players).map(p => ({
     playerId: p.playerId,
     username: p.username,
     icon: p.icon
   }));
 }
-// Rebuild players mapping sequentially and update playerId values
 function rebuildPlayersMap(room) {
   const remaining = Object.values(room.players).sort((a, b) => a.playerId - b.playerId);
   const newPlayers = {};
@@ -65,8 +62,6 @@ function rebuildPlayersMap(room) {
   room.players = newPlayers;
   return buildPlayersSummary(room);
 }
-
-// Find room+player by socket (either index or game socket)
 function findBySocket(ws) {
   for (const [rId, room] of Object.entries(publicRooms)) {
     for (const pid in room.players) {
@@ -90,7 +85,7 @@ function findBySocket(ws) {
 // ===== WebSocket Handling =====
 wss.on("connection", (ws, req) => {
   console.log(`✅ WS connected ${req.socket.remoteAddress}`);
-  ws.isIndex = false; // set true for index sockets when they send iactive/createLobby/joinLobby
+  ws.isIndex = false;
 
   ws.on("message", (msg) => {
     try {
@@ -100,20 +95,19 @@ wss.on("connection", (ws, req) => {
       // ===== CREATE LOBBY =====
       if (data.typeReq === "createLobby") {
         const { username, icon, lobbyType } = data;
-        const type = lobbyType; // "pub" or "pri"
+        const type = lobbyType;
         const roomId = randomRoomId();
         const playerId = 0;
         const wscode = randomWsCode();
 
-        // player structure stores BOTH sockets (index and game) separately
         const player = {
           username,
           icon,
           playerId,
           wscode,
-          wsIndexConn: ws,   // this is the index connection (waiting for tambola page)
-          wsGameConn: null,  // will be filled when tambola page calls pageEntered
-          wsIndexFlag: 0,    // 0 meaning not in-game yet
+          wsIndexConn: ws,
+          wsGameConn: null,
+          wsIndexFlag: 0,
           isHost: true
         };
 
@@ -123,7 +117,7 @@ wss.on("connection", (ws, req) => {
           privateRooms[roomId] = { type: "private", players: { [playerId]: player } };
         }
 
-        ws.isIndex = true; // mark socket as an index-type connection
+        ws.isIndex = true;
         ws.send(JSON.stringify({
           type: "lobbyCreated",
           roomId, playerId, wscode,
@@ -147,7 +141,6 @@ wss.on("connection", (ws, req) => {
           return;
         }
 
-        // next player id is current players count
         const playerId = Object.keys(rooms[roomId].players).length;
         const wscode = randomWsCode();
         const player = {
@@ -172,7 +165,6 @@ wss.on("connection", (ws, req) => {
         }));
 
         console.log(`👤 ${username} joined room ${roomId} as P${playerId}`);
-        // notify indexes about player count change (they expect only public rooms)
         if (rooms[roomId].type === "public") {
           broadcastToIndexes({ type: "playerChange", roomId, players: Object.keys(rooms[roomId].players).length });
           console.log(`📤 playerChange broadcast for ${roomId}`);
@@ -191,14 +183,12 @@ wss.on("connection", (ws, req) => {
         }
         const me = room.players[playerId];
 
-        // validate wscode
         if (me.wscode !== wscode) {
           console.log(`❌ Wscode mismatch for ${me.username}`);
           ws.send(JSON.stringify({ type: "wscodeMismatch" }));
           return;
         }
 
-        // cancel pending disconnect timer (if any)
         const key = `${roomId}_${playerId}`;
         if (disconnectTimers[key]) {
           clearTimeout(disconnectTimers[key]);
@@ -206,37 +196,21 @@ wss.on("connection", (ws, req) => {
           console.log(`⏱️ Cancelled disconnect timer for ${me.username} (${key})`);
         }
 
-        // attach new game socket
         me.wsGameConn = ws;
         me.wsIndexFlag = 1;
         ws.isIndex = false;
 
         console.log(`🔄 ${me.username} connected game socket in ${roomId} (P${playerId})`);
 
-        // build and send FULL list to everyone in room (keeps everyone consistent)
         const playersList = buildPlayersSummary(room);
         Object.values(room.players).forEach(p => {
           if (p.wsGameConn && p.wsGameConn.readyState === WebSocket.OPEN) {
             p.wsGameConn.send(JSON.stringify({ type: "ijoin", players: playersList }));
           }
         });
-        // also send to the rejoined player's index socket if present (not required but safe)
-        if (me.wsIndexConn && me.wsIndexConn.readyState === WebSocket.OPEN) {
-          me.wsIndexConn.send(JSON.stringify({ type: "ijoin", players: playersList }));
-        }
 
-        // send hejoins delta to others (optional quick UI)
-        const joined = { playerId: me.playerId, username: me.username, icon: me.icon };
-        Object.values(room.players).forEach(p => {
-          if (p.wsGameConn && p.wsGameConn.readyState === WebSocket.OPEN && p.playerId !== me.playerId) {
-            p.wsGameConn.send(JSON.stringify({ type: "hejoins", player: joined }));
-          }
-        });
-
-        // Index update: only for public rooms
         if (room.type === "public") {
           if (me.isHost) {
-            // host actually entered the game page — advertise a new lobby on index
             const lobbyObj = { roomId, name: me.username, players: Object.keys(room.players).length };
             broadcastToIndexes({ type: "newLobby", lobby: lobbyObj });
             console.log(`📤 newLobby broadcast for ${roomId}`);
@@ -252,7 +226,6 @@ wss.on("connection", (ws, req) => {
       // ===== INDEX ACTIVE =====
       else if (data.typeReq === "iactive" || data.typeReq === "iActive") {
         ws.isIndex = true;
-        // Build public lobbies snapshot
         const lobbies = Object.entries(publicRooms).map(([id, room]) => {
           const host = room.players[0];
           return {
@@ -276,45 +249,33 @@ wss.on("connection", (ws, req) => {
   ws.on("close", () => {
     console.log("❎ WS disconnected");
 
-    // find which room/player used this socket
     const found = findBySocket(ws);
     if (!found) {
-      console.log("⚠️ disconnected socket did not belong to a tracked player (maybe index page opened separately)");
+      console.log("⚠️ disconnected socket not tracked");
       return;
     }
 
-    const { room, roomId, player } = { room: found.room, roomId: found.roomId, player: found.player };
+    const { room, roomId, player } = found;
     const playerId = player.playerId;
-
-    // Determine whether closed socket was index or game connection
     const closedIsGame = (player.wsGameConn === ws);
     const closedIsIndex = (player.wsIndexConn === ws);
 
-    console.log(`ℹ️ Closed socket for ${player.username} (P${playerId}) in ${roomId}. closedIsGame=${closedIsGame} closedIsIndex=${closedIsIndex}`);
+    console.log(`ℹ️ Closed socket for ${player.username} (P${playerId}) in ${roomId}. game=${closedIsGame} index=${closedIsIndex}`);
 
-    // If game socket closed -> immediate "heleft" behaviour
     if (closedIsGame) {
-      console.log(`🔔 Player ${player.username} (P${playerId}) game socket left ${roomId} (immediate)`);
-
-      // notify remaining game clients
+      console.log(`🔔 Player ${player.username} (P${playerId}) game socket left ${roomId}`);
       Object.values(room.players).forEach(p => {
         if (p.wsGameConn && p.wsGameConn.readyState === WebSocket.OPEN && p.playerId !== playerId) {
           p.wsGameConn.send(JSON.stringify({ type: "heleft", playerId }));
         }
       });
-
-      // remove player immediately and rebuild mapping
       delete room.players[playerId];
       const summary = rebuildPlayersMap(room);
-
-      // notify remaining game clients about reshuffle
       Object.values(room.players).forEach(p => {
         if (p.wsGameConn && p.wsGameConn.readyState === WebSocket.OPEN) {
           p.wsGameConn.send(JSON.stringify({ type: "playersReshuffled", players: summary }));
         }
       });
-
-      // notify indexes / delete room if needed
       if (room.type === "public") {
         const count = Object.keys(room.players).length;
         if (count === 0) {
@@ -330,12 +291,10 @@ wss.on("connection", (ws, req) => {
           console.log(`🗑 Private room ${roomId} deleted (empty)`);
         }
       }
-
       logRooms();
       return;
     }
 
-    // If index socket closed (player hasn't yet entered game page or left index), start 10s timer to wait for reconnect
     if (closedIsIndex) {
       const key = `${roomId}_${playerId}`;
       if (disconnectTimers[key]) {
@@ -346,26 +305,18 @@ wss.on("connection", (ws, req) => {
 
       disconnectTimers[key] = setTimeout(() => {
         console.log(`⏱️ Timer expired — removing ${player.username} (P${playerId}) from ${roomId}`);
-
-        // notify remaining game clients
         Object.values(room.players).forEach(p => {
           if (p.wsGameConn && p.wsGameConn.readyState === WebSocket.OPEN && p.playerId !== playerId) {
             p.wsGameConn.send(JSON.stringify({ type: "heleft", playerId }));
           }
         });
-
-        // delete player and rebuild mapping
         delete room.players[playerId];
         const summary = rebuildPlayersMap(room);
-
-        // notify remaining game clients about reshuffle
         Object.values(room.players).forEach(p => {
           if (p.wsGameConn && p.wsGameConn.readyState === WebSocket.OPEN) {
             p.wsGameConn.send(JSON.stringify({ type: "playersReshuffled", players: summary }));
           }
         });
-
-        // notify index or delete room if empty
         if (room.type === "public") {
           const count = Object.keys(room.players).length;
           if (count === 0) {
@@ -381,17 +332,14 @@ wss.on("connection", (ws, req) => {
             console.log(`🗑 Private room ${roomId} deleted (empty)`);
           }
         }
-
         delete disconnectTimers[key];
         logRooms();
       }, 10000);
 
-      // clear the player's stored index connection reference (it closed)
       player.wsIndexConn = null;
       return;
     }
 
-    // Last fallback: socket matched neither (shouldn't happen)
     console.log("⚠️ close: unexpected socket state");
   });
 });
