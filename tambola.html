@@ -159,9 +159,14 @@
       });  
     }  
 
-    document.getElementById("startBtn").onclick=()=>{  
-      ws.send(JSON.stringify({typeReq:"startGame",roomId}));  
-    };  
+    document.getElementById("startBtn").onclick = () => {
+  ws.send(JSON.stringify({
+    typeReq: "startGame",
+    roomId,
+    playerId,
+    isHost   // <— rely directly on localStorage flag
+  }));
+};
 
     function openLeaderboard(){document.getElementById("leaderboard").classList.add("active");}  
     function closeLeaderboard(){document.getElementById("leaderboard").classList.remove("active");}  
