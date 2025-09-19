@@ -328,7 +328,24 @@ else if (data.typeReq === "pageEntered") {
         ws.send(JSON.stringify({ type: "existingLobbies", lobbies }));
         console.log("📤 Sent existingLobbies to index");
       }
+      else if (data.typeReq === "iachieve") {
+  const { roomId, playerId, achievement } = data;
+  const room = rooms[roomId];
+  if (!room) return;
 
+  console.log(`🏆 ${roomId}: Player ${playerId} claimed ${achievement}`);
+
+  // broadcast to everyone in the room
+  Object.values(room.players).forEach(p => {
+    if (p.ws.readyState === WebSocket.OPEN) {
+      p.ws.send(JSON.stringify({
+        type: "heachieve",
+        playerId,
+        achievement
+      }));
+    }
+  });
+}
       else {
         console.log("⚠️ Unknown typeReq:", data.typeReq);
       }
