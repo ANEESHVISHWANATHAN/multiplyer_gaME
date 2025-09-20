@@ -330,17 +330,27 @@ else if (data.typeReq === "pageEntered") {
       }
       else if (data.typeReq === "iachieve") {
   const { roomId, playerId, achievement } = data;
-  const room = rooms[roomId];
-  if (!room) return;
+  const room = publicRooms[roomId] || privateRooms[roomId];
+  if (!room) {
+    console.log(`❌ iachieve: Room ${roomId} not found`);
+    return;
+  }
 
-  console.log(`🏆 ${roomId}: Player ${playerId} claimed ${achievement}`);
+  const player = room.players[playerId];
+  if (!player) {
+    console.log(`❌ iachieve: Player ${playerId} not in ${roomId}`);
+    return;
+  }
 
-  // broadcast to everyone in the room
+  console.log(`🏆 ${player.username} achieved ${achievement} in room ${roomId}`);
+
+  // broadcast to everyone
   Object.values(room.players).forEach(p => {
-    if (p.ws.readyState === WebSocket.OPEN) {
-      p.ws.send(JSON.stringify({
-        type: "heachieve",
+    if (p.wsGameConn && p.wsGameConn.readyState === WebSocket.OPEN) {
+      p.wsGameConn.send(JSON.stringify({
+        type: "heachieves",
         playerId,
+        playerName: player.username,
         achievement
       }));
     }
