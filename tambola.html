@@ -357,78 +357,154 @@
       });  
     }  
 
-    const roomId = localStorage.getItem("roomId");  
-    const playerId = localStorage.getItem("playerId");  
-    const wscode = localStorage.getItem("wscode");  
-    const username = localStorage.getItem("username");  
-    const icon = localStorage.getItem("icon");  
-    const isHost = localStorage.getItem("ishost") === "true";  
-    const gameType = localStorage.getItem("gameType") || "public";  
+    const roomId = localStorage.getItem("roomId");
+const playerId = localStorage.getItem("playerId");
+const wscode = localStorage.getItem("wscode");
+const username = localStorage.getItem("username");
+const icon = localStorage.getItem("icon");
+const isHost = localStorage.getItem("ishost") === "true";
+const gameType = localStorage.getItem("gameType") || "public";
 
-    const ws = new WebSocket("wss://multiplyer-game.onrender.com");  
+// ===== WebSocket Connection =====
+const ws = new WebSocket("wss://multiplyer-game.onrender.com");
 
-    ws.onopen = () => {
-      console.log("✅ Connected to WS");
-      ws.send(JSON.stringify({
+ws.onopen = () => {
+    console.log("✅ Connected to WS");
+    ws.send(JSON.stringify({
         typeReq: "pageEntered",
         roomId,
         playerId,
         wscode,
         isHost,
         gameType
-      }));
-    };
+    }));
+};
 
-    ws.onmessage = (msg) => {  
-      const data = JSON.parse(msg.data);  
-      console.log("📩", data);  
+// ===== WebSocket message handler =====
+ws.onmessage = (msg) => {
+    const data = JSON.parse(msg.data);
+    console.log("📩 WS:", data);
 
-      if(data.type === "ijoin"){  
-        data.players.forEach(p => { players[p.playerId] = p; });  
-        renderTopBar();  
-      }  
+    // ===== Initial lobby / players list =====
+    if(data.type === "ijoin" || data.type === "playersReshuffled") {
+        data.players.forEach(p => { players[p.playerId] = p; });
+        renderTopBar();
+    }
 
-      if(data.type === "hejoins"){  
-        players[data.player.playerId] = data.player;  
-        renderTopBar();  
-      }  
+    // ===== Player joined =====
+    if(data.type === "hejoins") {
+        players[data.player.playerId] = data.player;
+        renderTopBar();
+    }
 
-      if(data.type === "heleft"){  
-        if(players[data.playerId]) delete players[data.playerId];  
-        renderTopBar();  
-      }  
+    // ===== Player left =====
+    if(data.type === "heleft") {
+        if(players[data.playerId]) delete players[data.playerId];
+        renderTopBar();
+    }
 
-      if(data.type === "heachieves"){  
-        showAchievement(`${data.playerName} achieved ${data.achievement}`);  
-      }  
-    };  
+    // ===== Player achievement =====
+    if(data.type === "heachieves") {
+        showAchievement(`${data.playerName || "Player"} achieved ${data.achievement}`);
+    }
 
-    // Achievement overlay
-    const achievementText = document.getElementById("achievementText");
+    // ===== Ticket update =====
+    if(data.type === "sendTicket") {
+        ticketData = data.ticket;
+        renderTicket(ticketData);
+    }
 
-    function showAchievement(text){
-      achievementText.textContent = text;
-      achievementText.classList.remove("show"); 
-      void achievementText.offsetWidth; 
-      achievementText.classList.add("show");
-      setTimeout(() => {
+    // ===== Number drawn =====
+    if(data.type === "sendNumber") {
+        const num = data.number;
+        numberShower.textContent = num;
+        calledNumbers.add(num);
+        highlightTicket(num);
+        updateNumbersGrid();
+    }
+
+    // ===== Game start =====
+    if(data.type === "gameStarts") {
+        console.log("🎮 Game started!");
+        calledNumbers.clear();
+        numberShower.textContent = "--";
+        ticketEl.innerHTML = "";
+    }
+};
+
+// ===== Helper Functions =====
+function renderTopBar() {
+    topBar.innerHTML = "";
+    Object.values(players).forEach(p => {
+        const div = document.createElement("div");
+        div.className = "player";
+        div.innerHTML = `<img src="${p.icon}"><span>${p.username}</span>`;
+        topBar.appendChild(div);
+    });
+}
+
+function renderTicket(ticket) {
+    ticketEl.innerHTML = "";
+    ticket.flat().forEach(num => {
+        const cell = document.createElement("div");
+        cell.classList.add("cell");
+        if(num !== null && num !== "") cell.textContent = num;
+        ticketEl.appendChild(cell);
+    });
+}
+
+function createNumbersGrid() {
+    numbersGrid.innerHTML = "";
+    for(let i = 1; i <= 90; i++) {
+        const div = document.createElement("div");
+        div.className = "num-cell";
+        div.textContent = i;
+        numbersGrid.appendChild(div);
+    }
+}
+createNumbersGrid();
+
+function updateNumbersGrid() {
+    document.querySelectorAll(".num-cell").forEach(cell => {
+        const val = parseInt(cell.textContent);
+        if(calledNumbers.has(val)) cell.classList.add("called");
+        else cell.classList.remove("called");
+    });
+}
+
+function highlightTicket(num) {
+    document.querySelectorAll("#ticket .cell").forEach(cell => {
+        if(parseInt(cell.textContent) === num) {
+            cell.classList.add("highlight");
+        }
+    });
+}
+
+// ===== Achievement overlay =====
+function showAchievement(text) {
+    achievementText.textContent = text;
+    achievementText.classList.remove("show");
+    void achievementText.offsetWidth; // trigger reflow
+    achievementText.classList.add("show");
+    setTimeout(() => {
         achievementText.classList.remove("show");
         achievementText.textContent = "";
-      }, 2000);
-    }
+    }, 2000);
+}
 
-    function sendAchievement(name){
-      showAchievement(name);
-      if(ws && ws.readyState === WebSocket.OPEN){
+// ===== Send achievement =====
+function sendAchievement(name) {
+    showAchievement(name);
+    if(ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({
-          typeReq: "Iachieve",
-          roomId,
-          playerId,
-          wscode,
-          achievement: name
+            typeReq: "Iachieve",
+            roomId,
+            playerId,
+            wscode,
+            achievement: name
         }));
-      }
     }
+}
 
     // Example: sendAchievement("First Five!");
     // You can call sendAchievement("Full House") or any milestone
