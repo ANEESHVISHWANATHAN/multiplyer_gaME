@@ -512,7 +512,52 @@ function sendAchievement(name) {
         }));
     }
 }
+// ===== Track ticket state & achievements =====
+let ticketData = []; 
+let markedNumbers = new Set();
+let claimedAchievements = new Set();
 
+function markNumber(num) {
+  // Add to marked set if exists in ticket
+  if(ticketData.flat().includes(num)) {
+    markedNumbers.add(num);
+    checkAchievements();
+  }
+}
+
+function checkAchievements() {
+  const newOnes = [];
+
+  // Early Five & Seven
+  if(markedNumbers.size >= 5 && !claimedAchievements.has("First Five")) {
+    newOnes.push("First Five");
+  }
+  if(markedNumbers.size >= 7 && !claimedAchievements.has("First Seven")) {
+    newOnes.push("First Seven");
+  }
+
+  // Row checks
+  for(let r=0;r<3;r++) {
+    const rowNums = ticketData[r].filter(n => n !== null);
+    if(rowNums.length > 0 && rowNums.every(n => markedNumbers.has(n))) {
+      if(r===0 && !claimedAchievements.has("First Row")) newOnes.push("First Row");
+      if(r===1 && !claimedAchievements.has("Second Row")) newOnes.push("Second Row");
+      if(r===2 && !claimedAchievements.has("Third Row")) newOnes.push("Third Row");
+    }
+  }
+
+  // Full House
+  const allNums = ticketData.flat().filter(n => n !== null);
+  if(allNums.length > 0 && allNums.every(n => markedNumbers.has(n)) && !claimedAchievements.has("Full House")) {
+    newOnes.push("Full House");
+  }
+
+  // Trigger achievements
+  newOnes.forEach(name => {
+    claimedAchievements.add(name);
+    sendAchievement(name);
+  });
+}
     // Example: sendAchievement("First Five!");
     // You can call sendAchievement("Full House") or any milestone
   </script>  
