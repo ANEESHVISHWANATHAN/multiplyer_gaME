@@ -328,7 +328,7 @@ else if (data.typeReq === "pageEntered") {
         ws.send(JSON.stringify({ type: "existingLobbies", lobbies }));
         console.log("📤 Sent existingLobbies to index");
       }
-      else if (data.typeReq === "iachieve") {
+      else if (data.typeReq === "Iachieve") {
   const { roomId, playerId, achievement } = data;
   const room = publicRooms[roomId] || privateRooms[roomId];
   if (!room) {
