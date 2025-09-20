@@ -241,6 +241,8 @@
   </style>  
 </head>  
 <body>  
+  <!-- Only host should see Start button -->
+
   <div class="top-bar" id="topBar"></div>  
 
   <div id="numberShower" class="number-shower">--</div>  
@@ -249,7 +251,8 @@
 
   <div class="btns">  
     <button class="stats-btn" onclick="openLeaderboard()">Leaderboard</button>  
-    <button class="stats-btn" onclick="openNumbers()">Numbers</button>  
+    <button class="stats-btn" onclick="openNumbers()">Numbers</button> 
+    <button id="startBtn" class="stats-btn" style="display:none;" onclick="startGame()">Start Game</button>
   </div>  
 
   <div class="overlay" id="leaderboard">  
@@ -370,7 +373,20 @@ ws.onopen = () => {
         gameType
     }));
 };
-
+// Show Start Game button only for host
+if (isHost) {
+  document.getElementById("startBtn").style.display = "block";
+}
+ function startGame() {
+  if(ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({
+      typeReq: "startGame",
+      roomId,
+      playerId,
+      wscode
+    }));
+  }
+}   
 // ===== WebSocket message handler =====
 ws.onmessage = (msg) => {
     const data = JSON.parse(msg.data);
