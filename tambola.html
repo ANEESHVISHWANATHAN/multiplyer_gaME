@@ -428,6 +428,9 @@ ws.onmessage = (msg) => {
         calledNumbers.add(num);
         highlightTicket(num);
         updateNumbersGrid();
+        if(ticketData && ticketData.length) {
+  markNumber(num);
+}
     }
 
     // ===== Game start =====
