@@ -87,6 +87,7 @@
   </div>
 
   <script>
+    /* ---------- state ---------- */
     const ticketEl = document.getElementById("ticket");
     const numberShower = document.getElementById("numberShower");
     const topBar = document.getElementById("topBar");
@@ -99,55 +100,23 @@
     const achDesc = document.getElementById("achDesc");
 
     let players = {};
-    let myTicket = null;
+    let myTicket = null; // matrix 3x9 with nulls
     let calledNumbers = new Set();
-    let matchedCells = new Set();
-    let achievementClaimed = new Set();
+    let matchedCells = new Set(); // "r-c" strings for matched
+    let achievementClaimed = new Set(); // local to avoid repeat sending
     let ws;
 
-    const roomId = localStorage.getItem("roomId");
-    const playerId = Number(localStorage.getItem("playerId"));
-    const wscode = localStorage.getItem("wscode");
-    const isHost = localStorage.getItem("ishost")==="true";
-
-    ws = new WebSocket((location.protocol==="https:"?"wss://":"ws://")+location.host);
-
-    ws.addEventListener("open", ()=> {
-  console.log("WS open");
-  ws.send(JSON.stringify({ typeReq:"pageEntered", roomId, playerId, wscode, isHost, gameType }));
-
-  if (isHost) {
-    show(gameControls);       // show the container
-    startBtn.classList.remove("hidden"); // show the start button
-  }
-});
-
-    startBtn.addEventListener("click", ()=> {
-      ws.send(JSON.stringify({ typeReq:"startGame", roomId, playerId, isHost }));
-    });
-
-    ws.addEventListener("message", ev=>{
-      let data;
-      try { data = JSON.parse(ev.data); } catch(e){ return; }
-      console.log("WS:", data);
-      if(data.type==="ijoin") { data.players.forEach(p=>players[p.playerId]=p); renderTopBar(); }
-      else if(data.type==="hejoins") { players[data.player.playerId]=data.player; renderTopBar(); }
-      else if(data.type==="heleft") { delete players[data.playerId]; renderTopBar(); }
-      else if(data.type==="gameStarts"||data.type==="gameStartsAck") {
-        show(numberShower); show(gameControls);
-        startBtn.classList.add("hidden");
-      }
-      else if(data.type==="sendTicket") { renderTicket(data.ticket); show(ticketEl); }
-      else if(data.type==="sendNumber") { showNumber(data.number); }
-      else if(data.type==="heachieve") { setPlayerAchievementLabel(data.playerId, `${data.username||'P'+data.playerId} claimed ${data.achievement}`); highlightArc(data.playerId); }
-    });
+    /* ---------- helpers ---------- */
+    function show(el){ el.classList.remove("hidden"); }
+    function hide(el){ el.classList.add("hidden"); }
 
     function renderTopBar(){
-      topBar.innerHTML="";
+      topBar.innerHTML = "";
       Object.values(players).forEach(p=>{
-        const div=document.createElement("div");
-        div.className="player"; div.dataset.pid=p.playerId;
-        div.innerHTML=`
+        const div = document.createElement("div");
+        div.className = "player";
+        div.dataset.pid = p.playerId;
+        div.innerHTML = `
           <div class="label" id="label-${p.playerId}"></div>
           <img src="${p.icon||'https://via.placeholder.com/56'}" id="icon-${p.playerId}">
           <svg class="arc" id="arc-${p.playerId}" viewBox="0 0 56 56">
@@ -161,15 +130,289 @@
       });
     }
 
-    function showNumber(num) { if(typeof num!=="number") return; numberShower.textContent=num; calledNumbers.add(num); updateNumbersGrid(); }
+    function setPlayerAchievementLabel(playerId, text) {
+      const lbl = document.getElementById(`label-${playerId}`);
+      if (!lbl) return;
+      lbl.textContent = text;
+      lbl.style.display = "block";
+      setTimeout(()=> { lbl.style.display = "none"; }, 6000);
+    }
 
-    function updateNumbersGrid(){ document.querySelectorAll(".num-cell").forEach(c=>calledNumbers.has(+c.textContent)?c.classList.add("called"):c.classList.remove("called")); }
+    function highlightArc(playerId) {
+      const pathEl = document.getElementById(`arcpath-${playerId}`);
+      if (!pathEl) return;
+      pathEl.setAttribute("d", "M3 28a25 25 0 1 0 50 0");
+      pathEl.style.strokeDasharray = "80";
+      pathEl.style.strokeDashoffset = "80";
+      pathEl.style.transition = "stroke-dashoffset 1s ease";
+      setTimeout(()=> { pathEl.style.strokeDashoffset = "0"; }, 10);
+    }
 
-    function renderTicket(ticket){ myTicket=ticket; ticketEl.innerHTML=""; for(let r=0;r<3;r++){ for(let c=0;c<9;c++){ const val=(ticket[r]||[])[c]||null; const d=document.createElement("div"); d.className="cell"; if(val===null){d.classList.add("empty");d.textContent="";} else{d.textContent=val;if(calledNumbers.has(val))d.classList.add("matched");} ticketEl.appendChild(d); }} }
+    function createNumbersGrid(){
+      const grid=document.getElementById("numbersGrid");
+      grid.innerHTML = "";
+      for(let i=1;i<=90;i++){
+        const div=document.createElement("div");
+        div.className="num-cell";
+        div.textContent=i;
+        grid.appendChild(div);
+      }
+    }
+    createNumbersGrid();
 
-    function setPlayerAchievementLabel(pid,text){ const lbl=document.getElementById(`label-${pid}`); if(!lbl)return; lbl.textContent=text; lbl.style.display="block"; setTimeout(()=>lbl.style.display="none",6000); }
-    function highlightArc(pid){ const path=document.getElementById(`arcpath-${pid}`); if(!path)return; path.setAttribute("d","M3 28a25 25 0 1 0 50 0"); path.style.strokeDasharray="80"; path.style.strokeDashoffset="80"; path.style.transition="stroke-dashoffset 1s ease"; setTimeout(()=>{path.style.strokeDashoffset="0"},10); }
+    function updateNumbersGrid(){
+      document.querySelectorAll(".num-cell").forEach(cell=>{
+        const val=parseInt(cell.textContent);
+        if(calledNumbers.has(val)) cell.classList.add("called");
+        else cell.classList.remove("called");
+      });
+    }
 
+    function showNumber(num) {
+      if (typeof num !== "number") return;
+      numberShower.textContent = num;
+      calledNumbers.add(num);
+      updateNumbersGrid();
+      // mark matched on my ticket if present
+      if (myTicket) {
+        for (let r=0;r<3;r++){
+          for (let c=0;c<9;c++){
+            const v = myTicket[r][c];
+            if (v !== null && v === num) {
+              matchedCells.add(`${r}-${c}`);
+              const idx = r*9 + c;
+              const cell = ticketEl.children[idx];
+              if (cell) cell.classList.add("matched");
+            }
+          }
+        }
+        // after update, check achievements
+        detectAchievements();
+      }
+    }
+
+    // renderTicket expects a 3x9 matrix with nulls
+    function renderTicket(ticket) {
+      myTicket = ticket;
+      ticketEl.innerHTML = "";
+      // safety: ensure matrix form
+      if (!Array.isArray(ticket) || !Array.isArray(ticket[0])) {
+        // fallback: convert flat 15 list into 3x9
+        const arr = Array.isArray(ticket) ? ticket.slice(0,15) : [];
+        const m = Array.from({length:3},()=>Array(9).fill(null));
+        let idx=0;
+        for (let r=0;r<3;r++){
+          for (let c=0;c<9 && idx<arr.length;c++){
+            m[r][c] = arr[idx++] || null;
+          }
+        }
+        myTicket = m;
+      }
+      // populate
+      for (let r=0;r<3;r++){
+        for (let c=0;c<9;c++){
+          const val = myTicket[r][c];
+          const d = document.createElement("div");
+          d.classList.add("cell");
+          if (val === null || val === "" || typeof val === 'undefined') {
+            d.classList.add("empty");
+            d.textContent = "";
+          } else {
+            d.textContent = val;
+            if (calledNumbers.has(val)) {
+              d.classList.add("matched");
+              matchedCells.add(`${r}-${c}`);
+            }
+          }
+          ticketEl.appendChild(d);
+        }
+      }
+    }
+
+    /* ---------- achievements detection & visualizing ---------- */
+    function detectAchievements() {
+      if (!myTicket) return;
+      // compute matched counts
+      const counts = { total:0, rows:[0,0,0] };
+      const rowSizes = [0,0,0];
+      for (let r=0;r<3;r++){
+        for (let c=0;c<9;c++){
+          const v = myTicket[r][c];
+          if (v !== null && typeof v !== "undefined") {
+            rowSizes[r]++;
+            if (matchedCells.has(`${r}-${c}`)) {
+              counts.rows[r]++;
+              counts.total++;
+            }
+          }
+        }
+      }
+
+      if (counts.total >= 5 && !achievementClaimed.has("First Five")) {
+        claimAchievementLocal("First Five");
+      }
+      if (counts.total >= 7 && !achievementClaimed.has("First Seven")) {
+        claimAchievementLocal("First Seven");
+      }
+      for (let r=0;r<3;r++){
+        if (rowSizes[r] > 0 && counts.rows[r] === rowSizes[r]) {
+          const name = r===0 ? "First Row" : (r===1 ? "Second Row" : "Third Row");
+          if (!achievementClaimed.has(name)) {
+            flashRow(r);
+            claimAchievementLocal(name);
+          }
+        }
+      }
+      const totalNumbers = rowSizes.reduce((a,b)=>a+b,0);
+      if (totalNumbers>0 && counts.total === totalNumbers && !achievementClaimed.has("Full Game")) {
+        claimAchievementLocal("Full Game");
+        flashFullGame();
+      }
+    }
+
+    function claimAchievementLocal(name) {
+      achievementClaimed.add(name);
+      if (name === "First Five" || name === "First Seven") {
+        const N = (name === "First Five") ? 5 : 7;
+        const matchedList = Array.from(matchedCells).slice(0,N);
+        highlightCellsTemp(matchedList, 3000);
+      } else if (name === "Full Game") {
+        const all = Array.from(matchedCells);
+        highlightCellsTemp(all, 3000);
+      }
+      showAchievementFullscreen(name, `You claimed ${name}!`);
+      setTimeout(hideAchievement, 3000);
+      ws && ws.send(JSON.stringify({
+        typeReq: "iachieve",
+        roomId,
+        playerId,
+        achievement: name
+      }));
+    }
+
+    function highlightCellsTemp(cells, ms=2500) {
+      const added = [];
+      cells.forEach(rc=>{
+        const [r,c] = rc.split("-").map(Number);
+        const idx = r*9 + c;
+        const el = ticketEl.children[idx];
+        if (el) {
+          el.classList.add("highlight");
+          added.push(el);
+        }
+      });
+      setTimeout(()=>{ added.forEach(el=>el.classList.remove("highlight")); }, ms);
+    }
+
+    function flashRow(rowIndex) {
+      const firstCell = ticketEl.children[rowIndex*9];
+      if (!firstCell) return;
+      const strike = document.createElement("div");
+      strike.className = "strike";
+      const cell = firstCell;
+      strike.style.top = `${cell.offsetTop + cell.offsetHeight/2}px`;
+      strike.style.left = `${cell.offsetLeft}px`;
+      strike.style.width = `${ticketEl.clientWidth}px`;
+      strike.style.opacity = "0";
+      ticketEl.appendChild(strike);
+      requestAnimationFrame(()=>{ strike.style.opacity = "1"; strike.style.transform = "scaleX(1)"; });
+      setTimeout(()=>{ strike.style.opacity = "0"; strike.remove(); }, 2400);
+    }
+
+    function flashFullGame() {
+      const els = Array.from(ticketEl.children);
+      els.forEach(e => e.classList.add("highlight"));
+      setTimeout(()=>els.forEach(e => e.classList.remove("highlight")), 2800);
+    }
+
+    /* ---------- UI helpers ---------- */
+    function showAchievementFullscreen(title, desc) {
+      achTitle.textContent = title;
+      achDesc.textContent = desc || "";
+      achievementFS.classList.add("show");
+    }
+    function hideAchievement(){ achievementFS.classList.remove("show"); }
+
+    function openLeaderboard(){ document.getElementById("leaderboard").classList.add("active"); }
+    function closeLeaderboard(){ document.getElementById("leaderboard").classList.remove("active"); }
+    function openNumbers(){ updateNumbersGrid(); document.getElementById("numbersChart").classList.add("active"); }
+    function closeNumbers(){ document.getElementById("numbersChart").classList.remove("active"); }
+
+    /* ---------- startup & WS ---------- */
+    const roomId = localStorage.getItem("roomId");
+    const playerId = Number(localStorage.getItem("playerId"));
+    const wscode = localStorage.getItem("wscode");
+    const username = localStorage.getItem("username");
+    const icon = localStorage.getItem("icon");
+    const isHost = (localStorage.getItem("ishost")==="true");
+    const gameType = localStorage.getItem("gameType")||"public";
+
+    // connect to same host as page (use ws or wss)
+    ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host);
+
+    ws.addEventListener("open", ()=> {
+      try {
+        console.log("WS open");
+        ws.send(JSON.stringify({ typeReq:"pageEntered", roomId, playerId, wscode, isHost, gameType }));
+        // if host, show start button (but not other controls yet)
+        if (isHost) {
+          show(gameControls);
+          startBtn.classList.remove("hidden");
+        }
+      } catch (err) {
+        console.error("ws open handler error:", err);
+      }
+    });
+
+    ws.addEventListener("message", ev => {
+      let data;
+      try { data = JSON.parse(ev.data); } catch(e){ return; }
+      console.log("WS:", data);
+
+      if (data.type === "ijoin") {
+        data.players.forEach(p => players[p.playerId] = p);
+        renderTopBar();
+      } else if (data.type === "hejoins") {
+        players[data.player.playerId] = data.player;
+        renderTopBar();
+      } else if (data.type === "heleft") {
+        delete players[data.playerId];
+        renderTopBar();
+      } else if (data.type === "gameStarts") {
+        show(numberShower);
+        show(gameControls);
+        startBtn.classList.add("hidden");
+        showAchievementFullscreen("Game Started","Good luck!");
+        setTimeout(hideAchievement,1400);
+      } else if (data.type === "sendTicket") {
+        renderTicket(data.ticket);
+        show(ticketEl);
+      } else if (data.type === "sendNumber") {
+        showNumber(data.number);
+      } else if (data.type === "heachieve") {
+        const pid = data.playerId;
+        const name = data.username || ("P"+pid);
+        setPlayerAchievementLabel(pid, `${name} claimed ${data.achievement}`);
+        highlightArc(pid);
+      }
+    });
+
+    // start button -> ask server to start
+    startBtn.addEventListener("click", ()=>{
+      ws.send(JSON.stringify({ typeReq:"startGame", roomId, playerId, isHost }));
+    });
+
+    // game overlay buttons
+    lbBtn.addEventListener("click", openLeaderboard);
+    numBtn.addEventListener("click", openNumbers);
+
+    // Expose claimAchievement for manual testing/integration
+    window.claimAchievement = function(name) {
+      if (!achievementClaimed.has(name)) claimAchievementLocal(name);
+    };
   </script>
 </body>
-</html>          
+</html>
+  
+
+  
