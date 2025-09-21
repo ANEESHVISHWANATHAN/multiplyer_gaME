@@ -1,4 +1,5 @@
-     <!DOCTYPE html>
+         
+  <!DOCTYPE html>
 <html lang="en">  
 <head>  
 <meta charset="UTF-8">  
@@ -53,20 +54,35 @@
     transform: translateX(-50%) translateY(0);
   }
 
-  .number-shower {  
-    margin: 20px 0;  
-    font-size: clamp(22px, 5vw, 42px);  
-    font-weight: bold;  
-    color: #fff;  
-    background: linear-gradient(135deg, #ff416c, #ff4b2b);  
-    padding: 16px 38px;  
-    border-radius: 20px;  
-    box-shadow: 0 6px 20px rgba(0,0,0,0.25);  
-    min-width: 120px;  
-    text-align: center;  
-    letter-spacing: 1px;  
-    display: none; /* Hidden until Show Number pressed */
-  }  
+  /* === Number Overlay === */
+  #numberOverlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.85);
+    display: none;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-content: flex-start;
+    padding: 20px;
+    overflow-y: auto;
+    z-index: 1000;
+  }
+  #numberOverlay .num {
+    width: 50px; height: 50px;
+    margin: 6px;
+    border-radius: 8px;
+    display: flex; justify-content: center; align-items: center;
+    font-weight: bold;
+    font-size: 18px;
+    background: #eee;
+    color: #333;
+  }
+  #numberOverlay .called { background: #28a745; color:#fff; }
+  #numberOverlay .close-btn {
+    position: fixed; top: 10px; right: 10px;
+    background: #ff4444; color:#fff; border:none; border-radius:6px;
+    padding: 8px 14px; font-size:14px; cursor:pointer;
+  }
 
   .ticket {  
     display: grid;  
@@ -132,11 +148,11 @@
 
 <div class="top-bar" id="topBar"></div>  
 <div id="achievementText"></div>
-<div id="numberShower" class="number-shower">--</div>  
+<div id="numberOverlay"></div>  
 
 <div class="btns">  
   <button id="startBtn" class="stats-btn" style="display:none;" onclick="startGame()">Start Game</button>
-  <button class="stats-btn" onclick="showNumber()">Show Number</button>
+  <button class="stats-btn" onclick="toggleNumberOverlay()">Show Numbers</button>
 </div>  
 
 <div class="ticket" id="ticket"></div>  
@@ -146,12 +162,12 @@ console.log("🚀 Script loaded");
 
 const ticketEl = document.getElementById("ticket");  
 const achievementText = document.getElementById("achievementText");  
-const numberShower = document.getElementById("numberShower");  
 const topBar = document.getElementById("topBar");  
+const numberOverlay = document.getElementById("numberOverlay");
 
 let players = {}, playerAchievements = {}, markedNumbers = new Set();
 let ticketData = [];
-let calledNumbers=new Set();
+let calledNumbers = new Set();
 
 const roomId = localStorage.getItem("roomId");
 const playerId = localStorage.getItem("playerId");
@@ -160,37 +176,31 @@ const username = localStorage.getItem("username");
 const icon = localStorage.getItem("icon");
 const isHost = localStorage.getItem("ishost") === "true";
 
-console.log("Player info:", {roomId, playerId, username, icon, isHost});
-
 if (isHost) document.getElementById("startBtn").style.display="block";
 
+// WebSocket
 const ws = new WebSocket("wss://multiplyer-game.onrender.com");
-
 ws.onopen = () => {
-  console.log("✅ WS open");
   ws.send(JSON.stringify({typeReq:"pageEntered", roomId, playerId, wscode, isHost}));
 };
-
 ws.onmessage = (msg) => {
-  console.log("📩 WS message:", msg.data);
   const data = JSON.parse(msg.data);
+  if(data.type==="ijoin"){ players[data.player.playerId]=data.player; renderTopBar(); }
   if(data.type==="hejoins"){ players[data.player.playerId]=data.player; renderTopBar(); }
   if(data.type==="heleft"){ delete players[data.playerId]; renderTopBar(); }
   if(data.type==="heachieves"){ showAchievement(`${data.playerName} achieved ${data.achievement}`); updatePlayerArc(data.playerId, data.achievement);}
   if(data.type==="sendTicket"){ ticketData=data.ticket; renderTicket(ticketData);}
-  if(data.type==="sendNumber"){ showNumberOverlay(data.number);}
-  if(data.type==="gameStarts"){ calledNumbers.clear(); numberShower.style.display="none"; ticketEl.innerHTML="";}
+  if(data.type==="sendNumber"){ handleNumber(data.number);}
+  if(data.type==="gameStarts"){ calledNumbers.clear(); ticketEl.innerHTML="";}
 };
 
 function startGame(){
-  console.log("Start game clicked");
   if(ws.readyState===WebSocket.OPEN) ws.send(JSON.stringify({typeReq:"startGame", roomId, playerId, wscode}));
 }
 
-// TOP BAR
+// === TOP BAR ===
 const achievementList=["First Five","First Seven","First Row","Second Row","Third Row","Full House"];
 function renderTopBar(){
-  console.log("Rendering top bar with players:", players);
   topBar.innerHTML="";
   Object.values(players).forEach(p=>{
     if(!playerAchievements[p.playerId]) playerAchievements[p.playerId]=new Set();
@@ -209,7 +219,6 @@ function renderTopBar(){
     });
   });
 }
-
 function updatePlayerArc(playerId, achievement){
   if(!playerAchievements[playerId]) playerAchievements[playerId]=new Set();
   const idx=achievementList.indexOf(achievement); if(idx===-1) return;
@@ -217,14 +226,13 @@ function updatePlayerArc(playerId, achievement){
   const div=document.getElementById("player-"+playerId);
   if(div){ const arc=div.querySelector(".arc-"+idx); if(arc) arc.style.opacity=1; }
 }
-
 function showAchievement(text){
   achievementText.textContent=text;
   achievementText.classList.add("show");
   setTimeout(()=>{ achievementText.classList.remove("show"); achievementText.textContent=""; },2000);
 }
 
-// TICKET
+// === TICKET ===
 function renderTicket(ticket){
   ticketEl.innerHTML="";
   ticket.flat().forEach(num=>{
@@ -234,28 +242,38 @@ function renderTicket(ticket){
     ticketEl.appendChild(cell);
   });
 }
-
 function playerMark(cell,num){
   if(calledNumbers.has(num)){
     cell.classList.add("correct");
   }else{
     cell.classList.add("wrong");
-    setTimeout(()=>cell.classList.remove("wrong"),2000); // remove red after 2s
+    setTimeout(()=>cell.classList.remove("wrong"),2000);
   }
 }
 
-// NUMBER OVERLAY
-function showNumber(){
-  numberShower.style.display="block";
-  numberShower.textContent="--";
+// === NUMBERS OVERLAY ===
+function initNumberOverlay(){
+  numberOverlay.innerHTML=`<button class="close-btn" onclick="toggleNumberOverlay()">Close</button>`;
+  for(let i=1;i<=90;i++){
+    const div=document.createElement("div");
+    div.className="num";
+    div.textContent=i;
+    div.id="num-"+i;
+    numberOverlay.appendChild(div);
+  }
 }
-function showNumberOverlay(num){
-  numberShower.style.display="block";
-  numberShower.textContent=num;
-  autoMark(num);
-  calledNumbers.add(num);
+initNumberOverlay();
+
+function toggleNumberOverlay(){
+  numberOverlay.style.display = numberOverlay.style.display==="flex" ? "none" : "flex";
 }
 
+function handleNumber(num){
+  calledNumbers.add(num);
+  autoMark(num);
+  const el=document.getElementById("num-"+num);
+  if(el) el.classList.add("called");
+}
 function autoMark(num){
   document.querySelectorAll("#ticket .cell").forEach(cell=>{
     if(parseInt(cell.textContent)===num){
