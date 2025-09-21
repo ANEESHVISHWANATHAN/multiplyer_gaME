@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+     <!DOCTYPE html>
 <html lang="en">  
 <head>  
 <meta charset="UTF-8">  
@@ -33,7 +33,6 @@
   .player { flex-shrink: 0; margin: 0 12px; text-align: center; cursor: pointer; }  
   .player span { font-size: 14px; display: block; margin-top: 5px; }  
 
-  /* Achievement overlay below top bar */
   #achievementText {
     position: fixed;
     top: 70px;
@@ -66,6 +65,7 @@
     min-width: 120px;  
     text-align: center;  
     letter-spacing: 1px;  
+    display: none; /* Hidden until Show Number pressed */
   }  
 
   .ticket {  
@@ -97,11 +97,6 @@
     background: #ffe0d0;  
     transform: scale(1.05);  
   }  
-  .highlight {   
-    background: #ffcc80 !important;   
-    font-weight: 800;   
-    color: #222;  
-  }  
 
   .btns {  
     display: flex;  
@@ -127,11 +122,6 @@
     box-shadow: 0 4px 14px rgba(0,0,0,0.3);  
   }  
 
-  .number-buttons { display: flex; flex-wrap: wrap; justify-content:center; margin:12px 0; gap:6px; }
-  .number-buttons button { width: 36px; height:36px; border:none; border-radius:6px; cursor:pointer; background:#eee; font-weight:600; transition:0.2s; }
-  .number-buttons button.active { background:#28a745; color:#fff; }
-  .number-buttons button.called { background:#dc3545; color:#fff; }
-
   @media (min-width: 992px) {  
     .ticket { width: 55%; max-width: 650px; }  
     .cell { aspect-ratio: 1.6/1; }  
@@ -143,12 +133,13 @@
 <div class="top-bar" id="topBar"></div>  
 <div id="achievementText"></div>
 <div id="numberShower" class="number-shower">--</div>  
-<div class="number-buttons" id="numberButtons"></div>
-<div class="ticket" id="ticket"></div>  
 
 <div class="btns">  
   <button id="startBtn" class="stats-btn" style="display:none;" onclick="startGame()">Start Game</button>
+  <button class="stats-btn" onclick="showNumber()">Show Number</button>
 </div>  
+
+<div class="ticket" id="ticket"></div>  
 
 <script>  
 console.log("🚀 Script loaded");
@@ -157,10 +148,10 @@ const ticketEl = document.getElementById("ticket");
 const achievementText = document.getElementById("achievementText");  
 const numberShower = document.getElementById("numberShower");  
 const topBar = document.getElementById("topBar");  
-const numberButtonsEl = document.getElementById("numberButtons");
 
-let players = {}, playerAchievements = {}, markedNumbers = new Set(), claimedAchievements = new Set();
+let players = {}, playerAchievements = {}, markedNumbers = new Set();
 let ticketData = [];
+let calledNumbers=new Set();
 
 const roomId = localStorage.getItem("roomId");
 const playerId = localStorage.getItem("playerId");
@@ -168,94 +159,58 @@ const wscode = localStorage.getItem("wscode");
 const username = localStorage.getItem("username");
 const icon = localStorage.getItem("icon");
 const isHost = localStorage.getItem("ishost") === "true";
-const gameType = localStorage.getItem("gameType") || "public";
 
-console.log("Player info:", {roomId, playerId, username, icon, isHost, gameType});
+console.log("Player info:", {roomId, playerId, username, icon, isHost});
 
 if (isHost) document.getElementById("startBtn").style.display="block";
 
-// Init number buttons
-for(let i=1;i<=90;i++){
-  const btn=document.createElement("button");
-  btn.textContent=i;
-  btn.onclick=()=>callNumber(i, btn);
-  numberButtonsEl.appendChild(btn);
-}
-
-function callNumber(num, btn){
-  console.log("Number called:", num);
-  numberShower.textContent=num;
-  autoMark(num);
-  btn.classList.add("called");
-  if(ws && ws.readyState===WebSocket.OPEN){
-    ws.send(JSON.stringify({typeReq:"sendNumber", roomId, playerId, wscode, number:num}));
-  }
-}
-
 const ws = new WebSocket("wss://multiplyer-game.onrender.com");
+
 ws.onopen = () => {
-  console.log("✅ WebSocket open");
-  ws.send(JSON.stringify({typeReq:"pageEntered", roomId, playerId, wscode, isHost, gameType}));
+  console.log("✅ WS open");
+  ws.send(JSON.stringify({typeReq:"pageEntered", roomId, playerId, wscode, isHost}));
 };
 
 ws.onmessage = (msg) => {
-  console.log("📩 WS message received:", msg.data);
+  console.log("📩 WS message:", msg.data);
   const data = JSON.parse(msg.data);
-
-  if(data.type==="hejoins"){ console.log("Player joined:", data.player); players[data.player.playerId]=data.player; renderTopBar(); }
-  if(data.type==="heleft"){ console.log("Player left:", data.playerId); delete players[data.playerId]; renderTopBar(); }
-  if(data.type==="heachieves"){ console.log("Player achieved:", data.playerName, data.achievement); showAchievement(`${data.playerName} achieved ${data.achievement}`); updatePlayerArc(data.playerId, data.achievement);}
-  if(data.type==="sendTicket"){ console.log("Ticket received:", data.ticket); ticketData = data.ticket; renderTicket(ticketData);}
-  if(data.type==="sendNumber"){ const num = data.number; console.log("Number received:", num); numberShower.textContent=num; autoMark(num);}
-  if(data.type==="gameStarts"){ console.log("Game started"); calledNumbers.clear(); numberShower.textContent="--"; ticketEl.innerHTML="";}
+  if(data.type==="hejoins"){ players[data.player.playerId]=data.player; renderTopBar(); }
+  if(data.type==="heleft"){ delete players[data.playerId]; renderTopBar(); }
+  if(data.type==="heachieves"){ showAchievement(`${data.playerName} achieved ${data.achievement}`); updatePlayerArc(data.playerId, data.achievement);}
+  if(data.type==="sendTicket"){ ticketData=data.ticket; renderTicket(ticketData);}
+  if(data.type==="sendNumber"){ showNumberOverlay(data.number);}
+  if(data.type==="gameStarts"){ calledNumbers.clear(); numberShower.style.display="none"; ticketEl.innerHTML="";}
 };
 
-function startGame() {
+function startGame(){
   console.log("Start game clicked");
-  if(ws && ws.readyState===WebSocket.OPEN){
-    ws.send(JSON.stringify({typeReq:"startGame", roomId, playerId, wscode}));
-  }
+  if(ws.readyState===WebSocket.OPEN) ws.send(JSON.stringify({typeReq:"startGame", roomId, playerId, wscode}));
 }
 
+// TOP BAR
+const achievementList=["First Five","First Seven","First Row","Second Row","Third Row","Full House"];
 function renderTopBar(){
   console.log("Rendering top bar with players:", players);
   topBar.innerHTML="";
-  Object.values(players).forEach((p)=>{
+  Object.values(players).forEach(p=>{
     if(!playerAchievements[p.playerId]) playerAchievements[p.playerId]=new Set();
     const div=document.createElement("div");
-    div.className="player";
-    div.id="player-"+p.playerId;
+    div.className="player"; div.id="player-"+p.playerId; div.style.position="relative";
 
-    const r=28,cx=35,cy=35;
-    const fullCirc=2*Math.PI*r;
-    const arcLen=fullCirc/6;
+    const r=28,cx=35,cy=35,fullCirc=2*Math.PI*r,arcLen=fullCirc/6;
     const colors=["#ff3c00","#ff9500","#ffea00","#00ff90","#00fff2","#0095ff"];
-    const arcs = colors.map((c,i)=>`
-      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${c}" stroke-width="4"
-        stroke-dasharray="${arcLen} ${fullCirc}" stroke-dashoffset="${fullCirc - i*arcLen}"
-        class="arc arc-${i}" style="opacity:0; transition: opacity 0.5s"/>
-    `).join("");
-
-    div.innerHTML=`
-      <svg width="70" height="70" style="transform:rotate(-90deg)">
-        <circle cx="${cx}" cy="${cy}" r="${r}" stroke="#ddd" stroke-width="4" fill="none"/>
-        ${arcs}
-      </svg>
-      <img src="${p.icon}" style="width:56px;height:56px;border-radius:50%;position:absolute;top:7px;left:7px;"/>
-      <span>${p.username}</span>
-    `;
-    div.style.position="relative"; 
+    const arcs = colors.map((c,i)=>`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${c}" stroke-width="4" stroke-dasharray="${arcLen} ${fullCirc}" stroke-dashoffset="${fullCirc - i*arcLen}" class="arc arc-${i}" style="opacity:0; transition: opacity 0.5s"/>`).join("");
+    div.innerHTML=`<svg width="70" height="70" style="transform:rotate(-90deg)"><circle cx="${cx}" cy="${cy}" r="${r}" stroke="#ddd" stroke-width="4" fill="none"/>${arcs}</svg>
+    <img src="${p.icon}" style="width:56px;height:56px;border-radius:50%;position:absolute;top:7px;left:7px;"/>
+    <span>${p.username}</span>`;
     topBar.appendChild(div);
-    playerAchievements[p.playerId].forEach(ach=>{ 
-      const idx=achievementList.indexOf(ach); 
-      if(idx>=0){ const arc=div.querySelector(".arc-"+idx); if(arc) arc.style.opacity=1; } 
+    playerAchievements[p.playerId].forEach(ach=>{
+      const idx=achievementList.indexOf(ach); if(idx>=0){ const arc=div.querySelector(".arc-"+idx); if(arc) arc.style.opacity=1; }
     });
   });
 }
 
-const achievementList=["First Five","First Seven","First Row","Second Row","Third Row","Full House"];
 function updatePlayerArc(playerId, achievement){
-  console.log("Updating arc for player:", playerId, achievement);
   if(!playerAchievements[playerId]) playerAchievements[playerId]=new Set();
   const idx=achievementList.indexOf(achievement); if(idx===-1) return;
   playerAchievements[playerId].add(achievement);
@@ -264,18 +219,16 @@ function updatePlayerArc(playerId, achievement){
 }
 
 function showAchievement(text){
-  console.log("Show achievement:", text);
   achievementText.textContent=text;
   achievementText.classList.add("show");
   setTimeout(()=>{ achievementText.classList.remove("show"); achievementText.textContent=""; },2000);
 }
 
+// TICKET
 function renderTicket(ticket){
-  console.log("Rendering ticket:", ticket);
   ticketEl.innerHTML="";
-  ticket.flat().forEach((num,ridx)=>{
-    const cell=document.createElement("div");
-    cell.classList.add("cell");
+  ticket.flat().forEach(num=>{
+    const cell=document.createElement("div"); cell.classList.add("cell");
     if(num!==null && num!=="") cell.textContent=num;
     cell.onclick=()=>playerMark(cell,num);
     ticketEl.appendChild(cell);
@@ -283,18 +236,27 @@ function renderTicket(ticket){
 }
 
 function playerMark(cell,num){
-  console.log("Player marking:", num);
   if(calledNumbers.has(num)){
     cell.classList.add("correct");
   }else{
     cell.classList.add("wrong");
+    setTimeout(()=>cell.classList.remove("wrong"),2000); // remove red after 2s
   }
 }
 
-let calledNumbers=new Set();
-function autoMark(num){
-  console.log("Auto-mark number:", num);
+// NUMBER OVERLAY
+function showNumber(){
+  numberShower.style.display="block";
+  numberShower.textContent="--";
+}
+function showNumberOverlay(num){
+  numberShower.style.display="block";
+  numberShower.textContent=num;
+  autoMark(num);
   calledNumbers.add(num);
+}
+
+function autoMark(num){
   document.querySelectorAll("#ticket .cell").forEach(cell=>{
     if(parseInt(cell.textContent)===num){
       cell.classList.add("correct");
@@ -303,4 +265,4 @@ function autoMark(num){
 }
 </script>  
 </body>  
-</html>     
+</html>
