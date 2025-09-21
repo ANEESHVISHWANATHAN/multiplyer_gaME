@@ -238,6 +238,19 @@
       .overlay-box { margin: 10% auto; width: 75%; max-height: 65%; }  
       .numbers-grid { grid-template-columns: repeat(10, 1fr); }  
     }  
+    .player {
+    flex-shrink: 0;
+    margin: 0 12px;
+    text-align: center;
+  }
+  .player svg {
+    display: block;
+  }
+  .player span {
+    font-size: 14px;
+    display: block;
+    margin-top: 5px;
+  }
   </style>  
 </head>  
 <body>  
@@ -411,9 +424,11 @@ ws.onmessage = (msg) => {
     }
 
     // ===== Player achievement =====
-    if(data.type === "heachieves") {
-        showAchievement(`${data.playerName || "Player"} achieved ${data.achievement}`);
-    }
+    // ===== Player achievement =====
+if(data.type === "heachieves") {
+    showAchievement(`${data.playerName || "Player"} achieved ${data.achievement}`);
+    updatePlayerArc(data.playerId, data.achievement);
+}
 
     // ===== Ticket update =====
     if(data.type === "sendTicket") {
@@ -443,16 +458,73 @@ ws.onmessage = (msg) => {
 };
 
 // ===== Helper Functions =====
+
 function renderTopBar() {
-    topBar.innerHTML = "";
-    Object.values(players).forEach(p => {
-        const div = document.createElement("div");
-        div.className = "player";
-        div.innerHTML = `<img src="${p.icon}"><span>${p.username}</span>`;
-        topBar.appendChild(div);
+  topBar.innerHTML = "";
+  Object.values(players).forEach(p => {
+    if (!playerAchievements[p.playerId]) {
+      playerAchievements[p.playerId] = new Set();
+    }
+
+    const div = document.createElement("div");
+    div.className = "player";
+    div.id = "player-" + p.playerId;
+
+    // Create base SVG with 6 arc slots
+    const arcs = [];
+    const r = 30, cx = 35, cy = 35;
+    const fullCirc = 2 * Math.PI * r;
+    const arcLen = fullCirc / 6;
+
+    for (let i = 0; i < 6; i++) {
+      const offset = fullCirc - i * arcLen;
+      arcs.push(`
+        <circle cx="${cx}" cy="${cy}" r="${r}"
+          stroke="limegreen" stroke-width="4" fill="none"
+          stroke-dasharray="${arcLen} ${fullCirc}"
+          stroke-dashoffset="${offset}"
+          class="arc arc-${i}"
+          style="opacity:0"
+        />
+      `);
+    }
+
+    div.innerHTML = `
+      <svg width="70" height="70" style="transform:rotate(-90deg)">
+        <circle cx="${cx}" cy="${cy}" r="${r}" stroke="#ddd" stroke-width="4" fill="none"/>
+        ${arcs.join("")}
+      </svg>
+      <img src="${p.icon}" style="
+        width:56px;height:56px;border-radius:50%;
+        position:absolute;top:7px;left:7px;"/>
+      <span>${p.username}</span>
+    `;
+    div.style.position = "relative";
+    topBar.appendChild(div);
+
+    // Apply already earned arcs
+    playerAchievements[p.playerId].forEach((ach, idx) => {
+      const arc = div.querySelector(".arc-" + idx);
+      if (arc) arc.style.opacity = 1;
     });
+  });
 }
 
+// ===== Update a single player’s arcs =====
+function updatePlayerArc(playerId, achievement) {
+  if (!playerAchievements[playerId]) playerAchievements[playerId] = new Set();
+  const index = achievementList.indexOf(achievement);
+  if (index === -1) return; // ignore unknown
+
+  playerAchievements[playerId].add(achievement);
+
+  // Update in DOM
+  const playerDiv = document.getElementById("player-" + playerId);
+  if (playerDiv) {
+    const arc = playerDiv.querySelector(".arc-" + index);
+    if (arc) arc.style.opacity = 1;
+  }
+}
 function renderTicket(ticket) {
     ticketEl.innerHTML = "";
     ticket.flat().forEach(num => {
