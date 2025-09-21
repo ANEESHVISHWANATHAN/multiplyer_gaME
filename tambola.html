@@ -1,5 +1,4 @@
-         
-  <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">  
 <head>  
 <meta charset="UTF-8">  
@@ -18,12 +17,13 @@
     overflow-x: hidden;  
   }  
 
+  /* === TOP BAR === */
   .top-bar {  
     display: flex;  
     overflow-x: auto;  
     padding: 12px 16px;  
-    background: #fff;  
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);  
+    background: linear-gradient(90deg, #ff512f, #dd2476, #24c6dc);  
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);  
     width: 100%;  
     scrollbar-width: none;  
     z-index: 10;  
@@ -31,8 +31,30 @@
     top: 0;  
   }  
   .top-bar::-webkit-scrollbar { display: none; }  
-  .player { flex-shrink: 0; margin: 0 12px; text-align: center; cursor: pointer; }  
-  .player span { font-size: 14px; display: block; margin-top: 5px; }  
+
+  .player {  
+    flex-shrink: 0;  
+    margin: 0 14px;  
+    text-align: center;  
+    cursor: pointer;  
+    position: relative;  
+  }  
+  .player span {  
+    font-size: 14px;  
+    display: block;  
+    margin-top: 5px;  
+    font-weight: 600;  
+    color: #fff;  
+    text-shadow: 0 1px 3px rgba(0,0,0,0.6);  
+  }  
+
+  .player img {  
+    width: 56px;  
+    height: 56px;  
+    border-radius: 50%;  
+    border: 3px solid rgba(255,255,255,0.7);  
+    box-shadow: 0 0 8px rgba(255,255,255,0.5);  
+  }
 
   #achievementText {
     position: fixed;
@@ -58,7 +80,7 @@
   #numberOverlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.85);
+    background: rgba(0,0,0,0.9);
     display: none;
     flex-wrap: wrap;
     justify-content: center;
@@ -76,8 +98,9 @@
     font-size: 18px;
     background: #eee;
     color: #333;
+    transition: background 0.3s, transform 0.2s;
   }
-  #numberOverlay .called { background: #28a745; color:#fff; }
+  #numberOverlay .num.called { background: #28a745; color:#fff; transform: scale(1.1); }
   #numberOverlay .close-btn {
     position: fixed; top: 10px; right: 10px;
     background: #ff4444; color:#fff; border:none; border-radius:6px;
@@ -182,11 +205,14 @@ if (isHost) document.getElementById("startBtn").style.display="block";
 const ws = new WebSocket("wss://multiplyer-game.onrender.com");
 ws.onopen = () => {
   ws.send(JSON.stringify({typeReq:"pageEntered", roomId, playerId, wscode, isHost}));
+
+  // ✅ Add self immediately
+  players[playerId] = { playerId, username, icon };
+  renderTopBar();
 };
 ws.onmessage = (msg) => {
   const data = JSON.parse(msg.data);
-  if(data.type==="ijoin"){ players[data.player.playerId]=data.player; renderTopBar(); }
-  if(data.type==="hejoins"){ players[data.player.playerId]=data.player; renderTopBar(); }
+  if(data.type==="ijoin" || data.type==="hejoins"){ players[data.player.playerId]=data.player; renderTopBar(); }
   if(data.type==="heleft"){ delete players[data.playerId]; renderTopBar(); }
   if(data.type==="heachieves"){ showAchievement(`${data.playerName} achieved ${data.achievement}`); updatePlayerArc(data.playerId, data.achievement);}
   if(data.type==="sendTicket"){ ticketData=data.ticket; renderTicket(ticketData);}
@@ -211,8 +237,8 @@ function renderTopBar(){
     const colors=["#ff3c00","#ff9500","#ffea00","#00ff90","#00fff2","#0095ff"];
     const arcs = colors.map((c,i)=>`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${c}" stroke-width="4" stroke-dasharray="${arcLen} ${fullCirc}" stroke-dashoffset="${fullCirc - i*arcLen}" class="arc arc-${i}" style="opacity:0; transition: opacity 0.5s"/>`).join("");
     div.innerHTML=`<svg width="70" height="70" style="transform:rotate(-90deg)"><circle cx="${cx}" cy="${cy}" r="${r}" stroke="#ddd" stroke-width="4" fill="none"/>${arcs}</svg>
-    <img src="${p.icon}" style="width:56px;height:56px;border-radius:50%;position:absolute;top:7px;left:7px;"/>
-    <span>${p.username}</span>`;
+    <img src="${p.icon || 'default.png'}" style="width:56px;height:56px;border-radius:50%;position:absolute;top:7px;left:7px;"/>
+    <span>${p.username || 'Player'}</span>`;
     topBar.appendChild(div);
     playerAchievements[p.playerId].forEach(ach=>{
       const idx=achievementList.indexOf(ach); if(idx>=0){ const arc=div.querySelector(".arc-"+idx); if(arc) arc.style.opacity=1; }
@@ -283,4 +309,5 @@ function autoMark(num){
 }
 </script>  
 </body>  
-</html>
+</html>         
+   
