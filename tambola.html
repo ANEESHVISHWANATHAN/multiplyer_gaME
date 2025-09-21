@@ -212,7 +212,13 @@ ws.onopen = () => {
 };
 ws.onmessage = (msg) => {
   const data = JSON.parse(msg.data);
-  if(data.type==="ijoin" || data.type==="hejoins"){ players[data.player.playerId]=data.player; renderTopBar(); }
+  if(data.type==="ijoin" || data.type==="hejoins") {
+  // data.players is an array
+  data.players.forEach(p => {
+    players[p.playerId] = p;
+  });
+  renderTopBar();
+  }
   if(data.type==="heleft"){ delete players[data.playerId]; renderTopBar(); }
   if(data.type==="heachieves"){ showAchievement(`${data.playerName} achieved ${data.achievement}`); updatePlayerArc(data.playerId, data.achievement);}
   if(data.type==="sendTicket"){ ticketData=data.ticket; renderTicket(ticketData);}
