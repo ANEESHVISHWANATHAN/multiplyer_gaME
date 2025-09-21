@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+      <!DOCTYPE html>
 <html lang="en">  
 <head>  
   <meta charset="UTF-8">  
@@ -31,8 +31,28 @@
     }  
     .top-bar::-webkit-scrollbar { display: none; }  
     .player { flex-shrink: 0; margin: 0 12px; text-align: center; cursor: pointer; }  
-    .player img { width: 56px; height: 56px; border-radius: 50%; border: 2px solid #ccc; object-fit: cover; }  
     .player span { font-size: 14px; display: block; margin-top: 5px; }  
+
+    /* Achievement overlay below top bar */
+    #achievementText {
+      position: fixed;
+      top: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: clamp(30px, 5vw, 60px);
+      font-weight: 900;
+      text-align: center;
+      color: yellow;
+      text-shadow: 0 0 8px #ffff66, 0 0 20px #ffeb3b, 0 0 30px #ffd700;
+      pointer-events: none;
+      z-index: 9999;
+      opacity: 0;
+      transition: opacity 0.5s, transform 0.5s;
+    }
+    #achievementText.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
 
     .number-shower {  
       margin: 20px 0;  
@@ -51,10 +71,9 @@
     .ticket {  
       display: grid;  
       grid-template-columns: repeat(9, 1fr);  
-      border: 4px solid #ff4b2b;  
       border-radius: 14px;  
       box-shadow: 0 10px 28px rgba(0,0,0,0.3);  
-      background: #fff8f0;  
+      background: #fff;  
       width: 94%;  
       margin: 22px auto;  
       overflow: hidden;  
@@ -67,9 +86,13 @@
       font-weight: 700;  
       font-size: clamp(12px, 1.6vw, 18px);  
       border: 1px solid #ddd;  
-      background: #fff;  
+      background: linear-gradient(145deg, #fff, #ffe);  
+      border-radius: 6px;
+      cursor: pointer;
       transition: background 0.3s ease, transform 0.2s;  
     }  
+    .cell.correct { background: #28a745; color:#fff; }  
+    .cell.wrong { background: #dc3545; color:#fff; }  
     .cell:hover {  
       background: #ffe0d0;  
       transform: scale(1.05);  
@@ -104,540 +127,139 @@
       box-shadow: 0 4px 14px rgba(0,0,0,0.3);  
     }  
 
-    .overlay {  
-      position: fixed;  
-      top: 0; left: 0;  
-      width: 100%; height: 100%;  
-      display: flex;  
-      justify-content: center;  
-      align-items: center;  
-      z-index: 1000;  
-      backdrop-filter: blur(8px);  
-      visibility: hidden;  
-    }  
-
-    .overlay-box {  
-      position: relative;  
-      width: 90%;  
-      max-width: 900px;  
-      max-height: 75%;  
-      margin: 15% auto;  
-      border: 14px solid #ff2d55;  
-      border-radius: 20px;  
-      background: rgba(15, 15, 30, 0.95);  
-      box-shadow: 0 0 20px rgba(255, 45, 85, 0.6),  
-                  inset 0 0 12px rgba(255,255,255,0.1);  
-      overflow-y: auto;  
-      padding: 30px 20px;  
-      transform: translateY(100%);  
-      transition: transform 0.5s ease-in-out;  
-    }  
-
-    .overlay.active { visibility: visible; }  
-    .overlay.active .overlay-box { transform: translateY(0); }  
-
-    .close-btn {  
-      position: absolute;  
-      font-size: 20px;  
-      color: #ff2d55;  
-      background: #fff;  
-      border-radius: 50%;  
-      width: 32px; height: 32px;  
-      display: flex;  
-      align-items: center;  
-      justify-content: center;  
-      cursor: pointer;  
-      box-shadow: 0 2px 6px rgba(0,0,0,0.4);  
-      z-index: 1101;  
-    }  
-    @media (orientation: landscape) {  
-      .close-btn { top: 10px; right: 10px; }  
-    }  
-    @media (orientation: portrait) {  
-      .close-btn { top: 10px; left: 50%; transform: translateX(-50%); }  
-    }  
-
-    .lb-row {  
-      display: flex;  
-      align-items: center;  
-      justify-content: space-between;  
-      padding: 12px;  
-      font-size: 16px;  
-      font-weight: bold;  
-      color: #fff;  
-      background: linear-gradient(90deg, rgba(255,255,255,0.1), rgba(255,45,85,0.3));  
-      border-radius: 10px;  
-      margin-bottom: 10px;  
-      box-shadow: 0 2px 6px rgba(0,0,0,0.4);  
-    }  
-    .lb-info { display: flex; align-items: center; gap: 10px; }  
-    .lb-info img {  
-      width: 38px; height: 38px;  
-      border-radius: 50%;  
-      border: 2px solid #fff;  
-    }  
-
-    .numbers-grid { display: grid; gap: 6px; justify-items: center; }  
-    .num-cell {  
-      width: 34px; height: 34px;  
-      display: flex; align-items: center; justify-content: center;  
-      border-radius: 6px;  
-      font-size: 14px;  
-      font-weight: bold;  
-      color: #fff;  
-      background: #b22222;  
-    }  
-    .num-cell.called { background: #228b22; }  
-
-    /* Achievement overlay */
-    #achievementText {
-      position: fixed;
-      top: 30%;
-      left: -100%;
-      font-size: clamp(40px, 6vw, 80px);
-      font-weight: 900;
-      text-align: center;
-      color: yellow;
-      text-shadow: 0 0 8px #ffff66, 0 0 20px #ffeb3b, 0 0 30px #ffd700;
-      pointer-events: none;
-      z-index: 9999;
-      white-space: nowrap;
-      transform: translateX(0);
-    }
-
-    @keyframes slideAchievement {
-      0% { left: -100%; }
-      20% { left: 50%; transform: translateX(-50%); }
-      80% { left: 50%; transform: translateX(-50%); }
-      100% { left: 110%; transform: translateX(0); }
-    }
-
-    #achievementText.show {
-      animation: slideAchievement 2s ease-in-out forwards;
-    }
-
     @media (min-width: 992px) {  
       .ticket { width: 55%; max-width: 650px; }  
       .cell { aspect-ratio: 1.6/1; }  
-      .overlay-box { margin: 15% auto; width: 70%; }  
-      .numbers-grid { grid-template-columns: repeat(10, 1fr); }  
-      .num-cell { width: 40px; height: 40px; font-size: 15px; }  
     }  
-
-    @media (max-width: 576px) and (orientation: portrait) {  
-      .ticket { width: 96%; }  
-      .cell { aspect-ratio: 0.7/1; }  
-      .overlay-box { margin: 10% auto; width: 90%; }  
-      .numbers-grid { grid-template-columns: repeat(8, 1fr); }  
-      .num-cell { width: 32px; height: 32px; font-size: 13px; }  
-    }  
-
-    @media (max-width: 992px) and (orientation: landscape) {  
-      .ticket { width: 80%; }  
-      .cell { aspect-ratio: 1.4/1; }  
-      .overlay-box { margin: 10% auto; width: 75%; max-height: 65%; }  
-      .numbers-grid { grid-template-columns: repeat(10, 1fr); }  
-    }  
-    .player {
-    flex-shrink: 0;
-    margin: 0 12px;
-    text-align: center;
-  }
-  .player svg {
-    display: block;
-  }
-  .player span {
-    font-size: 14px;
-    display: block;
-    margin-top: 5px;
-  }
   </style>  
 </head>  
 <body>  
-  <!-- Only host should see Start button -->
 
   <div class="top-bar" id="topBar"></div>  
+  <div id="achievementText"></div>
 
   <div id="numberShower" class="number-shower">--</div>  
-
   <div class="ticket" id="ticket"></div>  
 
   <div class="btns">  
-    <button class="stats-btn" onclick="openLeaderboard()">Leaderboard</button>  
-    <button class="stats-btn" onclick="openNumbers()">Numbers</button> 
     <button id="startBtn" class="stats-btn" style="display:none;" onclick="startGame()">Start Game</button>
   </div>  
-
-  <div class="overlay" id="leaderboard">  
-    <span class="close-btn" onclick="closeLeaderboard()">❌</span>  
-    <div class="overlay-box">  
-      <div id="lb-rows"></div>  
-    </div>  
-  </div>  
-
-  <div class="overlay" id="numbersChart">  
-    <span class="close-btn" onclick="closeNumbers()">❌</span>  
-    <div class="overlay-box">  
-      <div class="numbers-grid" id="numbersGrid"></div>  
-    </div>  
-  </div>  
-
-  <div id="achievementText"></div>
 
   <script>  
     const ticketEl = document.getElementById("ticket");  
     const achievementText = document.getElementById("achievementText");  
-    // Track achievements per player
-let playerAchievements = {};  
-
-// Fixed order of achievements → determines arc slot
-const achievementList = [
-  "First Five",
-  "First Seven",
-  "First Row",
-  "Second Row",
-  "Third Row",
-  "Full House"
-];
-
     const numberShower = document.getElementById("numberShower");  
-    let calledNumbers = new Set();  
-    function showLotteryNumber(finalNum){  
-      let count = 0;  
-      const spin = setInterval(() => {  
-        numberShower.textContent = Math.floor(Math.random() * 90) + 1;  
-        if(++count > 15){  
-          clearInterval(spin);  
-          numberShower.textContent = finalNum;  
-          calledNumbers.add(finalNum);  
-          updateNumbersGrid();  
-        }  
-      }, 100);  
-    }  
-    
-
-    let playersLocal = [  
-      {name:"Alice", score:45, icon:"https://via.placeholder.com/32"},  
-      {name:"Bob", score:39, icon:"https://via.placeholder.com/32"},  
-      {name:"Charlie", score:28, icon:"https://via.placeholder.com/32"}  
-    ];  
-
-    function renderLeaderboard(){  
-      playersLocal.sort((a,b) => b.score - a.score);  
-      const lb = document.getElementById("lb-rows");  
-      lb.innerHTML = "";  
-      playersLocal.forEach(p => {  
-        const row = document.createElement("div");  
-        row.className = "lb-row";  
-        row.innerHTML = `
-          <div class="lb-info">  
-            <img src="${p.icon}">  
-            <span>${p.name}</span>  
-          </div>  
-          <span>${p.score}</span>`;  
-        lb.appendChild(row);  
-      });  
-    }  
-
-    function openLeaderboard(){ renderLeaderboard(); document.getElementById("leaderboard").classList.add("active"); }  
-    function closeLeaderboard(){ document.getElementById("leaderboard").classList.remove("active"); }  
-
-    function createNumbersGrid(){  
-      const grid = document.getElementById("numbersGrid");  
-      for(let i=1;i<=90;i++){  
-        const div = document.createElement("div");  
-        div.className = "num-cell";  
-        div.textContent = i;  
-        grid.appendChild(div);  
-      }  
-    }  
-    function updateNumbersGrid(){  
-      document.querySelectorAll(".num-cell").forEach(cell => {  
-        const val = parseInt(cell.textContent);  
-        if(calledNumbers.has(val)) cell.classList.add("called");  
-      });  
-    }  
-    createNumbersGrid();  
-
-    function openNumbers(){ updateNumbersGrid(); document.getElementById("numbersChart").classList.add("active"); }  
-    function closeNumbers(){ document.getElementById("numbersChart").classList.remove("active"); }  
-
     const topBar = document.getElementById("topBar");  
-    let players = {};  
-
-    
+    let players = {}, playerAchievements = {}, markedNumbers = new Set(), claimedAchievements = new Set();
+    let ticketData = [];
 
     const roomId = localStorage.getItem("roomId");
-const playerId = localStorage.getItem("playerId");
-const wscode = localStorage.getItem("wscode");
-const username = localStorage.getItem("username");
-const icon = localStorage.getItem("icon");
-const isHost = localStorage.getItem("ishost") === "true";
-const gameType = localStorage.getItem("gameType") || "public";
+    const playerId = localStorage.getItem("playerId");
+    const wscode = localStorage.getItem("wscode");
+    const username = localStorage.getItem("username");
+    const icon = localStorage.getItem("icon");
+    const isHost = localStorage.getItem("ishost") === "true";
+    const gameType = localStorage.getItem("gameType") || "public";
 
-// ===== WebSocket Connection =====
-const ws = new WebSocket("wss://multiplyer-game.onrender.com");
+    if (isHost) document.getElementById("startBtn").style.display="block";
 
-ws.onopen = () => {
-    console.log("✅ Connected to WS");
-    ws.send(JSON.stringify({
-        typeReq: "pageEntered",
-        roomId,
-        playerId,
-        wscode,
-        isHost,
-        gameType
-    }));
-};
-// Show Start Game button only for host
-if (isHost) {
-  document.getElementById("startBtn").style.display = "block";
-}
- function startGame() {
-  if(ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({
-      typeReq: "startGame",
-      roomId,
-      playerId,
-      wscode
-    }));
-  }
-}   
-// ===== WebSocket message handler =====
-ws.onmessage = (msg) => {
-    const data = JSON.parse(msg.data);
-    console.log("📩 WS:", data);
+    const ws = new WebSocket("wss://multiplyer-game.onrender.com");
+    ws.onopen = () => {
+      ws.send(JSON.stringify({typeReq:"pageEntered", roomId, playerId, wscode, isHost, gameType}));
+    };
 
-    // ===== Initial lobby / players list =====
-    if(data.type === "ijoin" || data.type === "playersReshuffled") {
-        data.players.forEach(p => { players[p.playerId] = p; });
-        renderTopBar();
+    ws.onmessage = (msg) => {
+      const data = JSON.parse(msg.data);
+
+      if(data.type==="hejoins"){ players[data.player.playerId]=data.player; renderTopBar(); }
+      if(data.type==="heleft"){ delete players[data.playerId]; renderTopBar(); }
+      if(data.type==="heachieves"){ showAchievement(`${data.playerName} achieved ${data.achievement}`); updatePlayerArc(data.playerId, data.achievement);}
+      if(data.type==="sendTicket"){ ticketData = data.ticket; renderTicket(ticketData);}
+      if(data.type==="sendNumber"){ const num = data.number; numberShower.textContent=num; autoMark(num);}
+      if(data.type==="gameStarts"){ calledNumbers.clear(); numberShower.textContent="--"; ticketEl.innerHTML="";}
+    };
+
+    function startGame() {
+      if(ws && ws.readyState===WebSocket.OPEN){
+        ws.send(JSON.stringify({typeReq:"startGame", roomId, playerId, wscode}));
+      }
     }
 
-    // ===== Player joined =====
-    if(data.type === "hejoins") {
-        players[data.player.playerId] = data.player;
-        renderTopBar();
+    function renderTopBar(){
+      topBar.innerHTML="";
+      Object.values(players).forEach((p)=>{
+        if(!playerAchievements[p.playerId]) playerAchievements[p.playerId]=new Set();
+        const div=document.createElement("div");
+        div.className="player";
+        div.id="player-"+p.playerId;
+
+        const r=28,cx=35,cy=35;
+        const fullCirc=2*Math.PI*r;
+        const arcLen=fullCirc/6;
+        const colors=["#ff3c00","#ff9500","#ffea00","#00ff90","#00fff2","#0095ff"];
+        const arcs = colors.map((c,i)=>`
+          <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${c}" stroke-width="4"
+            stroke-dasharray="${arcLen} ${fullCirc}" stroke-dashoffset="${fullCirc - i*arcLen}"
+            class="arc arc-${i}" style="opacity:0; transition: opacity 0.5s"/>
+        `).join("");
+
+        div.innerHTML=`
+          <svg width="70" height="70" style="transform:rotate(-90deg)">
+            <circle cx="${cx}" cy="${cy}" r="${r}" stroke="#ddd" stroke-width="4" fill="none"/>
+            ${arcs}
+          </svg>
+          <img src="${p.icon}" style="width:56px;height:56px;border-radius:50%;position:absolute;top:7px;left:7px;"/>
+          <span>${p.username}</span>
+        `;
+        div.style.position="relative"; topBar.appendChild(div);
+        playerAchievements[p.playerId].forEach(ach=>{ const idx=achievementList.indexOf(ach); if(idx>=0){ const arc=div.querySelector(".arc-"+idx); if(arc) arc.style.opacity=1; } });
+      });
     }
 
-    // ===== Player left =====
-    if(data.type === "heleft") {
-        if(players[data.playerId]) delete players[data.playerId];
-        renderTopBar();
+    const achievementList=["First Five","First Seven","First Row","Second Row","Third Row","Full House"];
+    function updatePlayerArc(playerId, achievement){
+      if(!playerAchievements[playerId]) playerAchievements[playerId]=new Set();
+      const idx=achievementList.indexOf(achievement); if(idx===-1) return;
+      playerAchievements[playerId].add(achievement);
+      const div=document.getElementById("player-"+playerId);
+      if(div){ const arc=div.querySelector(".arc-"+idx); if(arc) arc.style.opacity=1; }
     }
 
-    // ===== Player achievement =====
-    // ===== Player achievement =====
-if(data.type === "heachieves") {
-    showAchievement(`${data.playerName || "Player"} achieved ${data.achievement}`);
-    updatePlayerArc(data.playerId, data.achievement);
-}
-
-    // ===== Ticket update =====
-    if(data.type === "sendTicket") {
-        ticketData = data.ticket;
-        renderTicket(ticketData);
+    function showAchievement(text){
+      achievementText.textContent=text;
+      achievementText.classList.add("show");
+      setTimeout(()=>{ achievementText.classList.remove("show"); achievementText.textContent=""; },2000);
     }
 
-    // ===== Number drawn =====
-    if(data.type === "sendNumber") {
-        const num = data.number;
-        numberShower.textContent = num;
-        calledNumbers.add(num);
-        highlightTicket(num);
-        updateNumbersGrid();
-        if(ticketData && ticketData.length) {
-  markNumber(num);
-}
-    }
-
-    // ===== Game start =====
-    if(data.type === "gameStarts") {
-        console.log("🎮 Game started!");
-        calledNumbers.clear();
-        numberShower.textContent = "--";
-        ticketEl.innerHTML = "";
-    }
-};
-
-// ===== Helper Functions =====
-
-function renderTopBar() {
-  topBar.innerHTML = "";
-  Object.values(players).forEach(p => {
-    if (!playerAchievements[p.playerId]) {
-      playerAchievements[p.playerId] = new Set();
-    }
-
-    const div = document.createElement("div");
-    div.className = "player";
-    div.id = "player-" + p.playerId;
-
-    // Create base SVG with 6 arc slots
-    const arcs = [];
-    const r = 30, cx = 35, cy = 35;
-    const fullCirc = 2 * Math.PI * r;
-    const arcLen = fullCirc / 6;
-
-    for (let i = 0; i < 6; i++) {
-      const offset = fullCirc - i * arcLen;
-      arcs.push(`
-        <circle cx="${cx}" cy="${cy}" r="${r}"
-          stroke="limegreen" stroke-width="4" fill="none"
-          stroke-dasharray="${arcLen} ${fullCirc}"
-          stroke-dashoffset="${offset}"
-          class="arc arc-${i}"
-          style="opacity:0"
-        />
-      `);
-    }
-
-    div.innerHTML = `
-      <svg width="70" height="70" style="transform:rotate(-90deg)">
-        <circle cx="${cx}" cy="${cy}" r="${r}" stroke="#ddd" stroke-width="4" fill="none"/>
-        ${arcs.join("")}
-      </svg>
-      <img src="${p.icon}" style="
-        width:56px;height:56px;border-radius:50%;
-        position:absolute;top:7px;left:7px;"/>
-      <span>${p.username}</span>
-    `;
-    div.style.position = "relative";
-    topBar.appendChild(div);
-
-    // Apply already earned arcs
-    playerAchievements[p.playerId].forEach((ach, idx) => {
-      const arc = div.querySelector(".arc-" + idx);
-      if (arc) arc.style.opacity = 1;
-    });
-  });
-}
-
-// ===== Update a single player’s arcs =====
-function updatePlayerArc(playerId, achievement) {
-  if (!playerAchievements[playerId]) playerAchievements[playerId] = new Set();
-  const index = achievementList.indexOf(achievement);
-  if (index === -1) return; // ignore unknown
-
-  playerAchievements[playerId].add(achievement);
-
-  // Update in DOM
-  const playerDiv = document.getElementById("player-" + playerId);
-  if (playerDiv) {
-    const arc = playerDiv.querySelector(".arc-" + index);
-    if (arc) arc.style.opacity = 1;
-  }
-}
-function renderTicket(ticket) {
-    ticketEl.innerHTML = "";
-    ticket.flat().forEach(num => {
-        const cell = document.createElement("div");
+    function renderTicket(ticket){
+      ticketEl.innerHTML="";
+      ticket.flat().forEach((num,ridx)=>{
+        const cell=document.createElement("div");
         cell.classList.add("cell");
-        if(num !== null && num !== "") cell.textContent = num;
+        if(num!==null && num!=="") cell.textContent=num;
+        cell.onclick=()=>playerMark(cell,num);
         ticketEl.appendChild(cell);
-    });
-}
-
-function createNumbersGrid() {
-    numbersGrid.innerHTML = "";
-    for(let i = 1; i <= 90; i++) {
-        const div = document.createElement("div");
-        div.className = "num-cell";
-        div.textContent = i;
-        numbersGrid.appendChild(div);
+      });
     }
-}
-createNumbersGrid();
 
-function updateNumbersGrid() {
-    document.querySelectorAll(".num-cell").forEach(cell => {
-        const val = parseInt(cell.textContent);
-        if(calledNumbers.has(val)) cell.classList.add("called");
-        else cell.classList.remove("called");
-    });
-}
+    function playerMark(cell,num){
+      if(calledNumbers.has(num)){
+        cell.classList.add("correct");
+      }else{
+        cell.classList.add("wrong");
+      }
+    }
 
-function highlightTicket(num) {
-    document.querySelectorAll("#ticket .cell").forEach(cell => {
-        if(parseInt(cell.textContent) === num) {
-            cell.classList.add("highlight");
+    let calledNumbers=new Set();
+    function autoMark(num){
+      calledNumbers.add(num);
+      document.querySelectorAll("#ticket .cell").forEach(cell=>{
+        if(parseInt(cell.textContent)===num){
+          cell.classList.add("correct");
         }
-    });
-}
-
-// ===== Achievement overlay =====
-function showAchievement(text) {
-    achievementText.textContent = text;
-    achievementText.classList.remove("show");
-    void achievementText.offsetWidth; // trigger reflow
-    achievementText.classList.add("show");
-    setTimeout(() => {
-        achievementText.classList.remove("show");
-        achievementText.textContent = "";
-    }, 2000);
-}
-
-// ===== Send achievement =====
-function sendAchievement(name) {
-    showAchievement(name);
-    if(ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-            typeReq: "Iachieve",
-            roomId,
-            playerId,
-            wscode,
-            achievement: name
-        }));
+      });
     }
-}
-// ===== Track ticket state & achievements =====
-let ticketData = []; 
-let markedNumbers = new Set();
-let claimedAchievements = new Set();
 
-function markNumber(num) {
-  // Add to marked set if exists in ticket
-  if(ticketData.flat().includes(num)) {
-    markedNumbers.add(num);
-    checkAchievements();
-  }
-}
-
-function checkAchievements() {
-  const newOnes = [];
-
-  // Early Five & Seven
-  if(markedNumbers.size >= 5 && !claimedAchievements.has("First Five")) {
-    newOnes.push("First Five");
-  }
-  if(markedNumbers.size >= 7 && !claimedAchievements.has("First Seven")) {
-    newOnes.push("First Seven");
-  }
-
-  // Row checks
-  for(let r=0;r<3;r++) {
-    const rowNums = ticketData[r].filter(n => n !== null);
-    if(rowNums.length > 0 && rowNums.every(n => markedNumbers.has(n))) {
-      if(r===0 && !claimedAchievements.has("First Row")) newOnes.push("First Row");
-      if(r===1 && !claimedAchievements.has("Second Row")) newOnes.push("Second Row");
-      if(r===2 && !claimedAchievements.has("Third Row")) newOnes.push("Third Row");
-    }
-  }
-
-  // Full House
-  const allNums = ticketData.flat().filter(n => n !== null);
-  if(allNums.length > 0 && allNums.every(n => markedNumbers.has(n)) && !claimedAchievements.has("Full House")) {
-    newOnes.push("Full House");
-  }
-
-  // Trigger achievements
-  newOnes.forEach(name => {
-    claimedAchievements.add(name);
-    sendAchievement(name);
-  });
-}
-    // Example: sendAchievement("First Five!");
-    // You can call sendAchievement("Full House") or any milestone
   </script>  
 </body>  
 </html>
