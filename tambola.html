@@ -287,7 +287,7 @@
   <script>  
     const ticketEl = document.getElementById("ticket");  
     const achievementText = document.getElementById("achievementText");  
-    const playerAchievements;
+    let playerAchievements;
 
     const numberShower = document.getElementById("numberShower");  
     let calledNumbers = new Set();  
@@ -354,15 +354,7 @@
     const topBar = document.getElementById("topBar");  
     let players = {};  
 
-    function renderTopBar(){  
-      topBar.innerHTML = "";  
-      Object.values(players).forEach(p => {  
-        const div = document.createElement("div");  
-        div.className = "player";  
-        div.innerHTML = `<img src="${p.icon}"><span>${p.username}</span>`;  
-        topBar.appendChild(div);  
-      });  
-    }  
+    
 
     const roomId = localStorage.getItem("roomId");
 const playerId = localStorage.getItem("playerId");
