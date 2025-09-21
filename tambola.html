@@ -287,7 +287,18 @@
   <script>  
     const ticketEl = document.getElementById("ticket");  
     const achievementText = document.getElementById("achievementText");  
-    let playerAchievements;
+    // Track achievements per player
+let playerAchievements = {};  
+
+// Fixed order of achievements → determines arc slot
+const achievementList = [
+  "First Five",
+  "First Seven",
+  "First Row",
+  "Second Row",
+  "Third Row",
+  "Full House"
+];
 
     const numberShower = document.getElementById("numberShower");  
     let calledNumbers = new Set();  
