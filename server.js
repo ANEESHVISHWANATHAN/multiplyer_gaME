@@ -12,6 +12,7 @@ app.get("/", (req, res) => {
   console.log("🌐 GET / → index.html");
   res.sendFile(path.join(__dirname, "index.html"));
 });
+app.use(express.static(__dirname));
 
 app.get("/tambola.html/:roomId", (req, res) => {
   console.log(`🌐 GET /tambola.html/${req.params.roomId}`);
