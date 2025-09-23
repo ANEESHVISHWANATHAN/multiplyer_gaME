@@ -69,9 +69,9 @@
 
 <!-- === TOP BAR === -->
 <div id="top-bar-wrapper">
-  <img src="cocunut.png" class="coconut left">
+  <img id="leftCoconut" src="cocunut.png" class="coconut left">
   <div id="topBar"></div>
-  <img src="cocunut.png" class="coconut right">
+  <img id="rightCoconut" src="cocunut.png" class="coconut right">
 </div>
 
 <div id="achievementText"></div>
@@ -106,17 +106,29 @@ const username = localStorage.getItem("username");
 const icon = localStorage.getItem("icon");
 const isHost = localStorage.getItem("ishost") === "true";
 
+console.log("Player data:", {roomId, playerId, wscode, username, icon, isHost});
+
 if (isHost) document.getElementById("startBtn").style.display="block";
+
+// Check images
+const leftImg = document.getElementById("leftCoconut");
+const rightImg = document.getElementById("rightCoconut");
+leftImg.onload = () => console.log("✅ Left coconut loaded");
+leftImg.onerror = () => console.error("❌ Left coconut failed to load");
+rightImg.onload = () => console.log("✅ Right coconut loaded");
+rightImg.onerror = () => console.error("❌ Right coconut failed to load");
 
 // WebSocket
 const ws = new WebSocket("wss://multiplyer-game.onrender.com");
 ws.onopen = () => {
+  console.log("🔵 WebSocket opened");
   ws.send(JSON.stringify({typeReq:"pageEntered", roomId, playerId, wscode, isHost}));
   players[playerId] = { playerId, username, icon };
   renderTopBar();
 };
 ws.onmessage = (msg) => {
   const data = JSON.parse(msg.data);
+  console.log("📨 WS message received:", data);
   if(data.type==="ijoin" || data.type==="hejoins") {
     data.players.forEach(p => { players[p.playerId] = p; });
     renderTopBar();
@@ -129,11 +141,13 @@ ws.onmessage = (msg) => {
 };
 
 function startGame(){
+  console.log("▶️ Start button clicked");
   if(ws.readyState===WebSocket.OPEN) ws.send(JSON.stringify({typeReq:"startGame", roomId, playerId, wscode}));
 }
 
 // === TOP BAR ===
 function renderTopBar(){
+  console.log("🔹 Rendering top bar", players);
   topBar.innerHTML="";
   Object.values(players).forEach((p,i)=>{
     if(!playerAchievements[p.playerId]) playerAchievements[p.playerId]=new Set();
@@ -142,43 +156,58 @@ function renderTopBar(){
     div.id="player-"+p.playerId;
     div.innerHTML=`<img src="${p.icon || 'avt'+((i%8)+1)+'.jpg'}"><span>${p.username || 'Player'}</span>`;
     topBar.appendChild(div);
+    console.log(`🔹 Added player to top bar: ${p.username}`);
   });
 }
+
 function updatePlayerArc(playerId, achievement){
   if(!playerAchievements[playerId]) playerAchievements[playerId]=new Set();
   playerAchievements[playerId].add(achievement);
+  console.log(`🏆 Player ${playerId} achievement added: ${achievement}`);
 }
+
 function showAchievement(text){
+  console.log(`✨ Showing achievement: ${text}`);
   achievementText.textContent=text;
   achievementText.classList.add("show");
-  setTimeout(()=>{ achievementText.classList.remove("show"); achievementText.textContent=""; },2000);
+  setTimeout(()=>{
+    achievementText.classList.remove("show");
+    achievementText.textContent="";
+    console.log("✨ Achievement hidden");
+  },2000);
 }
 
 // === TICKET ===
 function renderTicket(ticket){
+  console.log("🎫 Rendering ticket:", ticket);
   ticketEl.innerHTML="";
   ticket.flat().forEach(num=>{
     const cell=document.createElement("div");
     cell.classList.add("cell");
-    if(num===null || num===""){ cell.classList.add("blank"); }
-    else {
+    if(num===null || num===""){ 
+      cell.classList.add("blank"); 
+    } else {
       cell.textContent=num;
       cell.onclick=()=>playerMark(cell,num);
     }
     ticketEl.appendChild(cell);
   });
 }
+
 function playerMark(cell,num){
   if(calledNumbers.has(num)){
     cell.classList.add("correct");
+    console.log(`✅ Correct mark on number: ${num}`);
   }else{
     cell.classList.add("wrong");
+    console.log(`❌ Wrong mark on number: ${num}`);
     setTimeout(()=>cell.classList.remove("wrong"),2000);
   }
 }
 
 // === NUMBERS OVERLAY ===
 function initNumberOverlay(){
+  console.log("🔢 Initializing number overlay");
   numberOverlay.innerHTML=`<button class="close-btn" onclick="toggleNumberOverlay()">Close</button>`;
   for(let i=1;i<=90;i++){
     const div=document.createElement("div");
@@ -189,30 +218,48 @@ function initNumberOverlay(){
   }
 }
 initNumberOverlay();
-function toggleNumberOverlay(){ numberOverlay.style.display = numberOverlay.style.display==="flex" ? "none" : "flex"; }
+
+function toggleNumberOverlay(){ 
+  numberOverlay.style.display = numberOverlay.style.display==="flex" ? "none" : "flex"; 
+  console.log(`🔢 Number overlay ${numberOverlay.style.display}`);
+}
+
 function handleNumber(num){
+  console.log(`🎯 Number called: ${num}`);
   calledNumbers.add(num);
   autoMark(num);
   const el=document.getElementById("num-"+num);
   if(el) el.classList.add("called");
 }
+
 function autoMark(num){
   document.querySelectorAll("#ticket .cell").forEach(cell=>{
-    if(parseInt(cell.textContent)===num){ cell.classList.add("correct"); }
+    if(parseInt(cell.textContent)===num){ 
+      cell.classList.add("correct"); 
+      console.log(`✅ Auto marked ${num} on ticket`);
+    }
   });
 }
 
 // === SLOT REEL ===
+console.log("🎰 Loading slot SVG...");
 fetch("use.svg")
-  .then(res => res.text())
+  .then(res => {
+    console.log("🎰 SVG fetch status:", res.status);
+    return res.text();
+  })
   .then(svg => {
+    console.log("🎰 SVG loaded successfully");
     document.getElementById("slotContainer").innerHTML = svg;
 
     const t1 = document.querySelector("#slotContainer #tspan9");
     const t2 = document.querySelector("#slotContainer #tspan10");
 
     if(t1 && t2){
+      console.log("🎰 Found tspan elements for rolling numbers");
+
       function rollNumber(el, final){
+        console.log(`🎰 Rolling number for element ${el.id} to ${final}`);
         let current = 0;
         const interval = setInterval(() => {
           el.textContent = current;
@@ -222,14 +269,18 @@ fetch("use.svg")
         setTimeout(() => {
           clearInterval(interval);
           el.textContent = final;
+          console.log(`🎰 Number roll finished for ${el.id}`);
         }, 1000);
       }
 
       // Example roll on page load
       rollNumber(t1, 7);
       rollNumber(t2, 3);
+    } else {
+      console.error("❌ tspan elements not found in SVG");
     }
-  });
+  })
+  .catch(err => console.error("❌ Error loading SVG:", err));
 </script>  
 </body>  
 </html>
