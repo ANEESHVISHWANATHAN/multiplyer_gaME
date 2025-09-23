@@ -150,13 +150,17 @@ function startGame(){
 }
 
 // === TOP BAR ===
+// === TOP BAR ===
 function renderTopBar(){
   console.log("🔹 Rendering top bar", players);
   topBar.innerHTML="";
   Object.values(players).forEach((p,i)=>{
     if(!playerAchievements[p.playerId]) playerAchievements[p.playerId]=new Set();
-    const iconPath = p.icon || `avatars/avt${(i%8)+1}.jpg`;
+    
+    // Use same folder as index.html
+    const iconPath = p.icon || `avt${(i%8)+1}.jpg`;  // <-- removed 'avatars/' folder
     checkImage(iconPath, `Player ${p.username} icon`);
+    
     const div=document.createElement("div");
     div.className="player";
     div.id="player-"+p.playerId;
@@ -164,6 +168,7 @@ function renderTopBar(){
     topBar.appendChild(div);
   });
 }
+
 
 function updatePlayerArc(playerId, achievement){
   if(!playerAchievements[playerId]) playerAchievements[playerId]=new Set();
