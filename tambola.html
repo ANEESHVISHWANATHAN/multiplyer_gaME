@@ -158,7 +158,8 @@ function renderTopBar(){
     if(!playerAchievements[p.playerId]) playerAchievements[p.playerId]=new Set();
     
     // Use same folder as index.html
-    const iconPath = p.icon || `/avt${(i%8)+1}.jpg`; // <-- add leading '/'
+    const iconPath = p.icon ? `/${p.icon}` : `/avt${(i % 8) + 1}.jpg`;
+
     checkImage(iconPath, `Player ${p.username} icon`);
     
     const div=document.createElement("div");
