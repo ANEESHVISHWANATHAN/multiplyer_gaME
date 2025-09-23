@@ -252,7 +252,7 @@ function autoMark(num){
 
 // === SLOT REEL ===
 console.log("🎰 Loading slot SVG...");
-fetch("use.svg")
+fetch("/use.svg")
   .then(res => {
     console.log("🎰 SVG fetch status:", res.status);
     return res.text();
