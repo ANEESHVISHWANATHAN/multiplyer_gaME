@@ -88,7 +88,6 @@ body{width:100%;min-height:100vh;font-family:'Orbitron',sans-serif;
 <script>
 const ws = new WebSocket("wss://multiplyer-game.onrender.com");
 
-// on connect → request active lobbies
 ws.onopen = () => {
   console.log("✅ WS connected");
   ws.send(JSON.stringify({ typeReq:"iactive" }));
@@ -100,13 +99,15 @@ ws.onmessage = (msg) => {
     const data = JSON.parse(msg.data);
 
     if(data.type==="lobbyCreated" || data.type==="lobbyJoined"){
-      // Save details for tambola.html
       localStorage.setItem("roomId",data.roomId);
       localStorage.setItem("playerId",data.playerId);
       localStorage.setItem("wscode",data.wscode);
       localStorage.setItem("ishost",data.isHost);
       localStorage.setItem("lobbyType",data.lobbyType);
-      // redirect to tambola page
+
+      // already saved username + icon at Start button click
+      logLocalStorage();
+
       window.location.href=`/tambola.html/${data.roomId}`;
     }
 
@@ -123,11 +124,10 @@ ws.onmessage = (msg) => {
     if(data.type==="playerChange"){ updateLobbyCount(data.roomId,data.players); }
 
     if(data.type==="deleteLobby"){ removeLobby(data.roomId); }
-
   }catch(e){ console.error("WS parse error",e); }
 };
 
-// ===== Lobby Helpers =====
+// Lobby helpers
 function addLobbyRow(lobby){
   if(document.querySelector(`.lobby-row[data-room-id="${lobby.roomId}"]`)) return;
   const row=document.createElement("div");
@@ -160,7 +160,7 @@ function reshuffleLobbies(){
   rows.forEach(r=>publicLobbies.appendChild(r));
 }
 
-// ===== DOM Elements =====
+// DOM Elements
 const joinBtn=document.getElementById("joinBtn");
 const joinPanel=document.getElementById("joinPanel");
 const createBtn=document.getElementById("createBtn");
@@ -179,7 +179,7 @@ let isPrivate=false;
 let actionType=null;
 let selectedRoomId=null;
 
-// Join panel toggle
+// Toggle join panel
 joinBtn.onclick=()=>joinPanel.classList.toggle("active");
 
 // Toggle public/private
@@ -208,19 +208,34 @@ avatarClose.onclick=()=>{avatarPopup.style.display="none";}
 prevBtn.onclick=()=>{avatarIndex=(avatarIndex-1+avatars.length)%avatars.length;avatarImg.src=avatars[avatarIndex];}
 nextBtn.onclick=()=>{avatarIndex=(avatarIndex+1)%avatars.length;avatarImg.src=avatars[avatarIndex];}
 
-// Start
+// Save + Start
 startBtn.onclick=()=>{
   const uname=document.getElementById("username").value.trim();
   if(!uname){alert("Enter username");return;}
   const payload={username:uname,icon:avatars[avatarIndex],lobbyType:isPrivate?"pri":"pub"};
+
+  // Save to localStorage immediately
+  localStorage.setItem("username", uname);
+  localStorage.setItem("icon", avatars[avatarIndex]);
 
   if(actionType==="create"){
     ws.send(JSON.stringify({typeReq:"createLobby",...payload}));
   }else if(actionType==="join"){
     ws.send(JSON.stringify({typeReq:"joinLobby",...payload,roomId:selectedRoomId}));
   }
+
+  logLocalStorage();
   avatarPopup.style.display="none";
 };
+
+// Helper: log all localStorage items
+function logLocalStorage(){
+  console.log("📦 Current localStorage:");
+  for(let i=0;i<localStorage.length;i++){
+    const key=localStorage.key(i);
+    console.log(`   ${key}:`, localStorage.getItem(key));
+  }
+}
 </script>
 </body>
 </html>
