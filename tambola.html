@@ -1,4 +1,4 @@
-  <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">  
 <head>  
 <meta charset="UTF-8">  
@@ -19,7 +19,6 @@
     overflow-x: hidden;  
   }  
 
-  /* === TOP BAR WRAPPER === */
   #top-bar-wrapper {
     display: flex;
     align-items: center;
@@ -84,7 +83,6 @@
 
 <div class="ticket" id="ticket"></div>  
 
-<!-- === SLOT REEL SVG === -->
 <div id="slotContainer"></div>
 
 <script>  
@@ -108,15 +106,21 @@ const isHost = localStorage.getItem("ishost") === "true";
 
 console.log("Player data:", {roomId, playerId, wscode, username, icon, isHost});
 
+// Show start button if host
 if (isHost) document.getElementById("startBtn").style.display="block";
 
-// Check images
-const leftImg = document.getElementById("leftCoconut");
-const rightImg = document.getElementById("rightCoconut");
-leftImg.onload = () => console.log("✅ Left coconut loaded");
-leftImg.onerror = () => console.error("❌ Left coconut failed to load");
-rightImg.onload = () => console.log("✅ Right coconut loaded");
-rightImg.onerror = () => console.error("❌ Right coconut failed to load");
+// === IMAGE LOADER HELPER ===
+function checkImage(url, name){
+  const img = new Image();
+  img.src = url;
+  img.onload = ()=>console.log(`✅ Loaded ${name}: ${url}`);
+  img.onerror = ()=>console.error(`❌ Failed to load ${name}: ${url}`);
+  return url;
+}
+
+// Check top bar coconuts
+checkImage("cocunut.png","Left Coconut");
+checkImage("cocunut.png","Right Coconut");
 
 // WebSocket
 const ws = new WebSocket("wss://multiplyer-game.onrender.com");
@@ -151,12 +155,13 @@ function renderTopBar(){
   topBar.innerHTML="";
   Object.values(players).forEach((p,i)=>{
     if(!playerAchievements[p.playerId]) playerAchievements[p.playerId]=new Set();
+    const iconPath = p.icon || `avatars/avt${(i%8)+1}.jpg`;
+    checkImage(iconPath, `Player ${p.username} icon`);
     const div=document.createElement("div");
     div.className="player";
     div.id="player-"+p.playerId;
-    div.innerHTML=`<img src="${p.icon || 'avt'+((i%8)+1)+'.jpg'}"><span>${p.username || 'Player'}</span>`;
+    div.innerHTML=`<img src="${iconPath}"><span>${p.username || 'Player'}</span>`;
     topBar.appendChild(div);
-    console.log(`🔹 Added player to top bar: ${p.username}`);
   });
 }
 
@@ -173,14 +178,13 @@ function showAchievement(text){
   setTimeout(()=>{
     achievementText.classList.remove("show");
     achievementText.textContent="";
-    console.log("✨ Achievement hidden");
   },2000);
 }
 
 // === TICKET ===
 function renderTicket(ticket){
-  console.log("🎫 Rendering ticket:", ticket);
-  ticketEl.innerHTML="";
+  console.log("🎫 Rendering ticket:");
+    ticketEl.innerHTML="";
   ticket.flat().forEach(num=>{
     const cell=document.createElement("div");
     cell.classList.add("cell");
@@ -281,6 +285,9 @@ fetch("use.svg")
     }
   })
   .catch(err => console.error("❌ Error loading SVG:", err));
+
 </script>  
 </body>  
 </html>
+
+  
