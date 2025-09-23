@@ -18,8 +18,8 @@ app.get("/tambola.html/:roomId", (req, res) => {
   console.log(`🌐 GET /tambola.html/${req.params.roomId}`);
   res.sendFile(path.join(__dirname, "tambola.html"));
 });
+app.use(express.static(__dirname));
 
-app.use(express.static(path.join(__dirname, "public")));
 
 // ===== Room Stores =====
 let publicRooms = {};
