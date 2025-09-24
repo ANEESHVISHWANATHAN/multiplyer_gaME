@@ -22,21 +22,18 @@
   #top-bar-wrapper {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
     margin: 16px auto 0 auto;
-    padding: 14px 20px;
+    padding: 16px 24px;
     border-radius: 30px;
     background: rgba(255,255,255,0.9);
     max-width: 98%;
+    width: 95%;
     box-shadow: 0 8px 20px rgba(0,0,0,0.3);
   }
 
-  #topBar { display: flex; gap: 24px; overflow-x: auto; flex:1; padding:10px; scroll-behavior:smooth; }
+  #topBar { display: flex; gap: 28px; overflow-x: auto; flex:1; padding:10px; scroll-behavior:smooth; justify-content:center; }
   #topBar::-webkit-scrollbar { display:none; }
-
-  .coconut { width:50px; height:50px; }
-  .coconut.left { margin-right:16px; }
-  .coconut.right { margin-left:16px; }
 
   .player { flex:0 0 auto; text-align:center; position:relative; transition: transform 0.2s; }
   .player:hover { transform: scale(1.05); }
@@ -69,9 +66,7 @@
 
 <!-- === TOP BAR === -->
 <div id="top-bar-wrapper">
-  <img id="leftCoconut" src="/cocunut.png" class="coconut left">
   <div id="topBar"></div>
-  <img id="rightCoconut" src="/cocunut.png" class="coconut right">
 </div>
 
 <div id="achievementText"></div>
@@ -118,10 +113,6 @@ function checkImage(url, name){
   img.onerror = ()=>console.error(`❌ Failed to load ${name}: ${url}`);
   return url;
 }
-
-// Check top bar coconuts
-checkImage("/cocunut.png","Left Coconut");
-checkImage("/cocunut.png","Right Coconut");
 
 // WebSocket
 const ws = new WebSocket("wss://multiplyer-game.onrender.com");
@@ -178,10 +169,7 @@ function showAchievement(text){
   console.log(`✨ Showing achievement: ${text}`);
   achievementText.textContent=text;
   achievementText.classList.add("show");
-  setTimeout(()=>{
-    achievementText.classList.remove("show");
-    achievementText.textContent="";
-  },2000);
+  setTimeout(()=>{ achievementText.classList.remove("show"); achievementText.textContent=""; },2000);
 }
 
 // === TICKET ===
@@ -250,10 +238,12 @@ function autoMark(num){
 
 // === SLOT REEL ===
 console.log("🎰 Loading slot SVG...");
-fetch("/image.svg")
+fetch("/use.svg")
   .then(res => res.text())
   .then(svg => {
-    document.getElementById("slotContainer").innerHTML = svg;
+    // Ensure no white background in loaded SVG
+    const cleanSvg = svg.replace(/pagecolor="#ffffff"/g,"").replace(/fill="#ffffff"/g,"fill='none'");
+    document.getElementById("slotContainer").innerHTML = cleanSvg;
   })
   .catch(err => console.error("❌ Error loading SVG:", err));
 
@@ -265,10 +255,7 @@ function updateSlotNumberEffect(num){
     [t1,t2].forEach((el,i)=>{
       let final = parseInt(digits[i]);
       let current = 0;
-      const interval = setInterval(()=>{
-        el.textContent = current;
-        current = (current+1)%10;
-      },50);
+      const interval = setInterval(()=>{ el.textContent = current; current = (current+1)%10; },50);
       setTimeout(()=>{ clearInterval(interval); el.textContent=final; },800);
     });
   }
