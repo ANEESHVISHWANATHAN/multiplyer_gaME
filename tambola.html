@@ -486,7 +486,22 @@ function activateAvatarArc(el, count){
 /* ---------- render top bar (playersMap) ---------- */
 function renderTopBar(){
   topBarEl.innerHTML = '';
-  Object.values(playersMap).forEach((p, idx) => {
+
+  const players = Object.values(playersMap);
+  if(players.length === 0){
+    // subtle placeholder when the server hasn't provided players yet
+    const placeholder = document.createElement('div');
+    placeholder.style.width = '100%';
+    placeholder.style.padding = '12px';
+    placeholder.style.textAlign = 'center';
+    placeholder.style.color = 'rgba(255,255,255,0.9)';
+    placeholder.style.fontWeight = '700';
+    placeholder.textContent = 'Waiting for players…';
+    topBarEl.appendChild(placeholder);
+    return;
+  }
+
+  players.forEach((p, idx) => {
     const block = document.createElement('div');
     block.className = 'player-block';
     const av = document.createElement('div');
@@ -524,16 +539,13 @@ function showTopNotification(player, aIdx){
 
 /* ---------- ticket building & render ---------- */
 function buildTicketFromServer(serverTicket){
-  // Expect serverTicket as 3x9 array (numbers or null). Convert to our ticketGrid format.
   if(!Array.isArray(serverTicket) || serverTicket.length < 3){
-    // fallback random local construction
     return buildRandomTicket();
   }
   const grid = serverTicket.map((row, r) => row.map((n) => ({ number: n === null ? null : n, called: false, row: r+1 })));
   return grid;
 }
 function buildRandomTicket(){
-  // fallback random generation (keeps existing algorithm)
   const MAX=1200;
   for(let t=0;t<MAX;t++){
     const counts = Array(9).fill(1);
@@ -557,7 +569,6 @@ function buildRandomTicket(){
       return grid.map((row,r)=> row.map(num=> ({ number: num===null?null:num, called:false, row: r+1 })));
     }
   }
-  // fallback simple
   const fallback = Array.from({length:3}, ()=>Array(9).fill(null));
   const all = Array.from({length:90},(_,i)=>i+1).sort(()=>0.5-Math.random()).slice(0,15).sort((a,b)=>a-b);
   let idx=0;
@@ -572,7 +583,6 @@ function renderTicket(){
     el.innerHTML = `<div style="padding:20px;text-align:center;color:#666">Waiting for ticket…</div>`;
     return;
   }
-  // Ensure ticket shows cells correctly; we create 27 cells
   for(let r=0;r<3;r++){
     for(let c=0;c<9;c++){
       const cell = ticketGrid[r][c];
@@ -585,7 +595,6 @@ function renderTicket(){
         d.classList.add('filled');
         d.innerHTML = `<div class="num">${cell.number}</div>`;
         if(cell.called) d.classList.add('called');
-        // clicking a cell is local mark for user (no server action)
         d.addEventListener('click', ()=> {
           if(cell.called) {
             d.classList.add('called');
@@ -626,7 +635,6 @@ function processCalledNumber(n){
 
 /* achievements checks and sending iAchieve */
 function checkAchievements(){
-  // only demonstrate a few: firstFive, firstSeven, row1/2/3, fullHouse
   if(!awarded.firstFive && called_numbers >= 5){ awarded.firstFive=true; localAchieved(1); return; }
   if(!awarded.firstSeven && called_numbers >= 7){ awarded.firstSeven=true; localAchieved(2); return; }
   if(!awarded.row1 && row1 >= 5){ awarded.row1=true; localAchieved(3); return; }
@@ -636,11 +644,9 @@ function checkAchievements(){
 }
 
 function localAchieved(idx){
-  // show center & send WS to notify server that this client (playerId) achieved
   const owner = { playerId, username, icon };
   showCenter(`${owner.username || 'You'} claimed ${achievementNames[idx] || 'achievement'}`);
   showTopNotification({ username: owner.username, icon: owner.icon }, idx);
-  // notify server
   if(ws && ws.readyState === WebSocket.OPEN){
     ws.send(JSON.stringify({ typeReq: 'iAchieve', roomId, playerId, wscode, achievement: idx }));
   }
@@ -695,7 +701,6 @@ function animateDigit(viewportId, targetDigit){
   });
 }
 function showTwoDigit(num){
-  // ensure two digits for numbers < 10 -> show 0 as left digit
   const tens = Math.floor(num/10);
   const units = num % 10;
   animateDigit('tensViewport', tens);
@@ -710,10 +715,19 @@ function handleWSMessage(data){
     case 'hejoins':
       // server provides array of players
       if(Array.isArray(data.players)){
+        // replace playersMap with server-sent players (keeps server authoritative)
+        // Note: server should supply playerId, username, icon and optional achievement
+        const newMap = {};
         data.players.forEach(p => {
           if(!p.playerId) return;
-          playersMap[p.playerId] = { playerId: p.playerId, username: p.username || p.name || ('player'+p.playerId), icon: p.icon || `avt1.jpg`, achievement: p.achievement || 0 };
+          newMap[p.playerId] = {
+            playerId: p.playerId,
+            username: p.username || p.name || ('player'+p.playerId),
+            icon: p.icon || `avt1.jpg`,
+            achievement: p.achievement || 0
+          };
         });
+        playersMap = newMap;
         renderTopBar();
       }
       break;
@@ -722,21 +736,20 @@ function handleWSMessage(data){
       break;
     case 'heachieves':
       // payload: { playerId, playerName, achievement, icon }
-      if(data.playerId && playersMap[data.playerId]){
-        playersMap[data.playerId].achievement = data.achievement || 0;
-        renderTopBar();
-      } else if(data.playerId){
-        // add if missing
-        playersMap[data.playerId] = { playerId: data.playerId, username: data.playerName || 'Player', icon: data.icon || 'avt1.jpg', achievement: data.achievement || 0 };
+      if(data.playerId){
+        if(!playersMap[data.playerId]){
+          playersMap[data.playerId] = { playerId: data.playerId, username: data.playerName || 'Player', icon: data.icon || 'avt1.jpg', achievement: data.achievement || 0 };
+        } else {
+          playersMap[data.playerId].achievement = data.achievement || playersMap[data.playerId].achievement || 0;
+          if(data.icon) playersMap[data.playerId].icon = data.icon;
+          if(data.playerName) playersMap[data.playerId].username = data.playerName;
+        }
         renderTopBar();
       }
-      // show notification
       showTopNotification({ username: data.playerName, icon: data.icon }, data.achievement);
       break;
     case 'sendTicket':
-      // server sends the ticket grid
       ticketGrid = buildTicketFromServer(data.ticket);
-      // reset states
       calledSet.clear(); called_numbers=0; row1=row2=row3=0;
       awarded = {firstFive:false,firstSeven:false,row1:false,row2:false,row3:false,fullHouse:false};
       renderTicket();
@@ -744,25 +757,19 @@ function handleWSMessage(data){
       updateCalledBadge();
       break;
     case 'sendNumber':
-      // server sent a number (1-90)
       handleNumberFromServer(Number(data.number));
       break;
     case 'gameStarts':
-      // server triggers game start
       calledSet.clear(); called_numbers=0; row1=row2=row3=0;
       awarded = {firstFive:false,firstSeven:false,row1:false,row2:false,row3:false,fullHouse:false};
       document.getElementById('ticket').style.display = 'grid';
       renderTicket();
       renderNumbersOverlay();
       updateCalledBadge();
-      // show host controls if host
       if(isHost){
         document.getElementById('startBtn').style.display = 'none';
         document.getElementById('sendNumBtn').style.display = 'block';
       }
-      break;
-    case 'ijoin_ack':
-      // some servers may reply ack; ignore or handle
       break;
     default:
       console.log('Unhandled WS message type:', data.type, data);
@@ -772,7 +779,7 @@ function handleWSMessage(data){
 /* ---------- handle incoming number ---------- */
 function handleNumberFromServer(n){
   if(!n || isNaN(n)) return;
-  if(calledSet.has(n)) return; // already called
+  if(calledSet.has(n)) return;
   calledSet.add(n);
   updateCalledBadge();
   showTwoDigit(n);
@@ -785,7 +792,6 @@ function handleNumberFromServer(n){
 function updateLeaderboardUI(){
   const list = document.getElementById('leaderList');
   list.innerHTML = '';
-  // create an array of players, sorted by achievement number (desc)
   const arr = Object.values(playersMap).slice().sort((a,b)=> (b.achievement || 0) - (a.achievement || 0));
   arr.forEach(p => {
     const row = document.createElement('div');
@@ -861,7 +867,6 @@ function initWS(){
   ws.addEventListener('message', (ev)=>{
     try {
       const data = JSON.parse(ev.data);
-      // route to handler
       handleWSMessage(data);
     } catch(e){
       console.warn('Invalid WS message', e, ev.data);
@@ -880,23 +885,17 @@ initWS();
 
 /* ---------- initial UI state ---------- */
 (function init(){
-  // dummy players for initial render if server not populated yet
+  // Do NOT pre-populate top bar with dummy players.
+  // Keep playersMap empty — top bar renders only from WS 'ijoin'/'hejoins' events.
   playersMap = {};
-  for(let i=1;i<=6;i++){
-    playersMap['p'+i] = { playerId:'p'+i, username:'Player'+i, icon:`avt${i}.jpg`, achievement: 0 };
-  }
-  // include local user if available
-  if(playerId) playersMap[playerId] = { playerId, username: username || 'You', icon: icon || 'avt1.jpg', achievement:0 };
+  renderTopBar(); // will show "Waiting for players…"
 
-  renderTopBar();
-
-  // build a fallback ticket to start
+  // fallback ticket so the UI doesn't look broken; server should always send sendTicket
   ticketGrid = buildRandomTicket();
   renderTicket();
   renderNumbersOverlay();
   updateCalledBadge();
 
-  // initial two-digit shows
   document.getElementById('tensStatic').textContent = '-';
   document.getElementById('unitsStatic').textContent = '-';
 })();
@@ -909,4 +908,4 @@ initWS();
 })();
 </script>
 </body>
-</html>
+      </html>    
