@@ -1,266 +1,912 @@
-<!DOCTYPE html>
-<html lang="en">  
-<head>  
-<meta charset="UTF-8">  
-<title>Tambola</title>  
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">  
-<style>  
-  body {  
-    margin: 0;  
-    font-family: "Segoe UI", sans-serif;  
-    background: url("doodle.jpg"), linear-gradient(135deg, #ffecd2, #fcb69f);  
-    background-blend-mode: multiply;  
-    background-size: cover;  
-    color: #333;  
-    min-height: 100vh;  
-    display: flex;  
-    flex-direction: column;  
-    align-items: center;  
-    overflow-x: hidden;  
-  }  
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
+<title>Tambola — Polished Ticket (WS integrated)</title>
+<style>
+  :root{
+    --accent:#ffd54f;
+    --bg1:#f3cfe6;
+    --bg2:#2b2f5a;
+    --panel-bg: rgba(255,255,255,0.06);
+    --peach: #f4c7af;
+    --black-frame: #000;
+    --ticket-width-mobile: 80%;
+    --ticket-width-desktop: 50%;
+    --cell-max:96px;
+    --cell-radius:8px;
+  }
+  html,body{height:100%;margin:0;padding:0;}
+  body{
+    min-height:100vh;
+    font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    background: linear-gradient(135deg,var(--bg1),var(--bg2));
+    color:#111;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+    padding-bottom:40px;
+  }
 
-  #top-bar-wrapper {
-    display: flex;
+  .wrap{
+    width:100%;
+    max-width:1200px;
+    padding:18px 20px;
+    box-sizing:border-box;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    align-items:center;
+  }
+
+  /* top bar (avatars) */
+  .top-bar{
+    width:100%;
+    display:flex;
+    gap:12px;
+    padding:10px;
+    background: linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+    border-radius:14px;
+    box-shadow:0 8px 28px rgba(0,0,0,0.12);
+    overflow-x:auto;
+  }
+  .top-bar::-webkit-scrollbar{display:none;}
+  .player-block{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:88px;}
+  .avatar{position: relative;width: 56px;height:56px;border-radius:50%;padding:6px;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 22px rgba(0,0,0,0.12);cursor:pointer;}
+  .avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover;}
+  .player-name{font-size:12px;color:#fff;opacity:.95;width:88px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  /* avatar arc container */
+  .avatar svg{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+
+  /* notif below top bar (slides right in/out) */
+  .notif {
+    width: calc(100% - 40px);
+    max-width:720px;
+    margin:8px auto 0;
+    display:flex;
+    gap:12px;
+    align-items:center;
+    padding:10px 14px;
+    background: linear-gradient(90deg,#222,#111);
+    color:#fff;
+    border-radius:12px;
+    box-shadow:0 12px 30px rgba(0,0,0,0.45);
+    transform: translateX(120%);
+    opacity:0;
+    transition: transform .42s cubic-bezier(.2,.9,.3,1), opacity .28s;
+    pointer-events:none;
+    z-index:120;
+  }
+  .notif.show{ transform: translateX(0); opacity:1; pointer-events:auto; }
+  .notif.hide{ transform: translateX(120%); opacity:0; pointer-events:none; }
+  .notif img{ width:40px;height:40px;border-radius:50%;object-fit:cover; }
+  .notif .text{ font-weight:800; font-size:14px; }
+
+  /* slot reel two-box number display */
+  .number-row{
+    width:100%;
+    display:flex;
+    justify-content:center;
+    gap:18px;
+    align-items:center;
+    pointer-events:none;
+    margin-top:6px;
+  }
+  .slot-box{
+    width:140px;
+    max-width:36%;
+    border-radius:12px;
+    background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border:1px solid rgba(255,255,255,0.04);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.22);
+    display:flex;align-items:center;justify-content:center;overflow:hidden;padding:10px; position:relative;
+  }
+  .digit-viewport{ width:100%; height:64px; display:flex; align-items:center; justify-content:center; overflow:hidden; border-radius:10px; background:#111; color:#fff; }
+  .digit-strip{ display:flex; flex-direction:column; align-items:center; width:100%; transform:translateY(0); }
+  .digit{ height:64px; display:flex; align-items:center; justify-content:center; width:100%; font-weight:900; font-size:40px; color:#fff; }
+  .digit.static{ padding:6px 8px; font-size:44px; }
+
+  /* TICKET FRAME (black outer border like reference) */
+  .ticket-frame{
+    width: var(--ticket-width-mobile);
+    margin-left:10%;
+    margin-right:10%;
+    box-sizing:border-box;
+    padding:10px; /* inner padding that becomes white margin inside black frame */
+    background: var(--black-frame); /* thick outer frame */
+    border-radius:12px;
+    box-shadow: 0 16px 60px rgba(0,0,0,0.65);
+  }
+  @media(min-width:900px){
+    .ticket-frame{ width: var(--ticket-width-desktop); margin-left:25%; margin-right:25%; }
+  }
+
+  /* inner ticket panel (white-ish area where title & grid live) */
+  .ticket-card{
+    width:100%;
+    background: #fff; /* clean white inner area like printed ticket */
+    border-radius:8px;
+    padding:10px 12px;
+    box-sizing:border-box;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+
+  /* ticket top title area */
+  .ticket-title{
+    width:100%;
+    text-align:center;
+    font-weight:800;
+    letter-spacing:0.6px;
+    color:#111;
+    font-size:clamp(16px,2.4vw,22px);
+    padding:6px 0;
+    border-bottom: 2px solid rgba(0,0,0,0.06);
+  }
+
+  /* grid styling to mimic printed ticket: subtle thin internal borders, peach filled cells */
+  .ticket{
+    width:100%;
+    display:grid;
+    grid-template-columns: repeat(9, 1fr);
+    gap:6px;
+    padding:10px 6px;
+    box-sizing:border-box;
+    background:transparent;
+    justify-items:center;
+    align-items:center;
+  }
+
+  /* each cell: perfectly square via aspect-ratio, slightly rounded */
+  .cell{
+    width:100%;
+    max-width:var(--cell-max);
+    aspect-ratio: 1/1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#fff;
+    border-radius:6px;
+    border: 1px solid rgba(0,0,0,0.18);
+    font-weight:900;
+    color:#111;
+    font-size:clamp(14px,2.1vw,24px);
+    box-shadow: 0 6px 14px rgba(0,0,0,0.08), inset 0 -3px 0 rgba(0,0,0,0.02);
+    position:relative;
+  }
+
+  /* mimic the 'dot' style tambola cell (small dot in empty cells) */
+  .cell.empty::after{
+    content: "";
+    width:10px; height:10px;
+    border-radius:50%;
+    background: rgba(0,0,0,0.18);
+    position:absolute;
+    bottom:8px;
+    right:8px;
+    opacity:0.85;
+  }
+
+  /* filled (number) cells in peach */
+  .cell.filled{
+    background: var(--peach);
+    color:#111;
+    border-color: rgba(0,0,0,0.18);
+    box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+  }
+
+  /* called style (green overlay) */
+  .cell.called{
+    background: linear-gradient(90deg,#d9f6e7,#bff0c4);
+    color:#00331a;
+    border-color: rgba(0,0,0,0.12);
+    transform: translateY(-3px);
+    box-shadow: 0 18px 36px rgba(0,0,0,0.08);
+  }
+
+  /* simplified ticket footer */
+  .ticket-foot{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-weight:700;
+    color:#111;
+    font-size:12px;
+    padding:6px 4px 4px;
+    opacity:.95;
+  }
+
+  /* bottom controls: two buttons stacked vertically and called badge */
+  .bottom-bar{
+    width:100%;
+    max-width:980px;
+    display:flex;
+    gap:14px;
+    justify-content:center;
+    align-items:center;
+    margin-top:6px;
+  }
+  .controls{ display:flex; flex-direction:column; gap:10px; width:200px; }
+  .btn{ border:none; padding:12px 14px; border-radius:12px; font-weight:800; cursor:pointer; width:100%; }
+  .btn.numbers{ background: linear-gradient(90deg,#ffd54f,#ff8a65); color:#111; box-shadow:0 10px 26px rgba(0,0,0,0.18); }
+  .btn.leader{ background: linear-gradient(90deg,#4fc3f7,#3f51b5); color:#fff; box-shadow:0 10px 26px rgba(0,0,0,0.18); }
+  .called-badge{ background: rgba(255,255,255,0.06); color:#fff; padding:10px 14px; border-radius:12px; font-weight:800; min-width:140px; text-align:center; }
+
+  /* overlays (numbers & leaderboard) */
+  .backdrop{
+    position:fixed; inset:0; background: rgba(3,10,40,0.6); display:none; align-items:center; justify-content:center; z-index:12000; backdrop-filter: blur(6px);
+  }
+  .backdrop.show{ display:flex; }
+  .panel{
+    width:92%; max-width:980px; max-height:86vh; overflow:auto; padding:18px; border-radius:12px; background: rgba(255,255,255,0.04);
+    border:1px solid rgba(255,255,255,0.06);
+  }
+  .numbers-grid{ display:grid; gap:10px; justify-items:center; align-items:center; }
+  @media(min-width:720px){ .numbers-grid{ grid-template-columns: repeat(10, 1fr); } }
+  @media(max-width:719px){ .numbers-grid{ grid-template-columns: repeat(8, 1fr); } }
+  .numbers-grid .num{ width:100%; aspect-ratio:1/1; max-width:72px; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:900; font-size:14px; border-radius:10px; background: linear-gradient(180deg,#b71c1c,#c62828); box-shadow:0 10px 28px rgba(0,0,0,0.45); }
+  .numbers-grid .num.called{ background: linear-gradient(180deg,#2e7d32,#43a047); transform: translateY(-3px); }
+
+  /* leader rows */
+  .leader-row{ display:flex; gap:12px; align-items:center; padding:10px; border-radius:10px; background: rgba(255,255,255,0.02); margin-bottom:8px; }
+  .leader-row img{ width:56px; height:56px; border-radius:50%; object-fit:cover; }
+
+  /* portrait warning overlay */
+  .portrait-warning {
+    position: fixed;
+    inset: 0;
+    display: none;
     align-items: center;
     justify-content: center;
-    margin: 16px auto 0 auto;
-    padding: 16px 24px;
-    border-radius: 30px;
-    background: rgba(255,255,255,0.9);
-    max-width: 98%;
-    width: 95%;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    z-index: 16000;
+    pointer-events: auto;
   }
-
-  #topBar { display: flex; gap: 28px; overflow-x: auto; flex:1; padding:10px; scroll-behavior:smooth; justify-content:center; }
-  #topBar::-webkit-scrollbar { display:none; }
-
-  .player { flex:0 0 auto; text-align:center; position:relative; transition: transform 0.2s; }
-  .player:hover { transform: scale(1.05); }
-  .player img { width:64px; height:64px; border-radius:50%; border:3px solid #fff; box-shadow:0 4px 12px rgba(0,0,0,0.4);}
-  .player span { display:block; margin-top:6px; font-size:14px; font-weight:600; color:#222; text-shadow:0 1px 4px rgba(255,255,255,0.95); }
-
-  #achievementText { position:fixed; top:80px; left:50%; transform:translateX(-50%); font-size:clamp(28px,5vw,54px); font-weight:900; color:yellow; text-shadow:0 0 8px #ffff66,0 0 20px #ffeb3b,0 0 30px #ffd700; pointer-events:none; z-index:9999; opacity:0; transition:opacity 0.5s, transform 0.5s; }
-  #achievementText.show { opacity:1; transform:translateX(-50%) translateY(0); }
-
-  #numberOverlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.9); display:none; flex-wrap:wrap; justify-content:center; align-content:flex-start; padding:20px; overflow-y:auto; z-index:1000; }
-  #numberOverlay .num { width:50px; height:50px; margin:6px; border-radius:8px; display:flex; justify-content:center; align-items:center; font-weight:bold; font-size:18px; background:#eee; color:#333; transition: background 0.3s, transform 0.2s; }
-  #numberOverlay .num.called { background:#28a745; color:#fff; transform:scale(1.1); }
-  #numberOverlay .close-btn { position:fixed; top:10px; right:10px; background:#ff4444; color:#fff; border:none; border-radius:6px; padding:8px 14px; font-size:14px; cursor:pointer; }
-
-  #numberBox {
-    margin: 20px auto;
-    padding: 20px 40px;
-    background: rgba(255,255,255,0.95);
-    border-radius: 16px;
-    font-size: 2.8em;
-    font-weight: 800;
-    color: #222;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.3), inset 0 0 12px rgba(255,255,255,0.8);
-    display: none;
+  .portrait-warning .bg {
+    position: absolute;
+    inset: 0;
+    background: rgba(2,8,24,0.85);
+    -webkit-backdrop-filter: blur(6px);
+            backdrop-filter: blur(6px);
   }
+  .portrait-warning .card {
+    position: relative;
+    z-index: 16001;
+    width: min(94%, 540px);
+    margin: 12px;
+    background: linear-gradient(180deg,#fff,#f7f7f7);
+    color:#111;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+    text-align:center;
+    font-weight:700;
+  }
+  .portrait-warning .card h3{ margin:0 0 8px; font-size:18px; }
+  .portrait-warning .card p{ margin:6px 0 16px; font-weight:600; color:#222; opacity:0.95; }
+  .portrait-warning .card .actions{ display:flex; gap:10px; justify-content:center; margin-top:6px; }
+  .portrait-warning .card .actions button{ padding:10px 14px; border-radius:10px; border:none; cursor:pointer; font-weight:800; }
+  .portrait-warning .card .rotate { background: linear-gradient(90deg,#4fc3f7,#3f51b5); color:#fff; }
+  .portrait-warning .card .continue { background: linear-gradient(90deg,#ffd54f,#ff8a65); color:#111; }
 
-  .ticket { display:grid; grid-template-columns:repeat(9,1fr); border-radius:16px; box-shadow:0 12px 30px rgba(0,0,0,0.35); background:linear-gradient(145deg,#fff,#ffe); width:96%; margin:24px auto; overflow:hidden; border:2px solid #f0c67a; display:none; }  
-  .cell { aspect-ratio:1.3/1; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:clamp(14px,1.6vw,20px); border:1px solid #ddd; background:linear-gradient(135deg,#fff,#ffe9d6); cursor:pointer; transition: background 0.3s ease, transform 0.2s, box-shadow 0.2s; }  
-  .cell.blank { background:#fafafa; cursor:default; }  
-  .cell.correct { background:#28a745; color:#fff; box-shadow:0 0 8px #28a745 inset; }  
-  .cell.wrong { background:#dc3545; color:#fff; box-shadow:0 0 8px #dc3545 inset; }  
-  .cell:hover:not(.blank) { background:#ffe0d0; transform:scale(1.05); box-shadow:0 2px 6px rgba(0,0,0,0.3); }  
+  /* small screens */
+  @media(max-width:520px){
+    :root{ --cell-max:64px; }
+    .slot-box{ width:110px; }
+    .digit{ font-size:30px; height:52px; min-height:52px; }
+    .digit-viewport{ height:52px; }
+    .controls{ width:160px; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top-bar" id="topBar" aria-live="polite"></div>
 
-  .btns { display:flex; flex-direction:column; gap:14px; margin:18px 0 24px; width:220px; }  
-  .stats-btn { padding:14px; background:linear-gradient(135deg,#333,#555); color:#fff; font-size:16px; font-weight:600; border:none; border-radius:12px; cursor:pointer; text-align:center; transition:transform 0.2s, box-shadow 0.2s; }  
-  .stats-btn:hover { transform:translateY(-2px); box-shadow:0 6px 16px rgba(0,0,0,0.35); }  
+    <!-- notification area (appears below top bar) -->
+    <div id="notif" class="notif" aria-live="polite" role="status" style="display:flex;align-items:center;">
+      <img id="notifIcon" src="" alt="">
+      <div class="text" id="notifText"></div>
+    </div>
 
-  @media (min-width:992px) { .ticket { width:60%; max-width:700px; } .cell { aspect-ratio:1.6/1; } }  
-</style>  
-</head>  
-<body>  
+    <!-- two-box slot reel -->
+    <div class="number-row" aria-hidden="true">
+      <div class="slot-box">
+        <div class="digit-viewport" id="tensViewport"><div class="digit static" id="tensStatic">-</div></div>
+      </div>
+      <div class="slot-box">
+        <div class="digit-viewport" id="unitsViewport"><div class="digit static" id="unitsStatic">-</div></div>
+      </div>
+    </div>
 
-<!-- === TOP BAR === -->
-<div id="top-bar-wrapper">
-  <div id="topBar"></div>
-</div>
+    <!-- TICKET FRAME (outer black) -->
+    <div class="ticket-frame" aria-hidden="false">
+      <div class="ticket-card" role="region" aria-label="Tambola ticket">
+        <div class="ticket-title">Tambola ticket No : <span id="ticketNo">1</span></div>
 
-<div id="achievementText"></div>
-<div id="numberOverlay"></div>  
+        <!-- ticket grid -->
+        <div class="ticket" id="ticket" role="grid" aria-label="Tambola ticket"></div>
 
-<div id="numberBox">--</div>
+        <div class="ticket-foot">
+          <div>SN: TB-2025-001</div>
+          <div>5 numbers per row • 15 numbers total</div>
+        </div>
+      </div>
+    </div>
 
-<div class="btns">  
-  <button id="startBtn" class="stats-btn" style="display:none;" onclick="startGame()">Start Game</button>
-  <button id="showNumberBtn" class="stats-btn" style="display:none;" onclick="sendNumber()">Show Number</button>
-  <button class="stats-btn" onclick="toggleNumberOverlay()">Show Numbers</button>
-</div>  
+    <!-- bottom controls -->
+    <div class="bottom-bar">
+      <div class="called-badge" id="calledBadge">Called: 0 / 90</div>
+      <div class="controls">
+        <button class="btn numbers" id="openNumbersBtn">Show Numbers</button>
+        <button class="btn leader" id="openLeaderboardBtn">Leaderboard</button>
+        <!-- host controls (shown when host) -->
+        <button class="btn" id="startBtn" style="display:none;background:#4caf50;color:#fff;margin-top:6px;">Start Game</button>
+        <button class="btn" id="sendNumBtn" style="display:none;background:#1976d2;color:#fff;margin-top:6px;">Call Number (host)</button>
+      </div>
+    </div>
+  </div>
 
-<div class="ticket" id="ticket"></div>  
+  <!-- overlays -->
+  <div class="backdrop" id="numbersBackdrop" aria-hidden="true">
+    <div class="panel" role="dialog" aria-modal="true" aria-labelledby="numbersTitle">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <h2 id="numbersTitle" style="color:#fff;margin:0;">All Numbers (1–90)</h2>
+        <button id="closeNumbersBtn" style="background:transparent;border:none;color:#fff;font-size:20px;cursor:pointer;">✕</button>
+      </div>
+      <div class="numbers-grid" id="numbersGrid" aria-live="polite"></div>
+    </div>
+  </div>
 
-<script>  
-console.log("🚀 Script loaded");
+  <div class="backdrop" id="leaderBackdrop" aria-hidden="true">
+    <div class="panel" role="dialog" aria-modal="true" aria-labelledby="leaderTitle">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <h2 id="leaderTitle" style="color:#fff;margin:0;">Leaderboard</h2>
+        <button id="closeLeaderBtn" style="background:transparent;border:none;color:#fff;font-size:20px;cursor:pointer;">✕</button>
+      </div>
+      <div id="leaderList" style="max-height:70vh; overflow:auto;"></div>
+    </div>
+  </div>
 
-const ticketEl = document.getElementById("ticket");  
-const achievementText = document.getElementById("achievementText");  
-const topBar = document.getElementById("topBar");  
-const numberOverlay = document.getElementById("numberOverlay");
-const numberBox = document.getElementById("numberBox");
-const showNumberBtn = document.getElementById("showNumberBtn");
+  <!-- center achievement -->
+  <div class="backdrop center-ach-overlay" id="centerAch" style="display:none;">
+    <div style="position:absolute;inset:0;background:rgba(0,0,0,0.45);backdrop-filter:blur(6px)"></div>
+    <div style="background:#fff;padding:18px 20px;border-radius:10px;z-index:3;"><strong id="centerText">Achievement</strong></div>
+  </div>
 
-let players = {}, playerAchievements = {}, markedNumbers = new Set();
-let ticketData = [];
-let calledNumbers = new Set();
+  <!-- PORTRAIT WARNING -->
+  <div id="portraitWarning" class="portrait-warning" aria-hidden="true" role="dialog" aria-modal="true" aria-live="assertive">
+    <div class="bg"></div>
+    <div class="card" role="document">
+      <h3>Best in Landscape</h3>
+      <p>This interface is optimized for landscape. Rotate your device for the best experience.</p>
+      <div class="actions">
+        <button class="rotate" id="rotateBtn" title="Rotate device">Rotate</button>
+        <button class="continue" id="continueBtn" title="Continue anyway">Continue anyway</button>
+      </div>
+    </div>
+  </div>
 
+  <!-- small hidden svg gradient for avatar arcs -->
+  <svg width="0" height="0" style="position:absolute;left:-9999px;top:-9999px">
+    <defs>
+      <linearGradient id="arcGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#ffd54f"/><stop offset="50%" stop-color="#ff8a65"/><stop offset="100%" stop-color="#ff3d00"/>
+      </linearGradient>
+    </defs>
+  </svg>
+
+<script>
+/* ---------- WebSocket & App state ---------- */
+// NOTE: change WS URL if you use another host
+const WS_URL = "wss://multiplyer-game.onrender.com";
+let ws = null;
+
+// Player / UI state
+let playersMap = {};            // keyed by playerId: {playerId, username, icon, achievement}
+let playerAchievements = {};    // map playerId -> Set(achievements)
+const achievementNames = ['None','First five','First seven','First row','Second row','Third row','Full house'];
+let ticketGrid = null;          // 3x9 array of { number|null, called, row }
+const calledSet = new Set();
+let called_numbers = 0, row1=0,row2=0,row3=0;
+let awarded = {firstFive:false,firstSeven:false,row1:false,row2:false,row3:false,fullHouse:false};
+const ticketOwnerIndex = 0; // will not be used to send awards; server normally decides winners
+
+// local tokens from localStorage (as your other file used)
 const roomId = localStorage.getItem("roomId");
 const playerId = localStorage.getItem("playerId");
 const wscode = localStorage.getItem("wscode");
-const username = localStorage.getItem("username");
-const icon = localStorage.getItem("icon");
+const username = localStorage.getItem("username") || "You";
+const icon = localStorage.getItem("icon") || "avt1.jpg";
 const isHost = localStorage.getItem("ishost") === "true";
 
-console.log("Player data:", {roomId, playerId, wscode, username, icon, isHost});
+const topBarEl = document.getElementById('topBar');
+const notifEl = document.getElementById('notif');
+const notifIcon = document.getElementById('notifIcon');
+const notifText = document.getElementById('notifText');
 
-// Show start button if host
-if (isHost) document.getElementById("startBtn").style.display="block";
+// small helper
+function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
 
-// === IMAGE LOADER HELPER ===
-function checkImage(url, name){
-  const img = new Image();
-  img.src = url;
-  img.onload = ()=>console.log(`✅ Loaded ${name}: ${url}`);
-  img.onerror = ()=>console.error(`❌ Failed to load ${name}: ${url}`);
-  return url;
-}
-
-// WebSocket
-const ws = new WebSocket("wss://multiplyer-game.onrender.com");
-ws.onopen = () => {
-  console.log("🔵 WebSocket opened");
-  ws.send(JSON.stringify({typeReq:"pageEntered", roomId, playerId, wscode, isHost}));
-  players[playerId] = { playerId, username, icon };
-  renderTopBar();
-};
-ws.onmessage = (msg) => {
-  const data = JSON.parse(msg.data);
-  console.log("📨 WS message received:", data);
-  if(data.type==="ijoin" || data.type==="hejoins") {
-    data.players.forEach(p => { players[p.playerId] = p; });
-    renderTopBar();
+/* ---------- Avatar arc helper (SVG segments) ---------- */
+function createAvatarArcs(el,segments=6){
+  // remove existing
+  const existing = el.querySelector('svg[data-arcs]');
+  if(existing) existing.remove();
+  const size = el.clientWidth || 56;
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS,'svg');
+  svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+  svg.setAttribute('data-arcs','1');
+  svg.setAttribute('width','100%');
+  svg.setAttribute('height','100%');
+  const cx=size/2, cy=size/2;
+  const r=(size/2)-4;
+  const gap=6, sweep=360/segments;
+  for(let i=0;i<segments;i++){
+    const start = i*sweep + gap/2;
+    const end = (i+1)*sweep - gap/2;
+    const path = document.createElementNS(svgNS,'path');
+    // describe small arc
+    const startRad = (start-90)*Math.PI/180;
+    const endRad = (end-90)*Math.PI/180;
+    const startX = cx + r * Math.cos(endRad);
+    const startY = cy + r * Math.sin(endRad);
+    const endX = cx + r * Math.cos(startRad);
+    const endY = cy + r * Math.sin(startRad);
+    const laf = (end - start) <= 180 ? 0 : 1;
+    const d = `M ${startX} ${startY} A ${r} ${r} 0 ${laf} 0 ${endX} ${endY}`;
+    path.setAttribute('d', d);
+    path.setAttribute('fill','none');
+    path.setAttribute('stroke','rgba(0,0,0,0.12)');
+    path.setAttribute('stroke-width','4');
+    path.setAttribute('class','arc-seg');
+    path.setAttribute('data-seg', String(i+1));
+    svg.appendChild(path);
   }
-  if(data.type==="heleft"){ delete players[data.playerId]; renderTopBar(); }
-  if(data.type==="heachieves"){ showAchievement(`${data.playerName} achieved ${data.achievement}`); updatePlayerArc(data.playerId, data.achievement);}
-  if(data.type==="sendTicket"){ ticketData=data.ticket; renderTicket(ticketData);}
-  if(data.type==="sendNumber"){ handleNumber(data.number);}
-  if(data.type==="gameStarts"){ 
-    calledNumbers.clear(); 
-    ticketEl.innerHTML=""; 
-    ticketEl.style.display="grid";
-    numberBox.style.display="block";
-    if(isHost) showNumberBtn.style.display="block";
-  }
-};
-
-function startGame(){
-  console.log("▶️ Start button clicked");
-  if(ws.readyState===WebSocket.OPEN) ws.send(JSON.stringify({typeReq:"startGame", roomId, playerId, wscode}));
+  el.appendChild(svg);
 }
 
-function sendNumber(){
-  if(ws.readyState===WebSocket.OPEN) ws.send(JSON.stringify({typeReq:"sendNumber", roomId, playerId, wscode}));
-}
-
-// === TOP BAR ===
-function renderTopBar(){
-  console.log("🔹 Rendering top bar", players);
-  topBar.innerHTML="";
-  Object.values(players).forEach((p,i)=>{
-    if(!playerAchievements[p.playerId]) playerAchievements[p.playerId]=new Set();
-    
-    const iconPath = p.icon ? `/${p.icon}` : `/avt${(i % 8) + 1}.jpg`;
-    checkImage(iconPath, `Player ${p.username} icon`);
-    
-    const div=document.createElement("div");
-    div.className="player";
-    div.id="player-"+p.playerId;
-    div.innerHTML=`<img src="${iconPath}"><span>${p.username || 'Player'}</span>`;
-    topBar.appendChild(div);
-  });
-}
-
-function updatePlayerArc(playerId, achievement){
-  if(!playerAchievements[playerId]) playerAchievements[playerId]=new Set();
-  playerAchievements[playerId].add(achievement);
-  console.log(`🏆 Player ${playerId} achievement added: ${achievement}`);
-}
-
-function showAchievement(text){
-  console.log(`✨ Showing achievement: ${text}`);
-  achievementText.textContent=text;
-  achievementText.classList.add("show");
-  setTimeout(()=>{ achievementText.classList.remove("show"); achievementText.textContent=""; },2000);
-}
-
-// === TICKET ===
-function renderTicket(ticket){
-  console.log("🎫 Rendering ticket:");
-  ticketEl.innerHTML="";
-  ticket.flat().forEach(num=>{
-    const cell=document.createElement("div");
-    cell.classList.add("cell");
-    if(num===null || num===""){ 
-      cell.classList.add("blank"); 
+function activateAvatarArc(el, count){
+  const segs = el.querySelectorAll('.arc-seg');
+  segs.forEach((s, idx) => {
+    if(idx < count){
+      s.setAttribute('stroke','url(#arcGradient)');
+      s.setAttribute('filter','drop-shadow(0 6px 8px rgba(0,0,0,0.25))');
     } else {
-      cell.textContent=num;
-      cell.onclick=()=>playerMark(cell,num);
+      s.setAttribute('stroke','rgba(255,255,255,0.06)');
+      s.removeAttribute('filter');
     }
-    ticketEl.appendChild(cell);
   });
 }
 
-function playerMark(cell,num){
-  if(calledNumbers.has(num)){
-    cell.classList.add("correct");
-    console.log(`✅ Correct mark on number: ${num}`);
-  }else{
-    cell.classList.add("wrong");
-    console.log(`❌ Wrong mark on number: ${num}`);
-    setTimeout(()=>cell.classList.remove("wrong"),2000);
+/* ---------- render top bar (playersMap) ---------- */
+function renderTopBar(){
+  topBarEl.innerHTML = '';
+  Object.values(playersMap).forEach((p, idx) => {
+    const block = document.createElement('div');
+    block.className = 'player-block';
+    const av = document.createElement('div');
+    av.className = 'avatar';
+    av.title = p.username || 'Player';
+    const img = document.createElement('img');
+    img.src = p.icon || `avt${(idx%8)+1}.jpg`;
+    img.alt = p.username || 'Player';
+    av.appendChild(img);
+    // create small arcs
+    createAvatarArcs(av,6);
+    // set active arcs based on achievement number (if present)
+    const ach = Number(p.achievement) || 0;
+    setTimeout(()=> activateAvatarArc(av, ach), 40);
+    const nm = document.createElement('div');
+    nm.className = 'player-name';
+    nm.textContent = p.username || 'Player';
+    block.appendChild(av);
+    block.appendChild(nm);
+    topBarEl.appendChild(block);
+  });
+}
+
+/* ---------- notifications ---------- */
+function showTopNotification(player, aIdx){
+  notifIcon.src = player.icon || 'avt1.jpg';
+  notifText.textContent = `${player.username || player.name} has claimed ${achievementNames[aIdx] || 'achievement'}`;
+  notifEl.classList.remove('hide'); notifEl.classList.add('show');
+  clearTimeout(notifEl._t);
+  notifEl._t = setTimeout(()=> {
+    notifEl.classList.remove('show'); notifEl.classList.add('hide');
+    setTimeout(()=> notifEl.classList.remove('hide'),480);
+  }, 2200);
+}
+
+/* ---------- ticket building & render ---------- */
+function buildTicketFromServer(serverTicket){
+  // Expect serverTicket as 3x9 array (numbers or null). Convert to our ticketGrid format.
+  if(!Array.isArray(serverTicket) || serverTicket.length < 3){
+    // fallback random local construction
+    return buildRandomTicket();
+  }
+  const grid = serverTicket.map((row, r) => row.map((n) => ({ number: n === null ? null : n, called: false, row: r+1 })));
+  return grid;
+}
+function buildRandomTicket(){
+  // fallback random generation (keeps existing algorithm)
+  const MAX=1200;
+  for(let t=0;t<MAX;t++){
+    const counts = Array(9).fill(1);
+    let extras = 15-9;
+    while(extras>0){ const c=randInt(0,8); if(counts[c]<3){ counts[c]++; extras--; } }
+    const columns = [];
+    for(let c=0;c<9;c++){
+      const low = c===0?1:c*10; const high = c===8?90:c*10+9;
+      const pool = []; for(let v=low; v<=high; v++) pool.push(v);
+      const pick = pool.sort(()=>0.5-Math.random()).slice(0,counts[c]).sort((a,b)=>a-b);
+      columns.push(pick);
+    }
+    const grid = Array.from({length:3}, ()=>Array(9).fill(null));
+    for(let c=0;c<9;c++){
+      const rows = [0,1,2].sort(()=>0.5-Math.random()).slice(0,counts[c]).sort((a,b)=>a-b);
+      const nums = columns[c].slice().sort((a,b)=>a-b);
+      for(let i=0;i<rows.length;i++) grid[rows[i]][c] = nums[i];
+    }
+    const rowCounts = grid.map(r=>r.reduce((s,x)=>s + (x!==null?1:0),0));
+    if(rowCounts.every(rc=>rc===5)){
+      return grid.map((row,r)=> row.map(num=> ({ number: num===null?null:num, called:false, row: r+1 })));
+    }
+  }
+  // fallback simple
+  const fallback = Array.from({length:3}, ()=>Array(9).fill(null));
+  const all = Array.from({length:90},(_,i)=>i+1).sort(()=>0.5-Math.random()).slice(0,15).sort((a,b)=>a-b);
+  let idx=0;
+  for(let r=0;r<3;r++){ for(let c=0;c<9 && idx<15;c++){ fallback[r][c] = { number: all[idx++], called:false, row: r+1 }; } }
+  return fallback;
+}
+
+function renderTicket(){
+  const el = document.getElementById('ticket');
+  el.innerHTML = '';
+  if(!ticketGrid){
+    el.innerHTML = `<div style="padding:20px;text-align:center;color:#666">Waiting for ticket…</div>`;
+    return;
+  }
+  // Ensure ticket shows cells correctly; we create 27 cells
+  for(let r=0;r<3;r++){
+    for(let c=0;c<9;c++){
+      const cell = ticketGrid[r][c];
+      const d = document.createElement('div');
+      d.className = 'cell';
+      if(!cell || cell.number === null){
+        d.classList.add('empty');
+        d.innerHTML = '';
+      } else {
+        d.classList.add('filled');
+        d.innerHTML = `<div class="num">${cell.number}</div>`;
+        if(cell.called) d.classList.add('called');
+        // clicking a cell is local mark for user (no server action)
+        d.addEventListener('click', ()=> {
+          if(cell.called) {
+            d.classList.add('called');
+          } else {
+            d.classList.add('wrong');
+            setTimeout(()=> d.classList.remove('wrong'), 900);
+          }
+        });
+      }
+      el.appendChild(d);
+    }
   }
 }
 
-// === NUMBERS OVERLAY ===
-function initNumberOverlay(){
-  console.log("🔢 Initializing number overlay");
-  numberOverlay.innerHTML=`<button class="close-btn" onclick="toggleNumberOverlay()">Close</button>`;
+/* ---------- called numbers handling ---------- */
+function updateCalledBadge(){
+  document.getElementById('calledBadge').textContent = `Called: ${calledSet.size} / 90`;
+}
+
+function processCalledNumber(n){
+  if(!ticketGrid) return;
+  let matched=false;
+  for(let r=0;r<3;r++){
+    for(let c=0;c<9;c++){
+      const cell = ticketGrid[r][c];
+      if(cell && cell.number === n && !cell.called){
+        cell.called = true; matched = true;
+        called_numbers++;
+        if(cell.row===1) row1++; else if(cell.row===2) row2++; else row3++;
+      }
+    }
+  }
+  if(matched){
+    renderTicket();
+    checkAchievements();
+  }
+}
+
+/* achievements checks and sending iAchieve */
+function checkAchievements(){
+  // only demonstrate a few: firstFive, firstSeven, row1/2/3, fullHouse
+  if(!awarded.firstFive && called_numbers >= 5){ awarded.firstFive=true; localAchieved(1); return; }
+  if(!awarded.firstSeven && called_numbers >= 7){ awarded.firstSeven=true; localAchieved(2); return; }
+  if(!awarded.row1 && row1 >= 5){ awarded.row1=true; localAchieved(3); return; }
+  if(!awarded.row2 && row2 >= 5){ awarded.row2=true; localAchieved(4); return; }
+  if(!awarded.row3 && row3 >= 5){ awarded.row3=true; localAchieved(5); return; }
+  if(!awarded.fullHouse && called_numbers >= 15){ awarded.fullHouse=true; localAchieved(6); return; }
+}
+
+function localAchieved(idx){
+  // show center & send WS to notify server that this client (playerId) achieved
+  const owner = { playerId, username, icon };
+  showCenter(`${owner.username || 'You'} claimed ${achievementNames[idx] || 'achievement'}`);
+  showTopNotification({ username: owner.username, icon: owner.icon }, idx);
+  // notify server
+  if(ws && ws.readyState === WebSocket.OPEN){
+    ws.send(JSON.stringify({ typeReq: 'iAchieve', roomId, playerId, wscode, achievement: idx }));
+  }
+}
+
+/* ---------- numbers overlay rendering ---------- */
+function renderNumbersOverlay(){
+  const box = document.getElementById('numbersGrid');
+  box.innerHTML = '';
   for(let i=1;i<=90;i++){
-    const div=document.createElement("div");
-    div.className="num";
-    div.textContent=i;
-    div.id="num-"+i;
-    numberOverlay.appendChild(div);
+    const d = document.createElement('div');
+    d.className = 'num';
+    d.textContent = i;
+    d.setAttribute('data-num', i);
+    if(calledSet.has(i)) d.classList.add('called');
+    box.appendChild(d);
   }
 }
-initNumberOverlay();
-
-function toggleNumberOverlay(){ 
-  numberOverlay.style.display = numberOverlay.style.display==="flex" ? "none" : "flex"; 
-  console.log(`🔢 Number overlay ${numberOverlay.style.display}`);
+function markOverlay(n){
+  const box = document.getElementById('numbersGrid');
+  const el = box.querySelector(`.num[data-num="${n}"]`);
+  if(!el) return;
+  el.classList.add('called','new');
+  el.scrollIntoView({behavior:'smooth',block:'center',inline:'center'});
+  setTimeout(()=> el.classList.remove('new'), 1200);
 }
 
-function handleNumber(num){
-  console.log(`🎯 Number called: ${num}`);
-  calledNumbers.add(num);
-  autoMark(num);
-  const el=document.getElementById("num-"+num);
-  if(el) el.classList.add("called");
-  numberBox.textContent = num;
-}
-
-function autoMark(num){
-  document.querySelectorAll("#ticket .cell").forEach(cell=>{
-    if(parseInt(cell.textContent)===num){ 
-      cell.classList.add("correct"); 
-      console.log(`✅ Auto marked ${num} on ticket`);
-    }
+/* ---------- slot animation (two-digit) ---------- */
+function animateDigit(viewportId, targetDigit){
+  const viewport = document.getElementById(viewportId);
+  viewport.innerHTML = '';
+  const strip = document.createElement('div');
+  strip.className = 'digit-strip';
+  const spins = 10;
+  for(let i=0;i<spins;i++){
+    const d = document.createElement('div'); d.className='digit'; d.textContent = String(randInt(0,9));
+    strip.appendChild(d);
+  }
+  const final = document.createElement('div'); final.className='digit'; final.textContent = String(targetDigit);
+  strip.appendChild(final);
+  viewport.appendChild(strip);
+  requestAnimationFrame(()=>{
+    const item = strip.querySelector('.digit');
+    if(!item){ viewport.textContent = String(targetDigit); return; }
+    const h = item.offsetHeight || 64;
+    const targetIndex = strip.children.length - 1;
+    const translateY = - (h * targetIndex);
+    strip.style.transform = 'translateY(0px)';
+    strip.style.transition = 'transform 820ms cubic-bezier(.18,.9,.2,1)';
+    requestAnimationFrame(()=> strip.style.transform = `translateY(${translateY}px)`);
+    setTimeout(()=> { viewport.innerHTML = `<div class="digit static">${String(targetDigit)}</div>`; }, 880);
   });
 }
-</script>  
-</body>  
+function showTwoDigit(num){
+  // ensure two digits for numbers < 10 -> show 0 as left digit
+  const tens = Math.floor(num/10);
+  const units = num % 10;
+  animateDigit('tensViewport', tens);
+  animateDigit('unitsViewport', units);
+}
+
+/* ---------- server message handlers ---------- */
+function handleWSMessage(data){
+  if(!data || !data.type) return;
+  switch(data.type){
+    case 'ijoin':
+    case 'hejoins':
+      // server provides array of players
+      if(Array.isArray(data.players)){
+        data.players.forEach(p => {
+          if(!p.playerId) return;
+          playersMap[p.playerId] = { playerId: p.playerId, username: p.username || p.name || ('player'+p.playerId), icon: p.icon || `avt1.jpg`, achievement: p.achievement || 0 };
+        });
+        renderTopBar();
+      }
+      break;
+    case 'heleft':
+      if(data.playerId && playersMap[data.playerId]){ delete playersMap[data.playerId]; renderTopBar(); }
+      break;
+    case 'heachieves':
+      // payload: { playerId, playerName, achievement, icon }
+      if(data.playerId && playersMap[data.playerId]){
+        playersMap[data.playerId].achievement = data.achievement || 0;
+        renderTopBar();
+      } else if(data.playerId){
+        // add if missing
+        playersMap[data.playerId] = { playerId: data.playerId, username: data.playerName || 'Player', icon: data.icon || 'avt1.jpg', achievement: data.achievement || 0 };
+        renderTopBar();
+      }
+      // show notification
+      showTopNotification({ username: data.playerName, icon: data.icon }, data.achievement);
+      break;
+    case 'sendTicket':
+      // server sends the ticket grid
+      ticketGrid = buildTicketFromServer(data.ticket);
+      // reset states
+      calledSet.clear(); called_numbers=0; row1=row2=row3=0;
+      awarded = {firstFive:false,firstSeven:false,row1:false,row2:false,row3:false,fullHouse:false};
+      renderTicket();
+      renderNumbersOverlay();
+      updateCalledBadge();
+      break;
+    case 'sendNumber':
+      // server sent a number (1-90)
+      handleNumberFromServer(Number(data.number));
+      break;
+    case 'gameStarts':
+      // server triggers game start
+      calledSet.clear(); called_numbers=0; row1=row2=row3=0;
+      awarded = {firstFive:false,firstSeven:false,row1:false,row2:false,row3:false,fullHouse:false};
+      document.getElementById('ticket').style.display = 'grid';
+      renderTicket();
+      renderNumbersOverlay();
+      updateCalledBadge();
+      // show host controls if host
+      if(isHost){
+        document.getElementById('startBtn').style.display = 'none';
+        document.getElementById('sendNumBtn').style.display = 'block';
+      }
+      break;
+    case 'ijoin_ack':
+      // some servers may reply ack; ignore or handle
+      break;
+    default:
+      console.log('Unhandled WS message type:', data.type, data);
+  }
+}
+
+/* ---------- handle incoming number ---------- */
+function handleNumberFromServer(n){
+  if(!n || isNaN(n)) return;
+  if(calledSet.has(n)) return; // already called
+  calledSet.add(n);
+  updateCalledBadge();
+  showTwoDigit(n);
+  markOverlay(n);
+  processCalledNumber(n);
+  renderNumbersOverlay();
+}
+
+/* ---------- leader board update (simple) ---------- */
+function updateLeaderboardUI(){
+  const list = document.getElementById('leaderList');
+  list.innerHTML = '';
+  // create an array of players, sorted by achievement number (desc)
+  const arr = Object.values(playersMap).slice().sort((a,b)=> (b.achievement || 0) - (a.achievement || 0));
+  arr.forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'leader-row';
+    const img = document.createElement('img'); img.src = p.icon || 'avt1.jpg'; img.alt = p.username || 'Player';
+    const info = document.createElement('div');
+    info.innerHTML = `<div style="color:#fff;font-weight:900;">${p.username || 'Player'}</div><div style="color:#fff;opacity:.9">${p.achievement ? achievementNames[p.achievement] : '—'}</div>`;
+    row.appendChild(img); row.appendChild(info);
+    list.appendChild(row);
+  });
+}
+
+/* ---------- center achievement ---------- */
+function showCenter(msg){
+  const wrap = document.getElementById('centerAch');
+  const txt = document.getElementById('centerText');
+  txt.textContent = msg;
+  wrap.style.display = 'flex';
+  setTimeout(()=> wrap.style.display = 'none', 2600);
+}
+
+/* ---------- portrait warning detection & UI ---------- */
+const portraitWarning = document.getElementById('portraitWarning');
+const rotateBtn = document.getElementById('rotateBtn');
+const continueBtn = document.getElementById('continueBtn');
+let portraitSuppressed = false;
+function isPortrait() {
+  try {
+    return (window.matchMedia && window.matchMedia("(orientation: portrait)").matches) || (window.innerHeight > window.innerWidth);
+  } catch(e){ return window.innerHeight > window.innerWidth; }
+}
+function showPortraitWarning(){ portraitWarning.style.display = 'flex'; portraitWarning.setAttribute('aria-hidden','false'); }
+function hidePortraitWarning(){ portraitWarning.style.display = 'none'; portraitWarning.setAttribute('aria-hidden','true'); }
+function evaluatePortraitWarning(){
+  if(isPortrait()){
+    if(!portraitSuppressed) showPortraitWarning();
+  } else {
+    portraitSuppressed = false;
+    hidePortraitWarning();
+  }
+}
+rotateBtn.addEventListener('click', ()=> rotateBtn.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-6px)' }, { transform: 'translateY(0)' }], { duration: 420 }));
+continueBtn.addEventListener('click', ()=> { portraitSuppressed = true; hidePortraitWarning(); });
+window.addEventListener('orientationchange', ()=> setTimeout(evaluatePortraitWarning, 300), { passive:true });
+window.addEventListener('resize', ()=> setTimeout(evaluatePortraitWarning, 220), { passive:true });
+document.addEventListener('DOMContentLoaded', ()=> setTimeout(evaluatePortraitWarning, 120));
+
+/* ---------- UI wiring ---------- */
+document.getElementById('openNumbersBtn').addEventListener('click', ()=> document.getElementById('numbersBackdrop').classList.add('show'));
+document.getElementById('closeNumbersBtn').addEventListener('click', ()=> document.getElementById('numbersBackdrop').classList.remove('show'));
+document.getElementById('openLeaderboardBtn').addEventListener('click', ()=> { updateLeaderboardUI(); document.getElementById('leaderBackdrop').classList.add('show'); });
+document.getElementById('closeLeaderBtn').addEventListener('click', ()=> document.getElementById('leaderBackdrop').classList.remove('show'));
+document.getElementById('numbersBackdrop').addEventListener('click', (e)=>{ if(e.target === e.currentTarget) e.currentTarget.classList.remove('show'); });
+document.getElementById('leaderBackdrop').addEventListener('click', (e)=>{ if(e.target === e.currentTarget) e.currentTarget.classList.remove('show'); });
+
+/* host buttons */
+document.getElementById('startBtn').addEventListener('click', ()=> {
+  if(ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ typeReq: 'startGame', roomId, playerId, wscode }));
+});
+document.getElementById('sendNumBtn').addEventListener('click', ()=> {
+  if(ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ typeReq: 'sendNumber', roomId, playerId, wscode }));
+});
+
+/* ---------- init WebSocket ---------- */
+function initWS(){
+  ws = new WebSocket(WS_URL);
+  ws.addEventListener('open', ()=>{
+    console.log('WS open, sending pageEntered');
+    ws.send(JSON.stringify({ typeReq: 'pageEntered', roomId, playerId, wscode, isHost }));
+    // if host reveal start button
+    if(isHost) document.getElementById('startBtn').style.display = 'block';
+  });
+  ws.addEventListener('message', (ev)=>{
+    try {
+      const data = JSON.parse(ev.data);
+      // route to handler
+      handleWSMessage(data);
+    } catch(e){
+      console.warn('Invalid WS message', e, ev.data);
+    }
+  });
+  ws.addEventListener('close', ()=> {
+    console.warn('WS closed, will attempt reconnect in 2s');
+    setTimeout(initWS, 2000);
+  });
+  ws.addEventListener('error', (err)=> {
+    console.error('WS error', err);
+    ws.close();
+  });
+}
+initWS();
+
+/* ---------- initial UI state ---------- */
+(function init(){
+  // dummy players for initial render if server not populated yet
+  playersMap = {};
+  for(let i=1;i<=6;i++){
+    playersMap['p'+i] = { playerId:'p'+i, username:'Player'+i, icon:`avt${i}.jpg`, achievement: 0 };
+  }
+  // include local user if available
+  if(playerId) playersMap[playerId] = { playerId, username: username || 'You', icon: icon || 'avt1.jpg', achievement:0 };
+
+  renderTopBar();
+
+  // build a fallback ticket to start
+  ticketGrid = buildRandomTicket();
+  renderTicket();
+  renderNumbersOverlay();
+  updateCalledBadge();
+
+  // initial two-digit shows
+  document.getElementById('tensStatic').textContent = '-';
+  document.getElementById('unitsStatic').textContent = '-';
+})();
+  
+/* ---------- helper: prevent pinch/zoom on mobile ---------- */
+(function preventTouchZoom(){
+  let lastTouchEnd=0;
+  document.addEventListener('touchstart', function(e){ if(e.touches.length>1) e.preventDefault(); }, {passive:false});
+  document.addEventListener('touchend', function(e){ const now = Date.now(); if(now - lastTouchEnd <= 300) e.preventDefault(); lastTouchEnd = now; }, {passive:false});
+})();
+</script>
+</body>
 </html>
