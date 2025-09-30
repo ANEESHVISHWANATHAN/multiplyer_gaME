@@ -61,6 +61,21 @@
   /* avatar arc container */
   .avatar svg{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
 
+  /* quick ws log (small, at bottom of topbar) */
+  .ws-log {
+    font-family: monospace;
+    font-size:12px;
+    color: #ddd;
+    background: rgba(0,0,0,0.25);
+    padding:8px 10px;
+    border-radius:8px;
+    margin-top:6px;
+    width:100%;
+    max-height:120px;
+    overflow:auto;
+    box-sizing:border-box;
+  }
+
   /* notif below top bar (slides right in/out) */
   .notif {
     width: calc(100% - 40px);
@@ -306,6 +321,9 @@
   <div class="wrap">
     <div class="top-bar" id="topBar" aria-live="polite"></div>
 
+    <!-- ws debug log (tiny, non-intrusive) -->
+    <div id="wsLog" class="ws-log" aria-hidden="false" style="display:none;"></div>
+
     <!-- notification area (appears below top bar) -->
     <div id="notif" class="notif" aria-live="polite" role="status" style="display:flex;align-items:center;">
       <img id="notifIcon" src="" alt="">
@@ -417,7 +435,7 @@ const ticketOwnerIndex = 0; // will not be used to send awards; server normally 
 
 // local tokens from localStorage (as your other file used)
 const roomId = localStorage.getItem("roomId");
-const playerId = localStorage.getItem("playerId");
+const playerId = localStorage.getItem("playerId") || ('local-' + Math.floor(Math.random()*99999));
 const wscode = localStorage.getItem("wscode");
 const username = localStorage.getItem("username") || "You";
 const icon = localStorage.getItem("icon") || "avt1.jpg";
@@ -427,9 +445,34 @@ const topBarEl = document.getElementById('topBar');
 const notifEl = document.getElementById('notif');
 const notifIcon = document.getElementById('notifIcon');
 const notifText = document.getElementById('notifText');
+const wsLogEl = document.getElementById('wsLog');
 
 // small helper
 function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+
+/* ---------- WS logging helpers ---------- */
+function appendWsLogLine(line){
+  // show tiny on-page ws log for quick debugging
+  if(!wsLogEl) return;
+  wsLogEl.style.display = ''; // show when first message appears
+  const time = new Date().toLocaleTimeString();
+  const item = document.createElement('div');
+  item.textContent = `[${time}] ${line}`;
+  wsLogEl.insertBefore(item, wsLogEl.firstChild);
+  // keep it concise
+  while(wsLogEl.children.length > 60) wsLogEl.removeChild(wsLogEl.lastChild);
+  console.log(line);
+}
+
+function wsSend(obj){
+  const s = JSON.stringify(obj);
+  appendWsLogLine('→ SENT: ' + s);
+  if(ws && ws.readyState === WebSocket.OPEN){
+    ws.send(s);
+  } else {
+    appendWsLogLine('⚠️ Cannot send — WS not open');
+  }
+}
 
 /* ---------- Avatar arc helper (SVG segments) ---------- */
 function createAvatarArcs(el,segments=6){
@@ -508,17 +551,24 @@ function renderTopBar(){
     av.className = 'avatar';
     av.title = p.username || 'Player';
     const img = document.createElement('img');
-    img.src = p.icon || `avt${(idx%8)+1}.jpg`;
+    // handle absolute or relative icon paths
+    if(p.icon && (p.icon.startsWith('http') || p.icon.startsWith('//'))){
+      img.src = p.icon;
+    } else if(p.icon){
+      img.src = p.icon.startsWith('/') ? p.icon : '/' + p.icon;
+    } else {
+      img.src = `avt${(idx%8)+1}.jpg`;
+    }
     img.alt = p.username || 'Player';
     av.appendChild(img);
-    // create small arcs
+    // create small arcs (achievement indicator)
     createAvatarArcs(av,6);
-    // set active arcs based on achievement number (if present)
     const ach = Number(p.achievement) || 0;
+    // slight async to ensure arc elements appended
     setTimeout(()=> activateAvatarArc(av, ach), 40);
     const nm = document.createElement('div');
     nm.className = 'player-name';
-    nm.textContent = p.username || 'Player';
+    nm.textContent = (p.username || 'Player') + (p.playerId === playerId ? ' (you)' : '');
     block.appendChild(av);
     block.appendChild(nm);
     topBarEl.appendChild(block);
@@ -535,6 +585,30 @@ function showTopNotification(player, aIdx){
     notifEl.classList.remove('show'); notifEl.classList.add('hide');
     setTimeout(()=> notifEl.classList.remove('hide'),480);
   }, 2200);
+}
+
+/* ---------- numbers overlay rendering ---------- */
+function renderNumbersOverlay(){
+  const box = document.getElementById('numbersGrid');
+  if(!box) return;
+  box.innerHTML = '';
+  for(let i=1;i<=90;i++){
+    const d = document.createElement('div');
+    d.className = 'num';
+    d.textContent = i;
+    d.setAttribute('data-num', i);
+    if(calledSet.has(i)) d.classList.add('called');
+    box.appendChild(d);
+  }
+}
+function markOverlay(n){
+  const box = document.getElementById('numbersGrid');
+  if(!box) return;
+  const el = box.querySelector(`.num[data-num="${n}"]`);
+  if(!el) return;
+  el.classList.add('called','new');
+  el.scrollIntoView({behavior:'smooth',block:'center',inline:'center'});
+  setTimeout(()=> el.classList.remove('new'), 1200);
 }
 
 /* ---------- ticket building & render ---------- */
@@ -578,6 +652,7 @@ function buildRandomTicket(){
 
 function renderTicket(){
   const el = document.getElementById('ticket');
+  if(!el) return;
   el.innerHTML = '';
   if(!ticketGrid){
     el.innerHTML = `<div style="padding:20px;text-align:center;color:#666">Waiting for ticket…</div>`;
@@ -611,7 +686,8 @@ function renderTicket(){
 
 /* ---------- called numbers handling ---------- */
 function updateCalledBadge(){
-  document.getElementById('calledBadge').textContent = `Called: ${calledSet.size} / 90`;
+  const badge = document.getElementById('calledBadge');
+  if(badge) badge.textContent = `Called: ${calledSet.size} / 90`;
 }
 
 function processCalledNumber(n){
@@ -649,34 +725,14 @@ function localAchieved(idx){
   showTopNotification({ username: owner.username, icon: owner.icon }, idx);
   if(ws && ws.readyState === WebSocket.OPEN){
     ws.send(JSON.stringify({ typeReq: 'iAchieve', roomId, playerId, wscode, achievement: idx }));
+    appendWsLogLine('→ SENT iAchieve ' + idx);
   }
-}
-
-/* ---------- numbers overlay rendering ---------- */
-function renderNumbersOverlay(){
-  const box = document.getElementById('numbersGrid');
-  box.innerHTML = '';
-  for(let i=1;i<=90;i++){
-    const d = document.createElement('div');
-    d.className = 'num';
-    d.textContent = i;
-    d.setAttribute('data-num', i);
-    if(calledSet.has(i)) d.classList.add('called');
-    box.appendChild(d);
-  }
-}
-function markOverlay(n){
-  const box = document.getElementById('numbersGrid');
-  const el = box.querySelector(`.num[data-num="${n}"]`);
-  if(!el) return;
-  el.classList.add('called','new');
-  el.scrollIntoView({behavior:'smooth',block:'center',inline:'center'});
-  setTimeout(()=> el.classList.remove('new'), 1200);
 }
 
 /* ---------- slot animation (two-digit) ---------- */
 function animateDigit(viewportId, targetDigit){
   const viewport = document.getElementById(viewportId);
+  if(!viewport) return;
   viewport.innerHTML = '';
   const strip = document.createElement('div');
   strip.className = 'digit-strip';
@@ -710,16 +766,16 @@ function showTwoDigit(num){
 /* ---------- server message handlers ---------- */
 function handleWSMessage(data){
   if(!data || !data.type) return;
+  appendWsLogLine('← RECV: ' + JSON.stringify(data));
   switch(data.type){
     case 'ijoin':
     case 'hejoins':
-      // server provides array of players
+      // server may send an array { players: [...] } OR a single player { player: {...} }
       if(Array.isArray(data.players)){
-        // replace playersMap with server-sent players (keeps server authoritative)
-        // Note: server should supply playerId, username, icon and optional achievement
+        // server-authoritative full list: replace map
         const newMap = {};
         data.players.forEach(p => {
-          if(!p.playerId) return;
+          if(!p || !p.playerId) return;
           newMap[p.playerId] = {
             playerId: p.playerId,
             username: p.username || p.name || ('player'+p.playerId),
@@ -729,11 +785,36 @@ function handleWSMessage(data){
         });
         playersMap = newMap;
         renderTopBar();
+      } else if(data.player && data.player.playerId){
+        // single-player join: add/update
+        const p = data.player;
+        playersMap[p.playerId] = {
+          playerId: p.playerId,
+          username: p.username || p.name || ('player'+p.playerId),
+          icon: p.icon || `avt1.jpg`,
+          achievement: p.achievement || 0
+        };
+        renderTopBar();
+      } else {
+        // sometimes servers send { playerId, playerName, icon } directly
+        if(data.playerId){
+          playersMap[data.playerId] = {
+            playerId: data.playerId,
+            username: data.playerName || data.username || ('player'+data.playerId),
+            icon: data.icon || `avt1.jpg`,
+            achievement: data.achievement || 0
+          };
+          renderTopBar();
+        } else {
+          appendWsLogLine('Warning: ijoin/hejoins payload unexpected: ' + JSON.stringify(data));
+        }
       }
       break;
+
     case 'heleft':
       if(data.playerId && playersMap[data.playerId]){ delete playersMap[data.playerId]; renderTopBar(); }
       break;
+
     case 'heachieves':
       // payload: { playerId, playerName, achievement, icon }
       if(data.playerId){
@@ -749,12 +830,16 @@ function handleWSMessage(data){
       showTopNotification({ username: data.playerName, icon: data.icon }, data.achievement);
       break;
     case 'sendTicket':
-      ticketGrid = buildTicketFromServer(data.ticket);
-      calledSet.clear(); called_numbers=0; row1=row2=row3=0;
-      awarded = {firstFive:false,firstSeven:false,row1:false,row2:false,row3:false,fullHouse:false};
-      renderTicket();
-      renderNumbersOverlay();
-      updateCalledBadge();
+      if(Array.isArray(data.ticket)){
+        ticketGrid = buildTicketFromServer(data.ticket);
+        calledSet.clear(); called_numbers=0; row1=row2=row3=0;
+        awarded = {firstFive:false,firstSeven:false,row1:false,row2:false,row3:false,fullHouse:false};
+        renderTicket();
+        renderNumbersOverlay();
+        updateCalledBadge();
+      } else {
+        appendWsLogLine('Warning: sendTicket missing ticket array');
+      }
       break;
     case 'sendNumber':
       handleNumberFromServer(Number(data.number));
@@ -772,6 +857,7 @@ function handleWSMessage(data){
       }
       break;
     default:
+      appendWsLogLine('Unhandled WS message type: ' + data.type);
       console.log('Unhandled WS message type:', data.type, data);
   }
 }
@@ -849,43 +935,51 @@ document.getElementById('leaderBackdrop').addEventListener('click', (e)=>{ if(e.
 
 /* host buttons */
 document.getElementById('startBtn').addEventListener('click', ()=> {
-  if(ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ typeReq: 'startGame', roomId, playerId, wscode }));
+  wsSend({ typeReq: 'startGame', roomId, playerId, wscode });
 });
 document.getElementById('sendNumBtn').addEventListener('click', ()=> {
-  if(ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ typeReq: 'sendNumber', roomId, playerId, wscode }));
+  wsSend({ typeReq: 'sendNumber', roomId, playerId, wscode });
 });
 
 /* ---------- init WebSocket ---------- */
 function initWS(){
+  appendWsLogLine('Connecting to ' + WS_URL);
   ws = new WebSocket(WS_URL);
+
   ws.addEventListener('open', ()=>{
-    console.log('WS open, sending pageEntered');
-    ws.send(JSON.stringify({ typeReq: 'pageEntered', roomId, playerId, wscode, isHost }));
+    appendWsLogLine('WS open');
+    // send pageEntered using wsSend wrapper (so it's logged)
+    wsSend({ typeReq: 'pageEntered', roomId, playerId, username, icon, isHost });
     // if host reveal start button
     if(isHost) document.getElementById('startBtn').style.display = 'block';
   });
+
   ws.addEventListener('message', (ev)=>{
+    appendWsLogLine('RAW RECV: ' + ev.data);
     try {
       const data = JSON.parse(ev.data);
       handleWSMessage(data);
     } catch(e){
+      appendWsLogLine('Invalid WS JSON: ' + e.message);
       console.warn('Invalid WS message', e, ev.data);
     }
   });
-  ws.addEventListener('close', ()=> {
-    console.warn('WS closed, will attempt reconnect in 2s');
+
+  ws.addEventListener('close', (ev)=> {
+    appendWsLogLine('WS closed, reconnecting in 2s (code ' + (ev.code||'') + ')');
     setTimeout(initWS, 2000);
   });
+
   ws.addEventListener('error', (err)=> {
+    appendWsLogLine('WS error: ' + (err && err.message ? err.message : String(err)));
     console.error('WS error', err);
-    ws.close();
+    try{ ws.close(); }catch(e){}
   });
 }
 initWS();
 
 /* ---------- initial UI state ---------- */
 (function init(){
-  // Do NOT pre-populate top bar with dummy players.
   // Keep playersMap empty — top bar renders only from WS 'ijoin'/'hejoins' events.
   playersMap = {};
   renderTopBar(); // will show "Waiting for players…"
@@ -908,4 +1002,4 @@ initWS();
 })();
 </script>
 </body>
-      </html>    
+  </html>                            
