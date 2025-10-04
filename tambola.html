@@ -949,7 +949,7 @@ function initWS(){
   ws.addEventListener('open', ()=>{
     appendWsLogLine('WS open');
     // send pageEntered using wsSend wrapper (so it's logged)
-    wsSend({ typeReq: 'pageEntered', roomId, playerId, username, icon, isHost });
+    wsSend({ typeReq: 'pageEntered', roomId, playerId, username, icon, isHost,wscode });
     // if host reveal start button
     if(isHost) document.getElementById('startBtn').style.display = 'block';
   });
