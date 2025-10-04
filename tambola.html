@@ -479,7 +479,8 @@ function createAvatarArcs(el,segments=6){
   // remove existing
   const existing = el.querySelector('svg[data-arcs]');
   if(existing) existing.remove();
-  const size = el.clientWidth || 56;
+  // fallback size if clientWidth is 0
+  const size = (el.clientWidth && el.clientWidth > 8) ? el.clientWidth : 56;
   const svgNS = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(svgNS,'svg');
   svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
@@ -528,9 +529,10 @@ function activateAvatarArc(el, count){
 
 /* ---------- render top bar (playersMap) ---------- */
 function renderTopBar(){
+  if(!topBarEl) return;
   topBarEl.innerHTML = '';
 
-  const players = Object.values(playersMap);
+  const players = Object.values(playersMap || {});
   if(players.length === 0){
     // subtle placeholder when the server hasn't provided players yet
     const placeholder = document.createElement('div');
@@ -551,11 +553,11 @@ function renderTopBar(){
     av.className = 'avatar';
     av.title = p.username || 'Player';
     const img = document.createElement('img');
-    // handle absolute or relative icon paths
-    if(p.icon && (p.icon.startsWith('http') || p.icon.startsWith('//'))){
+    // handle absolute or relative icon paths - do NOT force leading slash
+    if(p.icon && (String(p.icon).startsWith('http') || String(p.icon).startsWith('//'))){
       img.src = p.icon;
     } else if(p.icon){
-      img.src = p.icon.startsWith('/') ? p.icon : '/' + p.icon;
+      img.src = p.icon; // leave relative paths intact
     } else {
       img.src = `avt${(idx%8)+1}.jpg`;
     }
@@ -564,7 +566,7 @@ function renderTopBar(){
     // create small arcs (achievement indicator)
     createAvatarArcs(av,6);
     const ach = Number(p.achievement) || 0;
-    // slight async to ensure arc elements appended
+    // slight async to ensure arc elements appended and element has size
     setTimeout(()=> activateAvatarArc(av, ach), 40);
     const nm = document.createElement('div');
     nm.className = 'player-name';
@@ -770,34 +772,49 @@ function handleWSMessage(data){
   switch(data.type){
     case 'ijoin':
     case 'hejoins':
-      // server may send an array { players: [...] } OR a single player { player: {...} }
-      if(Array.isArray(data.players)){
-        // server-authoritative full list: replace map
-        const newMap = {};
-        data.players.forEach(p => {
-          if(!p || !p.playerId) return;
-          newMap[p.playerId] = {
+      // Accept multiple shapes:
+      // 1) { players: [...] } (array)
+      // 2) { players: { pid: {...}, ... } } (object map)
+      // 3) { player: {...} } (single)
+      // 4) { playerId, playerName, icon } (flat)
+      try {
+        if(Array.isArray(data.players)){
+          const newMap = {};
+          data.players.forEach(p => {
+            if(!p || !p.playerId) return;
+            newMap[p.playerId] = {
+              playerId: p.playerId,
+              username: p.username || p.name || ('player'+p.playerId),
+              icon: p.icon || `avt1.jpg`,
+              achievement: p.achievement || 0
+            };
+          });
+          playersMap = newMap;
+          renderTopBar();
+        } else if(data.players && typeof data.players === 'object'){
+          // object map { pid: {..}, ... }
+          const newMap = {};
+          Object.values(data.players).forEach(p => {
+            if(!p || !p.playerId) return;
+            newMap[p.playerId] = {
+              playerId: p.playerId,
+              username: p.username || p.name || ('player'+p.playerId),
+              icon: p.icon || `avt1.jpg`,
+              achievement: p.achievement || 0
+            };
+          });
+          playersMap = newMap;
+          renderTopBar();
+        } else if(data.player && data.player.playerId){
+          const p = data.player;
+          playersMap[p.playerId] = {
             playerId: p.playerId,
             username: p.username || p.name || ('player'+p.playerId),
             icon: p.icon || `avt1.jpg`,
             achievement: p.achievement || 0
           };
-        });
-        playersMap = newMap;
-        renderTopBar();
-      } else if(data.player && data.player.playerId){
-        // single-player join: add/update
-        const p = data.player;
-        playersMap[p.playerId] = {
-          playerId: p.playerId,
-          username: p.username || p.name || ('player'+p.playerId),
-          icon: p.icon || `avt1.jpg`,
-          achievement: p.achievement || 0
-        };
-        renderTopBar();
-      } else {
-        // sometimes servers send { playerId, playerName, icon } directly
-        if(data.playerId){
+          renderTopBar();
+        } else if(data.playerId){
           playersMap[data.playerId] = {
             playerId: data.playerId,
             username: data.playerName || data.username || ('player'+data.playerId),
@@ -806,8 +823,26 @@ function handleWSMessage(data){
           };
           renderTopBar();
         } else {
-          appendWsLogLine('Warning: ijoin/hejoins payload unexpected: ' + JSON.stringify(data));
+          // Sometimes server sends a compact "players" array as strings or unexpected shape
+          // try to extract any player-like objects automatically
+          const maybePlayers = Object.keys(data).reduce((acc,k)=>{
+            const v = data[k];
+            if(v && typeof v === 'object' && (v.playerId || v.username)) acc.push(v);
+            return acc;
+          }, []);
+          if(maybePlayers.length){
+            maybePlayers.forEach(p=>{
+              const pid = p.playerId || ('p'+Math.floor(Math.random()*999999));
+              playersMap[pid] = { playerId: pid, username: p.username || p.name || ('player'+pid), icon: p.icon || 'avt1.jpg', achievement: p.achievement || 0 };
+            });
+            renderTopBar();
+          } else {
+            appendWsLogLine('Warning: ijoin/hejoins payload unexpected: ' + JSON.stringify(data));
+          }
         }
+      } catch(e){
+        appendWsLogLine('Error processing ijoin/hejoins: ' + e.message);
+        console.warn(e);
       }
       break;
 
@@ -877,6 +912,7 @@ function handleNumberFromServer(n){
 /* ---------- leader board update (simple) ---------- */
 function updateLeaderboardUI(){
   const list = document.getElementById('leaderList');
+  if(!list) return;
   list.innerHTML = '';
   const arr = Object.values(playersMap).slice().sort((a,b)=> (b.achievement || 0) - (a.achievement || 0));
   arr.forEach(p => {
@@ -1002,4 +1038,4 @@ initWS();
 })();
 </script>
 </body>
-  </html>                            
+  </html>
