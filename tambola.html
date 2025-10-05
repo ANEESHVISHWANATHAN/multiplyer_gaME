@@ -528,24 +528,43 @@ function activateAvatarArc(el, count){
 }
 
 /* ---------- render top bar (playersMap) ---------- */
+// --- improved renderTopBar (drop into your script) ---
 function renderTopBar(){
-  if(typeof topBarEl === 'undefined' || !topBarEl){
-    console.error('renderTopBar: topBar element not found (id=topBar)');
+  console.log('🟡 renderTopBar() start — topBarEl=', !!topBarEl);
+  appendWsLogLine('renderTopBar() called');
+
+  if(!topBarEl){
+    console.error('renderTopBar: topBar element not found (id="topBar")');
     return;
   }
-
-  // clear & normalize players source into an array
+  // clear first
   topBarEl.innerHTML = '';
-  const src = playersMap || {};
+
+  // Normalize playersMap into an array of player objects (very tolerant)
   let players = [];
-  if(Array.isArray(src)) players = src.slice();
-  else if(src && typeof src === 'object') players = Object.values(src).filter(Boolean);
+  try {
+    if (!playersMap) players = [];
+    else if (Array.isArray(playersMap)) players = playersMap.slice();
+    else if (typeof playersMap === 'object') {
+      // if it's an object map like { pid: {...}, ... }
+      players = Object.values(playersMap).filter(Boolean);
+    }
+  } catch (e) {
+    console.warn('renderTopBar: error normalizing playersMap', e);
+    players = [];
+  }
 
-  console.log('renderTopBar called — normalized players count:', players.length, players);
-  appendWsLogLine('renderTopBar — players: ' + players.length);
+  // If still empty, try to see if a recent WS payload left a "players" global (defensive)
+  if (players.length === 0 && window.latestWSPlayers) {
+    players = Array.isArray(window.latestWSPlayers) ? window.latestWSPlayers.slice() : (Object.values(window.latestWSPlayers || {}));
+    console.log('renderTopBar: used fallback window.latestWSPlayers', players.length);
+  }
 
-  // placeholder when empty
-  if(players.length === 0){
+  console.log('renderTopBar: normalized players count =', players.length, players);
+  appendWsLogLine('renderTopBar — players count: ' + players.length);
+
+  if (players.length === 0) {
+    // show placeholder
     const placeholder = document.createElement('div');
     placeholder.style.width = '100%';
     placeholder.style.padding = '12px';
@@ -557,41 +576,41 @@ function renderTopBar(){
     return;
   }
 
-  // build DOM with a fragment for performance
   const frag = document.createDocumentFragment();
-  players.forEach((p, idx) => {
-    const pid = p.playerId || p.id || ('p'+idx);
+  players.forEach((raw, idx) => {
+    // tolerant extraction
+    const p = raw || {};
+    const pid = p.playerId || p.id || p.uid || ('p_' + idx + '_' + (p.username || '').replace(/\s+/g,'').toLowerCase());
+    const username = p.username || p.playerName || p.name || ('Player ' + (idx+1));
+    const icon = p.icon || p.avatar || 'avt1.jpg';
+    const achievement = Number(p.achievement) || 0;
+
+    // debug each player item
+    console.log(`renderTopBar: player[${idx}] pid=${pid} name=${username} icon=${icon} ach=${achievement}`, p);
+
     const block = document.createElement('div');
     block.className = 'player-block';
 
     const av = document.createElement('div');
     av.className = 'avatar';
-    av.title = p.username || p.name || pid;
+    av.title = username;
 
     const img = document.createElement('img');
-    // keep relative paths intact, accept full URLs
-    if(p.icon && (String(p.icon).startsWith('http') || String(p.icon).startsWith('//'))){
-      img.src = p.icon;
-    } else if(p.icon){
-      img.src = p.icon;
-    } else {
-      img.src = `avt${(idx % 8) + 1}.jpg`;
-    }
-    img.alt = p.username || 'Player';
-    // fallback on error
+    img.alt = username;
+    img.src = (String(icon).startsWith('http') || String(icon).startsWith('//')) ? icon : icon;
     img.onerror = () => { img.onerror = null; img.src = 'avt1.jpg'; };
-
     av.appendChild(img);
 
-    // create & activate arcs (safe even if clientWidth is 0)
+    // arcs
     createAvatarArcs(av, 6);
+    // small delay to ensure svg exists
     setTimeout(()=> {
-      try { activateAvatarArc(av, Number(p.achievement) || 0); } catch(e){ /* ignore */ }
-    }, 50);
+      try { activateAvatarArc(av, achievement); } catch(e){ /* ignore */ }
+    }, 40);
 
     const nm = document.createElement('div');
     nm.className = 'player-name';
-    nm.textContent = (p.username || p.name || ('Player')) + (String(p.playerId) === String(playerId) ? ' (you)' : '');
+    nm.textContent = username + (String(pid) === String(playerId) ? ' (you)' : '');
 
     block.appendChild(av);
     block.appendChild(nm);
@@ -599,12 +618,16 @@ function renderTopBar(){
   });
 
   topBarEl.appendChild(frag);
-
-  // ensure bar is visible and log final state
-  topBarEl.style.display = ''; // let CSS control it
-  console.log('Top bar DOM updated. children:', topBarEl.children.length);
+  console.log('renderTopBar: finished — topBar children:', topBarEl.children.length);
   appendWsLogLine('Top bar rendered with ' + topBarEl.children.length + ' blocks');
 }
+
+// --- Add this single log line at start of your ijoin/hejoins handler (inside your WS message listener) ---
+// (so you can see exactly what the server sent)
+console.log('← RECV (ijoin/hejoins) payload:', data);
+appendWsLogLine('← RECV ijoin/hejoins: ' + JSON.stringify(data));
+window.latestWSPlayers = data.players || data.player || data; // optional helpful fallback for debugging
+
 
 /* ---------- notifications ---------- */
 function showTopNotification(player, aIdx){
