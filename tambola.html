@@ -467,10 +467,12 @@ function appendWsLogLine(line){
 function wsSend(obj){
   const s = JSON.stringify(obj);
   appendWsLogLine('→ SENT: ' + s);
+  console.log('WS SEND:', obj);
   if(ws && ws.readyState === WebSocket.OPEN){
     ws.send(s);
   } else {
     appendWsLogLine('⚠️ Cannot send — WS not open');
+    console.warn('Attempted send while ws not open', obj);
   }
 }
 
@@ -529,10 +531,17 @@ function activateAvatarArc(el, count){
 
 /* ---------- render top bar (playersMap) ---------- */
 function renderTopBar(){
-  if(!topBarEl) return;
+  if(!topBarEl){
+    console.error('renderTopBar: topBar element not found (id=topBar)');
+    appendWsLogLine('ERROR: topBar element not found');
+    return;
+  }
   topBarEl.innerHTML = '';
 
   const players = Object.values(playersMap || {});
+  console.log('renderTopBar called — players count:', players.length, players);
+  appendWsLogLine('renderTopBar — players: ' + players.length);
+
   if(players.length === 0){
     // subtle placeholder when the server hasn't provided players yet
     const placeholder = document.createElement('div');
@@ -575,6 +584,10 @@ function renderTopBar(){
     block.appendChild(nm);
     topBarEl.appendChild(block);
   });
+
+  // quick sanity log
+  console.log('Top bar DOM updated. children:', topBarEl.children.length);
+  appendWsLogLine('Top bar rendered with ' + topBarEl.children.length + ' blocks');
 }
 
 /* ---------- notifications ---------- */
@@ -769,9 +782,13 @@ function showTwoDigit(num){
 function handleWSMessage(data){
   if(!data || !data.type) return;
   appendWsLogLine('← RECV: ' + JSON.stringify(data));
+  console.log('handleWSMessage — type:', data.type, data);
+
   switch(data.type){
     case 'ijoin':
     case 'hejoins':
+      console.log('Received ijoin/hejoins payload:', data);
+      appendWsLogLine('Received ijoin/hejoins: ' + JSON.stringify(data));
       // Accept multiple shapes:
       // 1) { players: [...] } (array)
       // 2) { players: { pid: {...}, ... } } (object map)
@@ -790,6 +807,7 @@ function handleWSMessage(data){
             };
           });
           playersMap = newMap;
+          console.log('Processed players array — playersMap keys:', Object.keys(playersMap));
           renderTopBar();
         } else if(data.players && typeof data.players === 'object'){
           // object map { pid: {..}, ... }
@@ -804,6 +822,7 @@ function handleWSMessage(data){
             };
           });
           playersMap = newMap;
+          console.log('Processed players object-map — playersMap keys:', Object.keys(playersMap));
           renderTopBar();
         } else if(data.player && data.player.playerId){
           const p = data.player;
@@ -813,6 +832,7 @@ function handleWSMessage(data){
             icon: p.icon || `avt1.jpg`,
             achievement: p.achievement || 0
           };
+          console.log('Processed single player object — added:', p.playerId);
           renderTopBar();
         } else if(data.playerId){
           playersMap[data.playerId] = {
@@ -821,10 +841,10 @@ function handleWSMessage(data){
             icon: data.icon || `avt1.jpg`,
             achievement: data.achievement || 0
           };
+          console.log('Processed flat payload — added playerId:', data.playerId);
           renderTopBar();
         } else {
-          // Sometimes server sends a compact "players" array as strings or unexpected shape
-          // try to extract any player-like objects automatically
+          // Try to extract any player-like objects automatically
           const maybePlayers = Object.keys(data).reduce((acc,k)=>{
             const v = data[k];
             if(v && typeof v === 'object' && (v.playerId || v.username)) acc.push(v);
@@ -835,9 +855,11 @@ function handleWSMessage(data){
               const pid = p.playerId || ('p'+Math.floor(Math.random()*999999));
               playersMap[pid] = { playerId: pid, username: p.username || p.name || ('player'+pid), icon: p.icon || 'avt1.jpg', achievement: p.achievement || 0 };
             });
+            console.log('Auto-extracted players — keys:', Object.keys(playersMap));
             renderTopBar();
           } else {
             appendWsLogLine('Warning: ijoin/hejoins payload unexpected: ' + JSON.stringify(data));
+            console.warn('ijoin/hejoins payload unexpected', data);
           }
         }
       } catch(e){
@@ -847,11 +869,13 @@ function handleWSMessage(data){
       break;
 
     case 'heleft':
+      console.log('heleft received:', data);
       if(data.playerId && playersMap[data.playerId]){ delete playersMap[data.playerId]; renderTopBar(); }
       break;
 
     case 'heachieves':
       // payload: { playerId, playerName, achievement, icon }
+      console.log('heachieves received:', data);
       if(data.playerId){
         if(!playersMap[data.playerId]){
           playersMap[data.playerId] = { playerId: data.playerId, username: data.playerName || 'Player', icon: data.icon || 'avt1.jpg', achievement: data.achievement || 0 };
@@ -980,20 +1004,26 @@ document.getElementById('sendNumBtn').addEventListener('click', ()=> {
 /* ---------- init WebSocket ---------- */
 function initWS(){
   appendWsLogLine('Connecting to ' + WS_URL);
+  console.log('initWS -> connecting to', WS_URL);
   ws = new WebSocket(WS_URL);
 
   ws.addEventListener('open', ()=>{
     appendWsLogLine('WS open');
+    console.log('WS open event fired');
     // send pageEntered using wsSend wrapper (so it's logged)
-    wsSend({ typeReq: 'pageEntered', roomId, playerId, username, icon, isHost,wscode });
+    const pageEnteredPayload = { typeReq: 'pageEntered', roomId, playerId, username, icon, isHost, wscode };
+    wsSend(pageEnteredPayload);
+    console.log('Sent pageEntered payload:', pageEnteredPayload);
     // if host reveal start button
     if(isHost) document.getElementById('startBtn').style.display = 'block';
   });
 
   ws.addEventListener('message', (ev)=>{
     appendWsLogLine('RAW RECV: ' + ev.data);
+    console.log('WS raw message:', ev.data);
     try {
       const data = JSON.parse(ev.data);
+      console.log('WS parsed message type:', data.type);
       handleWSMessage(data);
     } catch(e){
       appendWsLogLine('Invalid WS JSON: ' + e.message);
@@ -1003,39 +1033,8 @@ function initWS(){
 
   ws.addEventListener('close', (ev)=> {
     appendWsLogLine('WS closed, reconnecting in 2s (code ' + (ev.code||'') + ')');
+    console.log('WS closed, reconnecting in 2s', ev);
     setTimeout(initWS, 2000);
   });
 
-  ws.addEventListener('error', (err)=> {
-    appendWsLogLine('WS error: ' + (err && err.message ? err.message : String(err)));
-    console.error('WS error', err);
-    try{ ws.close(); }catch(e){}
-  });
-}
-initWS();
-
-/* ---------- initial UI state ---------- */
-(function init(){
-  // Keep playersMap empty — top bar renders only from WS 'ijoin'/'hejoins' events.
-  playersMap = {};
-  renderTopBar(); // will show "Waiting for players…"
-
-  // fallback ticket so the UI doesn't look broken; server should always send sendTicket
-  ticketGrid = buildRandomTicket();
-  renderTicket();
-  renderNumbersOverlay();
-  updateCalledBadge();
-
-  document.getElementById('tensStatic').textContent = '-';
-  document.getElementById('unitsStatic').textContent = '-';
-})();
-  
-/* ---------- helper: prevent pinch/zoom on mobile ---------- */
-(function preventTouchZoom(){
-  let lastTouchEnd=0;
-  document.addEventListener('touchstart', function(e){ if(e.touches.length>1) e.preventDefault(); }, {passive:false});
-  document.addEventListener('touchend', function(e){ const now = Date.now(); if(now - lastTouchEnd <= 300) e.preventDefault(); lastTouchEnd = now; }, {passive:false});
-})();
-</script>
-</body>
-  </html>
+  ws.addEventList
