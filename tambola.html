@@ -529,12 +529,23 @@ function activateAvatarArc(el, count){
 
 /* ---------- render top bar (playersMap) ---------- */
 function renderTopBar(){
-  if(!topBarEl) return;
-  topBarEl.innerHTML = '';
+  if(typeof topBarEl === 'undefined' || !topBarEl){
+    console.error('renderTopBar: topBar element not found (id=topBar)');
+    return;
+  }
 
-  const players = Object.values(playersMap || {});
+  // clear & normalize players source into an array
+  topBarEl.innerHTML = '';
+  const src = playersMap || {};
+  let players = [];
+  if(Array.isArray(src)) players = src.slice();
+  else if(src && typeof src === 'object') players = Object.values(src).filter(Boolean);
+
+  console.log('renderTopBar called — normalized players count:', players.length, players);
+  appendWsLogLine('renderTopBar — players: ' + players.length);
+
+  // placeholder when empty
   if(players.length === 0){
-    // subtle placeholder when the server hasn't provided players yet
     const placeholder = document.createElement('div');
     placeholder.style.width = '100%';
     placeholder.style.padding = '12px';
@@ -546,35 +557,53 @@ function renderTopBar(){
     return;
   }
 
+  // build DOM with a fragment for performance
+  const frag = document.createDocumentFragment();
   players.forEach((p, idx) => {
+    const pid = p.playerId || p.id || ('p'+idx);
     const block = document.createElement('div');
     block.className = 'player-block';
+
     const av = document.createElement('div');
     av.className = 'avatar';
-    av.title = p.username || 'Player';
+    av.title = p.username || p.name || pid;
+
     const img = document.createElement('img');
-    // handle absolute or relative icon paths - do NOT force leading slash
+    // keep relative paths intact, accept full URLs
     if(p.icon && (String(p.icon).startsWith('http') || String(p.icon).startsWith('//'))){
       img.src = p.icon;
     } else if(p.icon){
-      img.src = p.icon; // leave relative paths intact
+      img.src = p.icon;
     } else {
-      img.src = `avt${(idx%8)+1}.jpg`;
+      img.src = `avt${(idx % 8) + 1}.jpg`;
     }
     img.alt = p.username || 'Player';
+    // fallback on error
+    img.onerror = () => { img.onerror = null; img.src = 'avt1.jpg'; };
+
     av.appendChild(img);
-    // create small arcs (achievement indicator)
-    createAvatarArcs(av,6);
-    const ach = Number(p.achievement) || 0;
-    // slight async to ensure arc elements appended and element has size
-    setTimeout(()=> activateAvatarArc(av, ach), 40);
+
+    // create & activate arcs (safe even if clientWidth is 0)
+    createAvatarArcs(av, 6);
+    setTimeout(()=> {
+      try { activateAvatarArc(av, Number(p.achievement) || 0); } catch(e){ /* ignore */ }
+    }, 50);
+
     const nm = document.createElement('div');
     nm.className = 'player-name';
-    nm.textContent = (p.username || 'Player') + (p.playerId === playerId ? ' (you)' : '');
+    nm.textContent = (p.username || p.name || ('Player')) + (String(p.playerId) === String(playerId) ? ' (you)' : '');
+
     block.appendChild(av);
     block.appendChild(nm);
-    topBarEl.appendChild(block);
+    frag.appendChild(block);
   });
+
+  topBarEl.appendChild(frag);
+
+  // ensure bar is visible and log final state
+  topBarEl.style.display = ''; // let CSS control it
+  console.log('Top bar DOM updated. children:', topBarEl.children.length);
+  appendWsLogLine('Top bar rendered with ' + topBarEl.children.length + ' blocks');
 }
 
 /* ---------- notifications ---------- */
