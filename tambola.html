@@ -436,4 +436,659 @@ const ticketOwnerIndex = 0; // will not be used to send awards; server normally 
 
 // local tokens from localStorage (as your other file used)
 const roomId = localStorage.getItem("roomId");
-const playerId = localStorage.getItem("playerId") || ('local-' +
+const playerId = localStorage.getItem("playerId") || ('local-' + Math.floor(Math.random()*99999));
+const wscode = localStorage.getItem("wscode");
+const username = localStorage.getItem("username") || "You";
+const icon = localStorage.getItem("icon") || "avt1.jpg";
+const isHost = localStorage.getItem("ishost") === "true";
+
+const topBarEl = document.getElementById('topBar');
+const notifEl = document.getElementById('notif');
+const notifIcon = document.getElementById('notifIcon');
+const notifText = document.getElementById('notifText');
+const wsLogEl = document.getElementById('wsLog');
+
+// small helper
+function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+
+/* ---------- WS logging helpers ---------- */
+function appendWsLogLine(line){
+  // show tiny on-page ws log for quick debugging
+  if(!wsLogEl) return;
+  wsLogEl.style.display = ''; // show when first message appears
+  const time = new Date().toLocaleTimeString();
+  const item = document.createElement('div');
+  item.textContent = `[${time}] ${line}`;
+  wsLogEl.insertBefore(item, wsLogEl.firstChild);
+  // keep it concise
+  while(wsLogEl.children.length > 60) wsLogEl.removeChild(wsLogEl.lastChild);
+  console.log(line);
+}
+
+function wsSend(obj){
+  const s = JSON.stringify(obj);
+  appendWsLogLine('→ SENT: ' + s);
+  if(ws && ws.readyState === WebSocket.OPEN){
+    ws.send(s);
+  } else {
+    appendWsLogLine('⚠️ Cannot send — WS not open');
+  }
+}
+
+/* ---------- Avatar arc helper (SVG segments) ---------- */
+function createAvatarArcs(el,segments=6){
+  // remove existing
+  const existing = el.querySelector('svg[data-arcs]');
+  if(existing) existing.remove();
+  // fallback size if clientWidth is 0
+  const size = (el.clientWidth && el.clientWidth > 8) ? el.clientWidth : 56;
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS,'svg');
+  svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+  svg.setAttribute('data-arcs','1');
+  svg.setAttribute('width','100%');
+  svg.setAttribute('height','100%');
+  const cx=size/2, cy=size/2;
+  const r=(size/2)-4;
+  const gap=6, sweep=360/segments;
+  for(let i=0;i<segments;i++){
+    const start = i*sweep + gap/2;
+    const end = (i+1)*sweep - gap/2;
+    const path = document.createElementNS(svgNS,'path');
+    // describe small arc
+    const startRad = (start-90)*Math.PI/180;
+    const endRad = (end-90)*Math.PI/180;
+    const startX = cx + r * Math.cos(endRad);
+    const startY = cy + r * Math.sin(endRad);
+    const endX = cx + r * Math.cos(startRad);
+    const endY = cy + r * Math.sin(startRad);
+    const laf = (end - start) <= 180 ? 0 : 1;
+    const d = `M ${startX} ${startY} A ${r} ${r} 0 ${laf} 0 ${endX} ${endY}`;
+    path.setAttribute('d', d);
+    path.setAttribute('fill','none');
+    path.setAttribute('stroke','rgba(0,0,0,0.12)');
+    path.setAttribute('stroke-width','4');
+    path.setAttribute('class','arc-seg');
+    path.setAttribute('data-seg', String(i+1));
+    svg.appendChild(path);
+  }
+  el.appendChild(svg);
+}
+
+function activateAvatarArc(el, count){
+  const segs = el.querySelectorAll('.arc-seg');
+  segs.forEach((s, idx) => {
+    if(idx < count){
+      s.setAttribute('stroke','url(#arcGradient)');
+      s.setAttribute('filter','drop-shadow(0 6px 8px rgba(0,0,0,0.25))');
+    } else {
+      s.setAttribute('stroke','rgba(255,255,255,0.06)');
+      s.removeAttribute('filter');
+    }
+  });
+}
+
+/* ---------- render top bar (playersMap) ---------- */
+// improved renderTopBar with tolerant normalization + logging
+function renderTopBar(){
+  console.log('🟡 renderTopBar() start — topBarEl=', !!topBarEl);
+  appendWsLogLine('renderTopBar() called');
+
+  if(!topBarEl){
+    console.error('renderTopBar: topBar element not found (id="topBar")');
+    return;
+  }
+  // clear first
+  topBarEl.innerHTML = '';
+
+  // Normalize playersMap into an array of player objects (very tolerant)
+  let players = [];
+  try {
+    if (!playersMap) players = [];
+    else if (Array.isArray(playersMap)) players = playersMap.slice();
+    else if (typeof playersMap === 'object') {
+      // if it's an object map like { pid: {...}, ... }
+      players = Object.values(playersMap).filter(Boolean);
+    }
+  } catch (e) {
+    console.warn('renderTopBar: error normalizing playersMap', e);
+    players = [];
+  }
+
+  // If still empty, try to see if a recent WS payload left a "players" global (defensive)
+  if (players.length === 0 && window.latestWSPlayers) {
+    players = Array.isArray(window.latestWSPlayers) ? window.latestWSPlayers.slice() : (Object.values(window.latestWSPlayers || {}));
+    console.log('renderTopBar: used fallback window.latestWSPlayers', players.length);
+  }
+
+  console.log('renderTopBar: normalized players count =', players.length, players);
+  appendWsLogLine('renderTopBar — players count: ' + players.length);
+
+  if (players.length === 0) {
+    // show placeholder
+    const placeholder = document.createElement('div');
+    placeholder.style.width = '100%';
+    placeholder.style.padding = '12px';
+    placeholder.style.textAlign = 'center';
+    placeholder.style.color = 'rgba(255,255,255,0.9)';
+    placeholder.style.fontWeight = '700';
+    placeholder.textContent = 'Waiting for players…';
+    topBarEl.appendChild(placeholder);
+    return;
+  }
+
+  const frag = document.createDocumentFragment();
+  players.forEach((raw, idx) => {
+    // tolerant extraction
+    const p = raw || {};
+    const pid = p.playerId || p.id || p.uid || ('p_' + idx + '_' + (p.username || '').replace(/\s+/g,'').toLowerCase());
+    const username = p.username || p.playerName || p.name || ('Player ' + (idx+1));
+    const icon = p.icon || p.avatar || 'avt1.jpg';
+    const achievement = Number(p.achievement) || 0;
+
+    // debug each player item
+    console.log(`renderTopBar: player[${idx}] pid=${pid} name=${username} icon=${icon} ach=${achievement}`, p);
+
+    const block = document.createElement('div');
+    block.className = 'player-block';
+
+    const av = document.createElement('div');
+    av.className = 'avatar';
+    av.title = username;
+
+    const img = document.createElement('img');
+    img.alt = username;
+    img.src = (String(icon).startsWith('http') || String(icon).startsWith('//')) ? icon : icon;
+    img.onerror = () => { img.onerror = null; img.src = 'avt1.jpg'; };
+    av.appendChild(img);
+
+    // arcs
+    createAvatarArcs(av, 6);
+    // small delay to ensure svg exists
+    setTimeout(()=> {
+      try { activateAvatarArc(av, achievement); } catch(e){ /* ignore */ }
+    }, 40);
+
+    const nm = document.createElement('div');
+    nm.className = 'player-name';
+    nm.textContent = username + (String(pid) === String(playerId) ? ' (you)' : '');
+
+    block.appendChild(av);
+    block.appendChild(nm);
+    frag.appendChild(block);
+  });
+
+  topBarEl.appendChild(frag);
+  console.log('renderTopBar: finished — topBar children:', topBarEl.children.length);
+  appendWsLogLine('Top bar rendered with ' + topBarEl.children.length + ' blocks');
+}
+
+/* ---------- notifications ---------- */
+function showTopNotification(player, aIdx){
+  notifIcon.src = player.icon || 'avt1.jpg';
+  notifText.textContent = `${player.username || player.name} has claimed ${achievementNames[aIdx] || 'achievement'}`;
+  notifEl.classList.remove('hide'); notifEl.classList.add('show');
+  clearTimeout(notifEl._t);
+  notifEl._t = setTimeout(()=> {
+    notifEl.classList.remove('show'); notifEl.classList.add('hide');
+    setTimeout(()=> notifEl.classList.remove('hide'),480);
+  }, 2200);
+}
+
+/* ---------- numbers overlay rendering ---------- */
+function renderNumbersOverlay(){
+  const box = document.getElementById('numbersGrid');
+  if(!box) return;
+  box.innerHTML = '';
+  for(let i=1;i<=90;i++){
+    const d = document.createElement('div');
+    d.className = 'num';
+    d.textContent = i;
+    d.setAttribute('data-num', i);
+    if(calledSet.has(i)) d.classList.add('called');
+    box.appendChild(d);
+  }
+}
+function markOverlay(n){
+  const box = document.getElementById('numbersGrid');
+  if(!box) return;
+  const el = box.querySelector(`.num[data-num="${n}"]`);
+  if(!el) return;
+  el.classList.add('called','new');
+  el.scrollIntoView({behavior:'smooth',block:'center',inline:'center'});
+  setTimeout(()=> el.classList.remove('new'), 1200);
+}
+
+/* ---------- ticket building & render ---------- */
+function buildTicketFromServer(serverTicket){
+  if(!Array.isArray(serverTicket) || serverTicket.length < 3){
+    return buildRandomTicket();
+  }
+  const grid = serverTicket.map((row, r) => row.map((n) => ({ number: n === null ? null : n, called: false, row: r+1 })));
+  return grid;
+}
+function buildRandomTicket(){
+  const MAX=1200;
+  for(let t=0;t<MAX;t++){
+    const counts = Array(9).fill(1);
+    let extras = 15-9;
+    while(extras>0){ const c=randInt(0,8); if(counts[c]<3){ counts[c]++; extras--; } }
+    const columns = [];
+    for(let c=0;c<9;c++){
+      const low = c===0?1:c*10; const high = c===8?90:c*10+9;
+      const pool = []; for(let v=low; v<=high; v++) pool.push(v);
+      const pick = pool.sort(()=>0.5-Math.random()).slice(0,counts[c]).sort((a,b)=>a-b);
+      columns.push(pick);
+    }
+    const grid = Array.from({length:3}, ()=>Array(9).fill(null));
+    for(let c=0;c<9;c++){
+      const rows = [0,1,2].sort(()=>0.5-Math.random()).slice(0,counts[c]).sort((a,b)=>a-b);
+      const nums = columns[c].slice().sort((a,b)=>a-b);
+      for(let i=0;i<rows.length;i++) grid[rows[i]][c] = nums[i];
+    }
+    const rowCounts = grid.map(r=>r.reduce((s,x)=>s + (x!==null?1:0),0));
+    if(rowCounts.every(rc=>rc===5)){
+      return grid.map((row,r)=> row.map(num=> ({ number: num===null?null:num, called:false, row: r+1 })));
+    }
+  }
+  const fallback = Array.from({length:3}, ()=>Array(9).fill(null));
+  const all = Array.from({length:90},(_,i)=>i+1).sort(()=>0.5-Math.random()).slice(0,15).sort((a,b)=>a-b);
+  let idx=0;
+  for(let r=0;r<3;r++){ for(let c=0;c<9 && idx<15;c++){ fallback[r][c] = { number: all[idx++], called:false, row: r+1 }; } }
+  return fallback;
+}
+
+function renderTicket(){
+  const el = document.getElementById('ticket');
+  if(!el) return;
+  el.innerHTML = '';
+  if(!ticketGrid){
+    el.innerHTML = `<div style="padding:20px;text-align:center;color:#666">Waiting for ticket…</div>`;
+    return;
+  }
+  for(let r=0;r<3;r++){
+    for(let c=0;c<9;c++){
+      const cell = ticketGrid[r][c];
+      const d = document.createElement('div');
+      d.className = 'cell';
+      if(!cell || cell.number === null){
+        d.classList.add('empty');
+        d.innerHTML = '';
+      } else {
+        d.classList.add('filled');
+        d.innerHTML = `<div class="num">${cell.number}</div>`;
+        if(cell.called) d.classList.add('called');
+        d.addEventListener('click', ()=> {
+          if(cell.called) {
+            d.classList.add('called');
+          } else {
+            d.classList.add('wrong');
+            setTimeout(()=> d.classList.remove('wrong'), 900);
+          }
+        });
+      }
+      el.appendChild(d);
+    }
+  }
+}
+
+/* ---------- called numbers handling ---------- */
+function updateCalledBadge(){
+  const badge = document.getElementById('calledBadge');
+  if(badge) badge.textContent = `Called: ${calledSet.size} / 90`;
+}
+
+function processCalledNumber(n){
+  if(!ticketGrid) return;
+  let matched=false;
+  for(let r=0;r<3;r++){
+    for(let c=0;c<9;c++){
+      const cell = ticketGrid[r][c];
+      if(cell && cell.number === n && !cell.called){
+        cell.called = true; matched = true;
+        called_numbers++;
+        if(cell.row===1) row1++; else if(cell.row===2) row2++; else row3++;
+      }
+    }
+  }
+  if(matched){
+    renderTicket();
+    checkAchievements();
+  }
+}
+
+/* achievements checks and sending iAchieve */
+function checkAchievements(){
+  if(!awarded.firstFive && called_numbers >= 5){ awarded.firstFive=true; localAchieved(1); return; }
+  if(!awarded.firstSeven && called_numbers >= 7){ awarded.firstSeven=true; localAchieved(2); return; }
+  if(!awarded.row1 && row1 >= 5){ awarded.row1=true; localAchieved(3); return; }
+  if(!awarded.row2 && row2 >= 5){ awarded.row2=true; localAchieved(4); return; }
+  if(!awarded.row3 && row3 >= 5){ awarded.row3=true; localAchieved(5); return; }
+  if(!awarded.fullHouse && called_numbers >= 15){ awarded.fullHouse=true; localAchieved(6); return; }
+}
+
+function localAchieved(idx){
+  const owner = { playerId, username, icon };
+  showCenter(`${owner.username || 'You'} claimed ${achievementNames[idx] || 'achievement'}`);
+  showTopNotification({ username: owner.username, icon: owner.icon }, idx);
+  if(ws && ws.readyState === WebSocket.OPEN){
+    ws.send(JSON.stringify({ typeReq: 'iAchieve', roomId, playerId, wscode, achievement: idx }));
+    appendWsLogLine('→ SENT iAchieve ' + idx);
+  }
+}
+
+/* ---------- slot animation (two-digit) ---------- */
+function animateDigit(viewportId, targetDigit){
+  const viewport = document.getElementById(viewportId);
+  if(!viewport) return;
+  viewport.innerHTML = '';
+  const strip = document.createElement('div');
+  strip.className = 'digit-strip';
+  const spins = 10;
+  for(let i=0;i<spins;i++){
+    const d = document.createElement('div'); d.className='digit'; d.textContent = String(randInt(0,9));
+    strip.appendChild(d);
+  }
+  const final = document.createElement('div'); final.className='digit'; final.textContent = String(targetDigit);
+  strip.appendChild(final);
+  viewport.appendChild(strip);
+  requestAnimationFrame(()=>{
+    const item = strip.querySelector('.digit');
+    if(!item){ viewport.textContent = String(targetDigit); return; }
+    const h = item.offsetHeight || 64;
+    const targetIndex = strip.children.length - 1;
+    const translateY = - (h * targetIndex);
+    strip.style.transform = 'translateY(0px)';
+    strip.style.transition = 'transform 820ms cubic-bezier(.18,.9,.2,1)';
+    requestAnimationFrame(()=> strip.style.transform = `translateY(${translateY}px)`);
+    setTimeout(()=> { viewport.innerHTML = `<div class="digit static">${String(targetDigit)}</div>`; }, 880);
+  });
+}
+function showTwoDigit(num){
+  const tens = Math.floor(num/10);
+  const units = num % 10;
+  animateDigit('tensViewport', tens);
+  animateDigit('unitsViewport', units);
+}
+
+/* ---------- server message handlers ---------- */
+function handleWSMessage(data){
+  if(!data || !data.type) return;
+  appendWsLogLine('← RECV: ' + JSON.stringify(data));
+  switch(data.type){
+    case 'ijoin':
+    case 'hejoins':
+      // debug log early and store fallback
+      console.log('← RECV (ijoin/hejoins) payload:', data);
+      appendWsLogLine('← RECV ijoin/hejoins: ' + JSON.stringify(data));
+      window.latestWSPlayers = data.players || data.player || data;
+
+      // Accept multiple shapes:
+      // 1) { players: [...] } (array)
+      // 2) { players: { pid: {...}, ... } } (object map)
+      // 3) { player: {...} } (single)
+      // 4) { playerId, playerName, icon } (flat)
+      try {
+        if(Array.isArray(data.players)){
+          const newMap = {};
+          data.players.forEach(p => {
+            if(!p) return;
+            const pid = p.playerId || p.id || ('p' + Math.floor(Math.random()*999999));
+            newMap[pid] = {
+              playerId: pid,
+              username: p.username || p.name || ('player'+pid),
+              icon: p.icon || `avt1.jpg`,
+              achievement: p.achievement || 0
+            };
+          });
+          playersMap = newMap;
+          renderTopBar();
+        } else if(data.players && typeof data.players === 'object'){
+          // object map { pid: {..}, ... }
+          const newMap = {};
+          Object.entries(data.players).forEach(([k,v]) => {
+            if(!v) return;
+            const pid = v.playerId || k || ('p' + Math.floor(Math.random()*999999));
+            newMap[pid] = {
+              playerId: pid,
+              username: v.username || v.name || ('player'+pid),
+              icon: v.icon || `avt1.jpg`,
+              achievement: v.achievement || 0
+            };
+          });
+          playersMap = newMap;
+          renderTopBar();
+        } else if(data.player && data.player.playerId){
+          const p = data.player;
+          playersMap[p.playerId] = {
+            playerId: p.playerId,
+            username: p.username || p.name || ('player'+p.playerId),
+            icon: p.icon || `avt1.jpg`,
+            achievement: p.achievement || 0
+          };
+          renderTopBar();
+        } else if(data.playerId){
+          const pid = data.playerId;
+          playersMap[pid] = {
+            playerId: pid,
+            username: data.playerName || data.username || ('player'+pid),
+            icon: data.icon || `avt1.jpg`,
+            achievement: data.achievement || 0
+          };
+          renderTopBar();
+        } else {
+          // Try to extract player-like objects automatically from the message
+          const maybePlayers = Object.keys(data).reduce((acc,k)=>{
+            const v = data[k];
+            if(v && typeof v === 'object' && (v.playerId || v.username || v.name)) acc.push(v);
+            return acc;
+          }, []);
+          if(maybePlayers.length){
+            maybePlayers.forEach(p=>{
+              const pid = p.playerId || ('p'+Math.floor(Math.random()*999999));
+              playersMap[pid] = { playerId: pid, username: p.username || p.name || ('player'+pid), icon: p.icon || 'avt1.jpg', achievement: p.achievement || 0 };
+            });
+            renderTopBar();
+          } else {
+            appendWsLogLine('Warning: ijoin/hejoins payload unexpected: ' + JSON.stringify(data));
+          }
+        }
+      } catch(e){
+        appendWsLogLine('Error processing ijoin/hejoins: ' + e.message);
+        console.warn(e);
+      }
+      break;
+
+    case 'heleft':
+      if(data.playerId && playersMap[data.playerId]){ delete playersMap[data.playerId]; renderTopBar(); }
+      break;
+
+    case 'heachieves':
+      // payload: { playerId, playerName, achievement, icon }
+      if(data.playerId){
+        if(!playersMap[data.playerId]){
+          playersMap[data.playerId] = { playerId: data.playerId, username: data.playerName || 'Player', icon: data.icon || 'avt1.jpg', achievement: data.achievement || 0 };
+        } else {
+          playersMap[data.playerId].achievement = data.achievement || playersMap[data.playerId].achievement || 0;
+          if(data.icon) playersMap[data.playerId].icon = data.icon;
+          if(data.playerName) playersMap[data.playerId].username = data.playerName;
+        }
+        renderTopBar();
+      }
+      showTopNotification({ username: data.playerName, icon: data.icon }, data.achievement);
+      break;
+    case 'sendTicket':
+      if(Array.isArray(data.ticket)){
+        ticketGrid = buildTicketFromServer(data.ticket);
+        calledSet.clear(); called_numbers=0; row1=row2=row3=0;
+        awarded = {firstFive:false,firstSeven:false,row1:false,row2:false,row3:false,fullHouse:false};
+        renderTicket();
+        renderNumbersOverlay();
+        updateCalledBadge();
+      } else {
+        appendWsLogLine('Warning: sendTicket missing ticket array');
+      }
+      break;
+    case 'sendNumber':
+      handleNumberFromServer(Number(data.number));
+      break;
+    case 'gameStarts':
+      calledSet.clear(); called_numbers=0; row1=row2=row3=0;
+      awarded = {firstFive:false,firstSeven:false,row1:false,row2:false,row3:false,fullHouse:false};
+      document.getElementById('ticket').style.display = 'grid';
+      renderTicket();
+      renderNumbersOverlay();
+      updateCalledBadge();
+      if(isHost){
+        document.getElementById('startBtn').style.display = 'none';
+        document.getElementById('sendNumBtn').style.display = 'block';
+      }
+      break;
+    default:
+      appendWsLogLine('Unhandled WS message type: ' + data.type);
+      console.log('Unhandled WS message type:', data.type, data);
+  }
+}
+
+/* ---------- handle incoming number ---------- */
+function handleNumberFromServer(n){
+  if(!n || isNaN(n)) return;
+  if(calledSet.has(n)) return;
+  calledSet.add(n);
+  updateCalledBadge();
+  showTwoDigit(n);
+  markOverlay(n);
+  processCalledNumber(n);
+  renderNumbersOverlay();
+}
+
+/* ---------- leader board update (simple) ---------- */
+function updateLeaderboardUI(){
+  const list = document.getElementById('leaderList');
+  if(!list) return;
+  list.innerHTML = '';
+  const arr = Object.values(playersMap).slice().sort((a,b)=> (b.achievement || 0) - (a.achievement || 0));
+  arr.forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'leader-row';
+    const img = document.createElement('img'); img.src = p.icon || 'avt1.jpg'; img.alt = p.username || 'Player';
+    const info = document.createElement('div');
+    info.innerHTML = `<div style="color:#fff;font-weight:900;">${p.username || 'Player'}</div><div style="color:#fff;opacity:.9">${p.achievement ? achievementNames[p.achievement] : '—'}</div>`;
+    row.appendChild(img); row.appendChild(info);
+    list.appendChild(row);
+  });
+}
+
+/* ---------- center achievement ---------- */
+function showCenter(msg){
+  const wrap = document.getElementById('centerAch');
+  const txt = document.getElementById('centerText');
+  txt.textContent = msg;
+  wrap.style.display = 'flex';
+  setTimeout(()=> wrap.style.display = 'none', 2600);
+}
+
+/* ---------- portrait warning detection & UI ---------- */
+const portraitWarning = document.getElementById('portraitWarning');
+const rotateBtn = document.getElementById('rotateBtn');
+const continueBtn = document.getElementById('continueBtn');
+let portraitSuppressed = false;
+function isPortrait() {
+  try {
+    return (window.matchMedia && window.matchMedia("(orientation: portrait)").matches) || (window.innerHeight > window.innerWidth);
+  } catch(e){ return window.innerHeight > window.innerWidth; }
+}
+function showPortraitWarning(){ portraitWarning.style.display = 'flex'; portraitWarning.setAttribute('aria-hidden','false'); }
+function hidePortraitWarning(){ portraitWarning.style.display = 'none'; portraitWarning.setAttribute('aria-hidden','true'); }
+function evaluatePortraitWarning(){
+  if(isPortrait()){
+    if(!portraitSuppressed) showPortraitWarning();
+  } else {
+    portraitSuppressed = false;
+    hidePortraitWarning();
+  }
+}
+rotateBtn.addEventListener('click', ()=> rotateBtn.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-6px)' }, { transform: 'translateY(0)' }], { duration: 420 }));
+continueBtn.addEventListener('click', ()=> { portraitSuppressed = true; hidePortraitWarning(); });
+window.addEventListener('orientationchange', ()=> setTimeout(evaluatePortraitWarning, 300), { passive:true });
+window.addEventListener('resize', ()=> setTimeout(evaluatePortraitWarning, 220), { passive:true });
+document.addEventListener('DOMContentLoaded', ()=> setTimeout(evaluatePortraitWarning, 120));
+
+/* ---------- UI wiring ---------- */
+document.getElementById('openNumbersBtn').addEventListener('click', ()=> document.getElementById('numbersBackdrop').classList.add('show'));
+document.getElementById('closeNumbersBtn').addEventListener('click', ()=> document.getElementById('numbersBackdrop').classList.remove('show'));
+document.getElementById('openLeaderboardBtn').addEventListener('click', ()=> { updateLeaderboardUI(); document.getElementById('leaderBackdrop').classList.add('show'); });
+document.getElementById('closeLeaderBtn').addEventListener('click', ()=> document.getElementById('leaderBackdrop').classList.remove('show'));
+document.getElementById('numbersBackdrop').addEventListener('click', (e)=>{ if(e.target === e.currentTarget) e.currentTarget.classList.remove('show'); });
+document.getElementById('leaderBackdrop').addEventListener('click', (e)=>{ if(e.target === e.currentTarget) e.currentTarget.classList.remove('show'); });
+
+/* host buttons */
+document.getElementById('startBtn').addEventListener('click', ()=> {
+  wsSend({ typeReq: 'startGame', roomId, playerId, wscode });
+});
+document.getElementById('sendNumBtn').addEventListener('click', ()=> {
+  wsSend({ typeReq: 'sendNumber', roomId, playerId, wscode });
+});
+
+/* ---------- init WebSocket ---------- */
+function initWS(){
+  appendWsLogLine('Connecting to ' + WS_URL);
+  ws = new WebSocket(WS_URL);
+
+  ws.addEventListener('open', ()=>{
+    appendWsLogLine('WS open');
+    // send pageEntered using wsSend wrapper (so it's logged)
+    wsSend({ typeReq: 'pageEntered', roomId, playerId, username, icon, isHost,wscode });
+    // if host reveal start button
+    if(isHost) document.getElementById('startBtn').style.display = 'block';
+  });
+
+  ws.addEventListener('message', (ev)=>{
+    appendWsLogLine('RAW RECV: ' + ev.data);
+    try {
+      const data = JSON.parse(ev.data);
+      handleWSMessage(data);
+    } catch(e){
+      appendWsLogLine('Invalid WS JSON: ' + e.message);
+      console.warn('Invalid WS message', e, ev.data);
+    }
+  });
+
+  ws.addEventListener('close', (ev)=> {
+    appendWsLogLine('WS closed, reconnecting in 2s (code ' + (ev.code||'') + ')');
+    setTimeout(initWS, 2000);
+  });
+
+  ws.addEventListener('error', (err)=> {
+    appendWsLogLine('WS error: ' + (err && err.message ? err.message : String(err)));
+    console.error('WS error', err);
+    try{ ws.close(); }catch(e){}
+  });
+}
+initWS();
+
+/* ---------- initial UI state ---------- */
+(function init(){
+  // Keep playersMap empty — top bar renders only from WS 'ijoin'/'hejoins' events.
+  playersMap = {};
+  renderTopBar(); // will show "Waiting for players…"
+
+  // fallback ticket so the UI doesn't look broken; server should always send sendTicket
+  ticketGrid = buildRandomTicket();
+  renderTicket();
+  renderNumbersOverlay();
+  updateCalledBadge();
+
+  document.getElementById('tensStatic').textContent = '-';
+  document.getElementById('unitsStatic').textContent = '-';
+})();
+  
+/* ---------- helper: prevent pinch/zoom on mobile ---------- */
+(function preventTouchZoom(){
+  let lastTouchEnd=0;
+  document.addEventListener('touchstart', function(e){ if(e.touches.length>1) e.preventDefault(); }, {passive:false});
+  document.addEventListener('touchend', function(e){ const now = Date.now(); if(now - lastTouchEnd <= 300) e.preventDefault(); lastTouchEnd = now; }, {passive:false});
+})();
+</script>
+</body>
+  </html>
